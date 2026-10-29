@@ -350,18 +350,21 @@ def parse(
         found.set_people(single, str(single))  # "Germany 2 80k" is "Germany 80k 2 people"
     elif counted and kind is None:
         kind = "team"
+    elif counted and kind == "compare":
+        raise ParseError("unexpected", word=str(next(c for c in found.counts if c is not None)))
     if kind is None:
         kind = "compare" if len(found.countries) >= 2 else "cost"
     if kind == "cost" and (found.people is not None or found.months is not None):
         kind = "plan"  # "Germany 80k 5 people", or "/cost Germany 80k 5 people", asks a planning question
     if kind == "team":
         if found.people is not None:
-            raise ParseError("unexpected", word=str(found.people))  # a team has a count per country
+            raise ParseError("team_counts")  # a team has a head count per country, not one in total
         return build_query(
             kind,
             tuple(found.countries),
             found.salary * 12 if found.monthly else found.salary,
-            currency=found.currency,
+            # A team spans currencies, so a bare salary is in euros, for checking and computing alike.
+            currency=found.currency or "EUR",
             months=found.months if found.months is not None else DEFAULT_MONTHS,
             salary_was_monthly=found.monthly,
             counts=tuple(c if c is not None else 1 for c in found.counts),

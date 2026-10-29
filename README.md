@@ -85,7 +85,8 @@ Germany, United Kingdom, Spain, Poland and Bulgaria, with 2026 rates.
 ### <a name="team"></a> A team across countries
 
 `/team Germany 2 UK 1 Spain 1 Poland 1 70k` — a head count after each country, one salary for
-everyone (in any ECB currency), and optionally a horizon: `… 24 months`. The free-text form works
+everyone, and optionally a horizon: `… 24 months`. A team spans currencies, so a bare salary is
+in euros; add a currency for another one (`… 60000 GBP`). The free-text form works
 too, as above.
 
 Each country gets the same comparison as `/plan`: EOR fees against what an own entity costs

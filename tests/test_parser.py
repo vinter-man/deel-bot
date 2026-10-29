@@ -439,7 +439,7 @@ def test_team_command_and_count_after_one_country(index: CountryIndex) -> None:
 
 @pytest.mark.parametrize(
     ("text", "code"),
-    [("Testland 2 Testland 1 70k", "same_country"), ("Testland 2 Otherland 1 70k 5 people", "unexpected"),
+    [("Testland 2 Testland 1 70k", "same_country"), ("Testland 2 Otherland 1 70k 5 people", "team_counts"),
      ("Testland 2", "no_salary"), ("Testland 2 Otherland 1", "no_salary")],
 )  # fmt: skip
 def test_team_errors(text: str, code: str, index: CountryIndex) -> None:
@@ -485,9 +485,24 @@ def test_head_count_and_people_together_is_said_twice(index: CountryIndex) -> No
 
 
 def test_team_error_params(index: CountryIndex, testland: Country) -> None:
-    assert err("Testland 2 Otherland 1 70k 5 people", index).params == {"word": "5"}
+    assert err("Testland 2 Otherland 1 70k 5 people", index).code == "team_counts"
     other = Country.model_validate(country_data(country="Other", code="OT", aliases=["other"]))
     with pytest.raises(ParseError) as caught:
         build_query("team", (testland, other), D(50_000), counts=(MAX_PEOPLE, 1))  # 10,001 in total
     assert (caught.value.code, caught.value.params) == ("people_range", {"maximum": str(MAX_PEOPLE)})
     assert build_query("team", (testland, other), D(50_000), counts=(MAX_PEOPLE - 1, 1)).people == MAX_PEOPLE
+
+
+def test_team_salary_without_currency_is_euro_for_checks_and_maths(index: CountryIndex) -> None:
+    def in_eur(amount: Decimal, currency: str) -> Decimal:
+        return amount / {"EUR": 1, "PLN": 4}[currency]
+
+    pz = Country.model_validate(country_data(country="Pzland", code="PZ", aliases=["pzland"], currency="PLN",
+                                             official={"checkedAt": "2026-10-01", "figures": {}}))  # fmt: skip
+    both = CountryIndex([pz, *index.by_alias.values()])
+    query = parse("pzland 2 testland 1 1500", both, CURRENCIES, in_eur=in_eur)
+    assert (query.currency, query.salary) == ("EUR", 1500)  # not PLN 1500 checked, €1500 computed
+
+
+def test_compare_with_head_counts_is_an_error(index: CountryIndex) -> None:
+    assert err("Testland 2 Otherland 3 70k", index, "compare").params == {"word": "2"}

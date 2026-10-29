@@ -330,6 +330,9 @@ def team(lang: Lang, query: Query, ctx: Context) -> str:
     currency the salary was typed in (EUR by default).
     """
     common = query.currency or "EUR"
+    notes: list[str] = []
+    # One line for the guides, not one per figure: the per-figure detail is in /plan and /sources.
+    outdated_guides: list[str] = []
     out = [
         t(lang, "team.header", countries=len(query.countries), team=i18n.people(lang, query.people),
           salary=_money(lang, query.salary, common), months=i18n.months(lang, query.months)),
@@ -342,6 +345,15 @@ def team(lang: Lang, query: Query, ctx: Context) -> str:
     for country, count in zip(query.countries, query.counts, strict=True):
         local = ctx.rates.convert(query.salary, common, country.currency)
         result = calc.plan(country, local, eor_fee(country, ctx), count, query.months, payroll_fee(country, ctx))
+        minimum = country.minimum_wage
+        if minimum is not None and local < minimum.annual:
+            notes.append(f"{country.flag} " + t(lang, "cost.below_min_wage", year=country.year,
+                                                  minimum=_money(lang, minimum.annual, country.currency)))  # fmt: skip
+        state = freshness.check(country, ctx.today)
+        if state.mismatches:
+            outdated_guides.append(country.flag)
+        if state.outdated_year:
+            notes.append(f"{country.flag} " + t(lang, "warn.year", year=country.year, current=ctx.today.year))
         eor = ctx.rates.convert(result.eor_fees, country.currency, common)
         entity = ctx.rates.convert(result.entity_overhead, country.currency, common)
         total_eor += eor
@@ -364,7 +376,10 @@ def team(lang: Lang, query: Query, ctx: Context) -> str:
           entity=_money(lang, total_entity, common)),
     ]  # fmt: skip
     diff = whole(abs(total_entity - total_eor))
-    if total_eor < total_entity:
+    if diff == 0:
+        out.append(t(lang, "plan.even", team=i18n.people_for(lang, query.people),
+                     months=i18n.months(lang, query.months)))  # fmt: skip
+    elif total_eor < total_entity:
         out.append(t(lang, "team.eor_saves", months=i18n.months(lang, query.months),
                      diff=_money(lang, diff, common), entities=entities))  # fmt: skip
     else:
@@ -380,8 +395,13 @@ def team(lang: Lang, query: Query, ctx: Context) -> str:
         "",
         t(lang, "plan.note"),
     ]
-    if query.currency is None or any(c.currency != common for c in query.countries):
-        out.append(t(lang, "compare.fx", date=_date(ctx.rates.day, lang)))
+    # The EOR fee is a USD list price, so a conversion is always involved.
+    out.append(t(lang, "compare.fx", date=_date(ctx.rates.day, lang)))
+    if outdated_guides:
+        notes.append(t(lang, "team.guides", flags=" ".join(outdated_guides)))
+    notes += _fx_warning(lang, ctx)
+    if notes:
+        out += ["", *notes]
     return "\n".join(out)
 
 

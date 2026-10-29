@@ -262,7 +262,7 @@ def test_team_mix_when_countries_disagree(testland: Country, fixed_rates: Rates)
     ctx = replies.Context(_catalog(testland, cheapland), fixed_rates, TODAY)
     query = build_query("team", (testland, cheapland), Decimal(48_000), currency="EUR", counts=(1, 1))
     text = replies.team("en", query, ctx)
-    assert "🏳️ <b>Testland</b> × 1: EOR €6,600 · own entity €6,600 ✅ EOR" in text  # a tie stays on EOR
+    assert "🏳️ <b>Testland</b> × 1: EOR fees €6,600 · own-entity costs €6,600 ✅ EOR" in text  # a tie stays on EOR
     assert "✅ entity" in text
     assert "Cheapest mix" in text
 
@@ -274,3 +274,23 @@ def test_team_reply_in_every_language(real_catalog: Catalog, fixed_rates: Rates,
     text = replies.team(lang, query, ctx)  # type: ignore[arg-type]
     assert "{" not in text
     assert text.count("<b>") == text.count("</b>")
+
+
+def test_team_reply_carries_the_warnings(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    query = parse("Germany 2 UK 1 20k", real_catalog.index, {"EUR", *fixed_rates.per_eur})
+    text = replies.team("en", query, ctx)
+    assert "🇩🇪 ⚠️ Below the 2026 minimum wage" in text
+    assert "📝 Deel's guides for 🇩🇪 🇬🇧 still show some figures that have since changed" in text
+    assert text.count("📝") == 1  # one line for the guides, the detail lives in /sources
+
+
+def test_team_tie_is_called_a_tie(testland: Country, fixed_rates: Rates) -> None:
+    twin = Country.model_validate(country_data(country="Twin", code="TW", aliases=["twin"]))
+    ctx = replies.Context(_catalog(testland, twin), fixed_rates, TODAY)
+    # One person each over 12 months: 6,600 of EOR fees against 6,600 of entity costs per country.
+    text = replies.team(
+        "en", build_query("team", (testland, twin), Decimal(48_000), currency="EUR", counts=(1, 1)), ctx
+    )
+    assert "both cost about the same" in text
+    assert "~€0" not in text
