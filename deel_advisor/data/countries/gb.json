@@ -1,0 +1,188 @@
+{
+  "country": "United Kingdom",
+  "code": "GB",
+  "flag": "🇬🇧",
+  "aliases": [
+    "united kingdom",
+    "uk",
+    "gb",
+    "great britain",
+    "britain",
+    "england",
+    "великобритания",
+    "британия",
+    "англия",
+    "велика британія",
+    "британія",
+    "англія",
+    "великобританія"
+  ],
+  "currency": "GBP",
+  "year": 2026,
+  "effectiveFrom": "2026-04-06",
+  "validUntil": "2027-04-05",
+  "contributions": [
+    {
+      "id": "nic",
+      "name": "Employer National Insurance",
+      "localName": "Class 1 secondary NIC",
+      "rate": "0.15",
+      "floor": "5000",
+      "floorPeriod": "year",
+      "source": "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
+    },
+    {
+      "id": "workplace_pension",
+      "name": "Workplace pension (minimum)",
+      "localName": "Auto-enrolment",
+      "rate": "0.03",
+      "cap": "50270",
+      "capPeriod": "year",
+      "floor": "6240",
+      "floorPeriod": "year",
+      "source": "https://www.gov.uk/government/publications/review-of-the-automatic-enrolment-earnings-trigger-and-qualifying-earnings-band-for-202627/review-of-the-automatic-enrolment-earnings-trigger-and-qualifying-earnings-band-for-202627"
+    }
+  ],
+  "minimumWage": {
+    "amount": "12.71",
+    "period": "hour",
+    "hoursPerYear": 2080,
+    "source": "https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour"
+  },
+  "entity": {
+    "setupCost": [
+      {
+        "name": "Companies House incorporation",
+        "amount": "100.00",
+        "kind": "official",
+        "source": "https://www.gov.uk/government/publications/companies-house-fees/companies-house-fees"
+      },
+      {
+        "name": "Managed formation, VAT + PAYE setup",
+        "amount": "800.00",
+        "kind": "estimate",
+        "source": "https://www.vjmglobal.com/feeds/blog/uk-ltd-company-formation-cost-usa"
+      },
+      {
+        "name": "Apostille + translation of parent docs",
+        "amount": "550.00",
+        "kind": "estimate",
+        "source": "https://globallawexperts.com/cost-of-company-formation-uk/"
+      }
+    ],
+    "monthlyFixed": [
+      {
+        "name": "Accountant: accounts, books, VAT",
+        "amount": "130.00",
+        "kind": "estimate",
+        "source": "https://www.theaccountancy.co.uk/pricing"
+      },
+      {
+        "name": "Registered office",
+        "amount": "40.00",
+        "kind": "estimate",
+        "source": "https://wezoo.com/insights/virtual-office-cost"
+      },
+      {
+        "name": "Business bank account",
+        "amount": "8.50",
+        "kind": "estimate",
+        "source": "https://www.barclays.co.uk/business-banking/accounts/"
+      },
+      {
+        "name": "Confirmation statement (£50/yr)",
+        "amount": "4.17",
+        "kind": "official",
+        "source": "https://www.gov.uk/government/publications/companies-house-fees/companies-house-fees"
+      },
+      {
+        "name": "Payroll",
+        "amount": "12.00",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://www.theaccountancy.co.uk/pricing"
+      },
+      {
+        "name": "Employers' liability insurance",
+        "amount": "5.00",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://www.goforma.com/business-resources/how-much-does-employers-liability-insurance-cost"
+      }
+    ],
+    "notes": [
+      "Private limited company; no minimum share capital.",
+      "Employers' liability insurance is a legal requirement from the first employee."
+    ]
+  },
+  "deelGuide": {
+    "url": "https://www.deel.com/hiring/employees/the-united-kingdom/",
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "12.21",
+        "kind": "money",
+        "currency": "GBP",
+        "period": "hour",
+        "quote": "£12.21 per hour"
+      },
+      "nic_rate": {
+        "value": "0.15",
+        "kind": "rate",
+        "quote": "National Insurance Contributions - 15%"
+      },
+      "nic_threshold": {
+        "value": "417",
+        "kind": "money",
+        "currency": "GBP",
+        "period": "month",
+        "quote": "salary over £417 per month"
+      },
+      "workplace_pension_rate": {
+        "value": "0.03",
+        "kind": "rate",
+        "quote": "Mandatory Private Workplace Pension - 3%"
+      },
+      "employer_total_rate": {
+        "value": "0.188",
+        "kind": "rate",
+        "quote": "The employer cost is generally estimated at 18.80% of the employee salary."
+      }
+    }
+  },
+  "official": {
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "12.71",
+        "kind": "money",
+        "currency": "GBP",
+        "period": "hour",
+        "source": "https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour",
+        "effectiveFrom": "2026-04-01"
+      },
+      "nic_rate": {
+        "value": "0.15",
+        "kind": "rate",
+        "source": "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
+      },
+      "nic_threshold": {
+        "value": "417",
+        "kind": "money",
+        "currency": "GBP",
+        "period": "month",
+        "source": "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
+      },
+      "workplace_pension_rate": {
+        "value": "0.03",
+        "kind": "rate",
+        "source": "https://www.gov.uk/government/publications/review-of-the-automatic-enrolment-earnings-trigger-and-qualifying-earnings-band-for-202627/review-of-the-automatic-enrolment-earnings-trigger-and-qualifying-earnings-band-for-202627"
+      }
+    }
+  },
+  "notes": [
+    "Tax year 2026/27. Employer NIC: 15% above the £5,000 secondary threshold, no cap.",
+    "Workplace pension: the legal minimum, 3% of qualifying earnings between £6,240 and £50,270.",
+    "Not included: Apprenticeship Levy (only above a £3m pay bill); the £10,500 Employment Allowance is not deducted."
+  ]
+}

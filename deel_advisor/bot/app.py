@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import logging
 from datetime import UTC, datetime, time, timedelta
@@ -84,8 +83,12 @@ async def daily_check(services: Services, bot: Bot, reported: set[str]) -> None:
         log.warning("data check: %s", problem)
     fresh = [p for p in problems if p not in reported]
     if fresh and services.owner_id:
-        with contextlib.suppress(TelegramAPIError):
+        try:
             await bot.send_message(services.owner_id, "Data check:\n" + "\n".join(fresh))
+        except TelegramAPIError as error:
+            # Not marked as reported, so tomorrow's check tries again.
+            log.warning("could not message the owner: %s", type(error).__name__)
+            problems = [p for p in problems if p not in fresh]
     reported.clear()
     reported.update(problems)
 
@@ -99,8 +102,10 @@ def load_reported(path: Path) -> set[str]:
 
 
 def save_reported(path: Path, reported: set[str]) -> None:
+    tmp = path.with_suffix(".tmp")
     try:
-        path.write_text(json.dumps(sorted(reported), ensure_ascii=False))
+        tmp.write_text(json.dumps(sorted(reported), ensure_ascii=False))
+        tmp.replace(path)
     except OSError as error:
         log.warning("could not save the reported problems: %s", error)
 

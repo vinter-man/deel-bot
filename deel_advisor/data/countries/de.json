@@ -1,0 +1,275 @@
+{
+  "country": "Germany",
+  "code": "DE",
+  "flag": "🇩🇪",
+  "aliases": [
+    "germany",
+    "deutschland",
+    "de",
+    "ger",
+    "германия",
+    "німеччина",
+    "германии",
+    "німеччині"
+  ],
+  "currency": "EUR",
+  "year": 2026,
+  "effectiveFrom": "2026-01-01",
+  "contributions": [
+    {
+      "id": "pension",
+      "name": "Pension insurance",
+      "localName": "Rentenversicherung",
+      "rate": "0.093",
+      "cap": "8450",
+      "capPeriod": "month",
+      "source": "https://www.deutsche-rentenversicherung.de/KnappschaftBahnSee/DE/Aktuelles/Meldungen/2026/2026_01_02_Sozialversicherungsrechengroessen2026.html"
+    },
+    {
+      "id": "unemployment",
+      "name": "Unemployment insurance",
+      "localName": "Arbeitslosenversicherung",
+      "rate": "0.013",
+      "cap": "8450",
+      "capPeriod": "month",
+      "source": "https://www.deutsche-rentenversicherung.de/KnappschaftBahnSee/DE/Aktuelles/Meldungen/2026/2026_01_02_Sozialversicherungsrechengroessen2026.html"
+    },
+    {
+      "id": "health",
+      "name": "Health insurance (avg. add-on)",
+      "localName": "Krankenversicherung",
+      "rate": "0.0875",
+      "cap": "5812.50",
+      "capPeriod": "month",
+      "source": "https://www.bundesgesundheitsministerium.de/beitraege"
+    },
+    {
+      "id": "care",
+      "name": "Long-term care insurance",
+      "localName": "Pflegeversicherung",
+      "rate": "0.018",
+      "cap": "5812.50",
+      "capPeriod": "month",
+      "source": "https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung"
+    },
+    {
+      "id": "insolvency",
+      "name": "Insolvency levy",
+      "localName": "Insolvenzgeldumlage",
+      "rate": "0.0015",
+      "cap": "8450",
+      "capPeriod": "month",
+      "source": "https://www.gesetze-im-internet.de/sgb_3/__360.html"
+    },
+    {
+      "id": "u1",
+      "name": "Sick-pay levy U1",
+      "localName": "Umlage U1",
+      "rate": "0.021",
+      "cap": "8450",
+      "capPeriod": "month",
+      "estimate": true,
+      "source": "https://www.tk.de/firmenkunden/versicherung/beitraege-faq-und-mehr/umlagen-u1-u2-und-insolvenzgeld/hoehe-umlagesaetze-u1-und-u2-2031720"
+    },
+    {
+      "id": "u2",
+      "name": "Maternity levy U2",
+      "localName": "Umlage U2",
+      "rate": "0.0044",
+      "cap": "8450",
+      "capPeriod": "month",
+      "estimate": true,
+      "source": "https://www.tk.de/firmenkunden/versicherung/beitraege-faq-und-mehr/umlagen-u1-u2-und-insolvenzgeld/hoehe-umlagesaetze-u1-und-u2-2031720"
+    },
+    {
+      "id": "accident",
+      "name": "Accident insurance",
+      "localName": "Berufsgenossenschaft",
+      "rate": "0.0108",
+      "estimate": true,
+      "source": "https://dguv.de/de/mediencenter/pm/zahlen-2025.jsp"
+    }
+  ],
+  "minimumWage": {
+    "amount": "13.90",
+    "period": "hour",
+    "hoursPerYear": 2080,
+    "source": "https://www.bmas.de/DE/Service/Presse/Pressemitteilungen/2025/mindestlohn-steigt-zum-ersten-januar-2026.html"
+  },
+  "entity": {
+    "setupCost": [
+      {
+        "name": "Commercial register fee",
+        "amount": "225.00",
+        "kind": "official",
+        "source": "https://www.gesetze-im-internet.de/hreggebv/anlage.html"
+      },
+      {
+        "name": "Notary, GmbH deed",
+        "amount": "816.00",
+        "kind": "estimate",
+        "source": "https://www.firma.de/firmengruendung/notarkosten-bei-der-gmbh-gruendung"
+      },
+      {
+        "name": "Trade + transparency register",
+        "amount": "55.00",
+        "kind": "estimate",
+        "source": "https://www.firma.de/firmengruendung/notarkosten-bei-der-gmbh-gruendung"
+      },
+      {
+        "name": "Lawyer: formation, tax + VAT registration",
+        "amount": "1379.00",
+        "kind": "estimate",
+        "source": "https://anwalt-kg.de/gesellschaftsrecht/preise/"
+      }
+    ],
+    "monthlyFixed": [
+      {
+        "name": "Tax adviser: bookkeeping",
+        "amount": "350.00",
+        "kind": "estimate",
+        "source": "https://onlinebilanz.de/finanzbuchhaltung-kosten-steuerberater/"
+      },
+      {
+        "name": "Annual accounts + corporate tax return",
+        "amount": "233.00",
+        "kind": "estimate",
+        "source": "https://steuernaut.de/steuerberater-kosten"
+      },
+      {
+        "name": "Employment-law advice (flat rate)",
+        "amount": "17.90",
+        "kind": "estimate",
+        "source": "https://www.haendlerbund.de/de/leistungen/rechtssicherheit/rechtsberatung-unternehmer"
+      },
+      {
+        "name": "Safety officer + company doctor",
+        "amount": "10.00",
+        "kind": "estimate",
+        "source": "https://www.dssv.de/wp-content/uploads/2023/05/Vorteilsclub_Diemer_202300524.pdf"
+      },
+      {
+        "name": "Business address",
+        "amount": "60.00",
+        "kind": "estimate",
+        "source": "https://wezoo.com/insights/geschaeftsadresse-berlin"
+      },
+      {
+        "name": "Business bank account",
+        "amount": "19.00",
+        "kind": "estimate",
+        "source": "https://qonto.com/de/pricing"
+      },
+      {
+        "name": "Payroll",
+        "amount": "25.00",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://www.lohndialog.de/lohnabrechnung-steuerberater-kosten/"
+      }
+    ],
+    "shareCapital": {
+      "amount": "25000.00",
+      "source": "https://www.gesetze-im-internet.de/gmbhg/__5.html"
+    },
+    "notes": [
+      "GmbH; EUR 12,500 of the EUR 25,000 share capital is paid in before registration (§5, §7 GmbHG).",
+      "Not included: apostilles and translations of the parent company's documents.",
+      "The safety officer + company doctor figure is a 2020 association rate: treat it as a floor."
+    ]
+  },
+  "deelGuide": {
+    "url": "https://www.deel.com/hiring/employees/germany/",
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "13.90",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "hour",
+        "quote": "€13.90 per hour"
+      },
+      "pension_rate": {
+        "value": "0.093",
+        "kind": "rate",
+        "quote": "Retirement - 9.30%"
+      },
+      "unemployment_rate": {
+        "value": "0.013",
+        "kind": "rate",
+        "quote": "Unemployment security - 1.30%"
+      },
+      "care_rate": {
+        "value": "0.017",
+        "kind": "rate",
+        "quote": "Long-term insurance fee - 1.7%"
+      },
+      "insolvency_rate": {
+        "value": "0.0006",
+        "kind": "rate",
+        "quote": "Insolvency money levy - 0.06%"
+      },
+      "health_rate": {
+        "value": "0.0861",
+        "kind": "rate",
+        "quote": "Health insurance Estimate - 8.61%"
+      },
+      "employer_total_rate": {
+        "value": "0.2345",
+        "kind": "rate",
+        "quote": "The employer cost is generally estimated at 23.45% of the employee salary."
+      }
+    }
+  },
+  "official": {
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "13.90",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "hour",
+        "source": "https://www.bmas.de/DE/Service/Presse/Pressemitteilungen/2025/mindestlohn-steigt-zum-ersten-januar-2026.html"
+      },
+      "pension_rate": {
+        "value": "0.093",
+        "kind": "rate",
+        "source": "https://www.deutsche-rentenversicherung.de/KnappschaftBahnSee/DE/Aktuelles/Meldungen/2026/2026_01_02_Sozialversicherungsrechengroessen2026.html"
+      },
+      "unemployment_rate": {
+        "value": "0.013",
+        "kind": "rate",
+        "source": "https://www.deutsche-rentenversicherung.de/KnappschaftBahnSee/DE/Aktuelles/Meldungen/2026/2026_01_02_Sozialversicherungsrechengroessen2026.html"
+      },
+      "care_rate": {
+        "value": "0.018",
+        "kind": "rate",
+        "source": "https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung"
+      },
+      "insolvency_rate": {
+        "value": "0.0015",
+        "kind": "rate",
+        "source": "https://www.gesetze-im-internet.de/sgb_3/__360.html"
+      },
+      "pension_cap": {
+        "value": "8450",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "source": "https://www.deutsche-rentenversicherung.de/KnappschaftBahnSee/DE/Aktuelles/Meldungen/2026/2026_01_02_Sozialversicherungsrechengroessen2026.html"
+      },
+      "health_cap": {
+        "value": "5812.50",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "source": "https://www.deutsche-rentenversicherung.de/KnappschaftBahnSee/DE/Aktuelles/Meldungen/2026/2026_01_02_Sozialversicherungsrechengroessen2026.html"
+      }
+    }
+  },
+  "notes": [
+    "Health insurance: 7.3% plus half of the official 2.9% average add-on; each insurer sets its own add-on.",
+    "U1 is the TK standard rate and applies only to employers with up to 30 staff; U2 is TK's rate.",
+    "Accident insurance is the DGUV 2025 cross-industry average; office work is usually lower."
+  ]
+}

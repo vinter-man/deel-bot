@@ -1,0 +1,222 @@
+{
+  "country": "Poland",
+  "code": "PL",
+  "flag": "🇵🇱",
+  "aliases": [
+    "poland",
+    "polska",
+    "pl",
+    "pol",
+    "польша",
+    "польща",
+    "польше",
+    "польщі"
+  ],
+  "currency": "PLN",
+  "year": 2026,
+  "effectiveFrom": "2026-01-01",
+  "contributions": [
+    {
+      "id": "pension",
+      "name": "Pension",
+      "localName": "Składka emerytalna",
+      "rate": "0.0976",
+      "cap": "282600",
+      "capPeriod": "year",
+      "source": "https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r."
+    },
+    {
+      "id": "disability",
+      "name": "Disability",
+      "localName": "Składka rentowa",
+      "rate": "0.065",
+      "cap": "282600",
+      "capPeriod": "year",
+      "source": "https://www.biznes.gov.pl/pl/portal/00274"
+    },
+    {
+      "id": "accident",
+      "name": "Accident (up to 9 staff)",
+      "localName": "Składka wypadkowa",
+      "rate": "0.0167",
+      "estimate": true,
+      "source": "https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r."
+    },
+    {
+      "id": "labour_fund",
+      "name": "Labour + Solidarity Fund",
+      "localName": "FP + FS",
+      "rate": "0.0245",
+      "cap": "282600",
+      "capPeriod": "year",
+      "source": "https://www.biznes.gov.pl/pl/portal/00274"
+    },
+    {
+      "id": "fgsp",
+      "name": "Guaranteed benefits fund",
+      "localName": "FGŚP",
+      "rate": "0.001",
+      "cap": "282600",
+      "capPeriod": "year",
+      "source": "https://www.biznes.gov.pl/pl/portal/00274"
+    }
+  ],
+  "minimumWage": {
+    "amount": "4806.00",
+    "period": "month",
+    "source": "https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r."
+  },
+  "entity": {
+    "setupCost": [
+      {
+        "name": "Court registration (KRS)",
+        "amount": "500.00",
+        "kind": "official",
+        "source": "https://www.biznes.gov.pl/pl/firma/zakladanie-firmy/chce-zalozyc-spolke-kapitalowa/rejestracja-spolki-z-o-o-przez-internet"
+      },
+      {
+        "name": "Court gazette announcement",
+        "amount": "100.00",
+        "kind": "official",
+        "source": "https://www.biznes.gov.pl/pl/firma/zakladanie-firmy/chce-zalozyc-spolke-kapitalowa/rejestracja-spolki-z-o-o-przez-internet"
+      },
+      {
+        "name": "Formation service, foreign corporate owner",
+        "amount": "7650.00",
+        "kind": "estimate",
+        "source": "https://tkegexpat.com/blog/pl/poland-spzoo-company-incorporation-guide-2026"
+      },
+      {
+        "name": "Tax on capital (PCC)",
+        "amount": "22.00",
+        "kind": "official",
+        "source": "https://www.biznes.gov.pl/pl/firma/zakladanie-firmy/chce-zalozyc-spolke-kapitalowa/rejestracja-spolki-z-o-o-przez-internet"
+      }
+    ],
+    "monthlyFixed": [
+      {
+        "name": "Accounting office + annual statement",
+        "amount": "1250.00",
+        "kind": "estimate",
+        "source": "https://cenauslug.pl/poradniki/ile-kosztuje-prowadzenie-ksiegowosci-porownanie-biur-rachunkowych-i-programow-online"
+      },
+      {
+        "name": "Registered address",
+        "amount": "100.00",
+        "kind": "estimate",
+        "source": "https://virtoffice.pl/"
+      },
+      {
+        "name": "Health and safety service (BHP)",
+        "amount": "530.00",
+        "kind": "estimate",
+        "source": "https://cenauslug.pl/firma-i-biuro/stala-obsluga-firmy-w-zakresie-bhp-ryczalt-miesieczny"
+      },
+      {
+        "name": "Business bank account",
+        "amount": "0.00",
+        "kind": "estimate",
+        "source": "https://www.mbank.pl/firmy/konta-firmowe/konto-dla-spolki/"
+      },
+      {
+        "name": "Payroll and HR",
+        "amount": "75.00",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://cenauslug.pl/poradniki/ile-kosztuje-prowadzenie-ksiegowosci-porownanie-biur-rachunkowych-i-programow-online"
+      }
+    ],
+    "shareCapital": {
+      "amount": "5000.00",
+      "source": "https://www.biznes.gov.pl/pl/portal/00166"
+    },
+    "notes": [
+      "Sp. z o.o. formed at a notary; the online S24 route needs a Polish e-ID.",
+      "Formation service: EUR 1,450 + EUR 350 for a corporate shareholder, converted at about 4.25 PLN/EUR."
+    ]
+  },
+  "deelGuide": {
+    "url": "https://www.deel.com/hiring/employees/poland/",
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "4806",
+        "kind": "money",
+        "currency": "PLN",
+        "period": "month",
+        "quote": "The minimum wage from January 1, 2026 is PLN 4,806 per month."
+      },
+      "pension_rate": {
+        "value": "0.0976",
+        "kind": "rate",
+        "quote": "Pension - 9.76%*"
+      },
+      "disability_rate": {
+        "value": "0.065",
+        "kind": "rate",
+        "quote": "Disability - 6.50%*"
+      },
+      "labour_fund_rate": {
+        "value": "0.0245",
+        "kind": "rate",
+        "quote": "Labor Fund - 2.45%"
+      },
+      "fgsp_rate": {
+        "value": "0.001",
+        "kind": "rate",
+        "quote": "Guaranteed Employee Benefits Fund - 0.10%"
+      },
+      "pension_cap": {
+        "value": "260190",
+        "kind": "money",
+        "currency": "PLN",
+        "period": "year",
+        "quote": "*Up to a maximum yearly salary of PLN 260,190"
+      }
+    }
+  },
+  "official": {
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "4806",
+        "kind": "money",
+        "currency": "PLN",
+        "period": "month",
+        "source": "https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r."
+      },
+      "pension_rate": {
+        "value": "0.0976",
+        "kind": "rate",
+        "source": "https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r."
+      },
+      "disability_rate": {
+        "value": "0.065",
+        "kind": "rate",
+        "source": "https://www.biznes.gov.pl/pl/portal/00274"
+      },
+      "labour_fund_rate": {
+        "value": "0.0245",
+        "kind": "rate",
+        "source": "https://www.biznes.gov.pl/pl/portal/00274"
+      },
+      "fgsp_rate": {
+        "value": "0.001",
+        "kind": "rate",
+        "source": "https://www.biznes.gov.pl/pl/portal/00274"
+      },
+      "pension_cap": {
+        "value": "282600",
+        "kind": "money",
+        "currency": "PLN",
+        "period": "year",
+        "source": "https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r."
+      }
+    }
+  },
+  "notes": [
+    "Pension and disability stop at PLN 282,600 a year (30x the projected average wage); FP, FS and FGŚP share that base.",
+    "Accident insurance: 1.67% for employers with up to 9 insured; larger employers pay 0.67-3.33% by activity.",
+    "Health insurance (9%) is paid by the employee, so it is not an employer cost."
+  ]
+}

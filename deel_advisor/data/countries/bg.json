@@ -1,0 +1,233 @@
+{
+  "country": "Bulgaria",
+  "code": "BG",
+  "flag": "🇧🇬",
+  "aliases": [
+    "bulgaria",
+    "българия",
+    "bg",
+    "bul",
+    "болгария",
+    "болгарія",
+    "болгарии",
+    "болгарії"
+  ],
+  "currency": "EUR",
+  "year": 2026,
+  "effectiveFrom": "2026-01-01",
+  "contributions": [
+    {
+      "id": "pension",
+      "name": "State pension",
+      "localName": "Фонд „Пенсии“",
+      "rate": "0.0822",
+      "cap": "2300.00",
+      "capPeriod": "month",
+      "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+    },
+    {
+      "id": "upf",
+      "name": "Universal pension fund",
+      "localName": "УПФ",
+      "rate": "0.028",
+      "cap": "2300.00",
+      "capPeriod": "month",
+      "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+    },
+    {
+      "id": "sickness",
+      "name": "Sickness and maternity",
+      "localName": "Фонд „ОЗМ“",
+      "rate": "0.021",
+      "cap": "2300.00",
+      "capPeriod": "month",
+      "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+    },
+    {
+      "id": "unemployment",
+      "name": "Unemployment",
+      "localName": "Фонд „Безработица“",
+      "rate": "0.006",
+      "cap": "2300.00",
+      "capPeriod": "month",
+      "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+    },
+    {
+      "id": "health",
+      "name": "Health insurance",
+      "localName": "Здравно осигуряване",
+      "rate": "0.048",
+      "cap": "2300.00",
+      "capPeriod": "month",
+      "source": "https://nra.bg/wps/portal/nra/osiguryavane/zdravno-osiguryavane/razmer-osiguritelni-vnoski"
+    },
+    {
+      "id": "accident",
+      "name": "Work accident (IT, office)",
+      "localName": "Фонд „ТЗПБ“",
+      "rate": "0.004",
+      "cap": "2300.00",
+      "capPeriod": "month",
+      "estimate": true,
+      "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2026/zakon-za-budjeta-na-dyrjavnoto-obsestveno-osigurqvane-za-2026-g.pdf"
+    }
+  ],
+  "minimumWage": {
+    "amount": "620.20",
+    "period": "month",
+    "source": "https://nra.bg/wps/portal/nra/actualno/vpisvane_v_registura_na_zaetostta_vuv_vruzka_s_opredelenata_mrz_ot_01.01.2026"
+  },
+  "entity": {
+    "setupCost": [
+      {
+        "name": "Remote formation for a foreign owner",
+        "amount": "1400.00",
+        "kind": "estimate",
+        "source": "https://innovires.com/tax-residency/blog/company-registration-bulgaria-cost"
+      },
+      {
+        "name": "Capital deposit account",
+        "amount": "300.00",
+        "kind": "estimate",
+        "source": "https://www.innovires.com/blog/registracia-na-eood.html"
+      }
+    ],
+    "monthlyFixed": [
+      {
+        "name": "Accountant",
+        "amount": "200.00",
+        "kind": "estimate",
+        "source": "https://innovires.com/tax-residency/blog/annual-cost-running-eood-bulgaria.html"
+      },
+      {
+        "name": "Registered address",
+        "amount": "30.00",
+        "kind": "estimate",
+        "source": "https://innovires.com/tax-residency/blog/annual-cost-running-eood-bulgaria.html"
+      },
+      {
+        "name": "Business bank account",
+        "amount": "10.00",
+        "kind": "estimate",
+        "source": "https://innovires.com/tax-residency/blog/annual-cost-running-eood-bulgaria.html"
+      },
+      {
+        "name": "Payroll",
+        "amount": "30.00",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://innovires.com/tax-residency/blog/annual-cost-running-eood-bulgaria.html"
+      }
+    ],
+    "shareCapital": {
+      "amount": "1.00",
+      "source": "https://www.innovires.com/blog/registracia-na-eood.html"
+    },
+    "notes": [
+      "EOOD (single-member limited company); minimum capital EUR 1 since the euro switch.",
+      "The formation package (EUR 1,100-1,700) includes the EUR 28 state fee and the lawyer.",
+      "Not included: the occupational health service, required from the first employee; no published price found."
+    ]
+  },
+  "deelGuide": {
+    "url": "https://www.deel.com/hiring/employees/bulgaria/",
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "620.20",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "quote": "The minimum wage in Bulgaria is €620.20 per month."
+      },
+      "pension_rate": {
+        "value": "0.0822",
+        "kind": "rate",
+        "quote": "Pension Fund in NSSI - 8.22%*"
+      },
+      "upf_rate": {
+        "value": "0.028",
+        "kind": "rate",
+        "quote": "Universal Pension Fund - 2.80%*"
+      },
+      "sickness_rate": {
+        "value": "0.021",
+        "kind": "rate",
+        "quote": "Common sickness and maternity fund - 2.10%*"
+      },
+      "unemployment_rate": {
+        "value": "0.006",
+        "kind": "rate",
+        "quote": "Unemployment fund - 0.60%*"
+      },
+      "health_rate": {
+        "value": "0.048",
+        "kind": "rate",
+        "quote": "Health insurance - 4.80%*"
+      },
+      "max_insurable_income": {
+        "value": "3750",
+        "kind": "money",
+        "currency": "BGN",
+        "period": "month",
+        "quote": "*The maximum salary for the calculation of the contribution is BGN 3,750."
+      },
+      "employer_total_rate": {
+        "value": "0.19",
+        "kind": "rate",
+        "quote": "The employer cost is generally estimated between 19% of the employee's salary."
+      }
+    }
+  },
+  "official": {
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "620.20",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "source": "https://nra.bg/wps/portal/nra/actualno/vpisvane_v_registura_na_zaetostta_vuv_vruzka_s_opredelenata_mrz_ot_01.01.2026"
+      },
+      "pension_rate": {
+        "value": "0.0822",
+        "kind": "rate",
+        "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+      },
+      "upf_rate": {
+        "value": "0.028",
+        "kind": "rate",
+        "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+      },
+      "sickness_rate": {
+        "value": "0.021",
+        "kind": "rate",
+        "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+      },
+      "unemployment_rate": {
+        "value": "0.006",
+        "kind": "rate",
+        "source": "https://www.mlsp.government.bg/uploads/7/tpoout/2025/kodeks-za-socialno-osigurqvane-08-2026.pdf"
+      },
+      "health_rate": {
+        "value": "0.048",
+        "kind": "rate",
+        "source": "https://nra.bg/wps/portal/nra/osiguryavane/zdravno-osiguryavane/razmer-osiguritelni-vnoski"
+      },
+      "max_insurable_income": {
+        "value": "2300.00",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "source": "https://noi.bg/dohod01082026/",
+        "effectiveFrom": "2026-08-01"
+      }
+    }
+  },
+  "notes": [
+    "Bulgaria uses the euro since 1 January 2026 (1 EUR = 1.95583 BGN).",
+    "Maximum insurable income: EUR 2,300 a month from 1 August 2026 (EUR 2,111.64 from January to July).",
+    "Rates for employees born after 1959. The guaranteed-receivables fund (0.1%) is suspended for 2026.",
+    "Work accident: 0.4% for IT, finance and legal; 0.4-1.1% by activity."
+  ]
+}

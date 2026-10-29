@@ -163,7 +163,7 @@ def test_salary_bounds_are_judged_in_euro(index: CountryIndex) -> None:
 
     with pytest.raises(ParseError) as caught:
         parse("Testland 80000 jpy", index, CURRENCIES | {"JPY"}, in_eur=in_eur)
-    assert (caught.value.code, caught.value.params) == ("salary_too_low", {"minimum": "1000 EUR"})
+    assert (caught.value.code, caught.value.params) == ("salary_too_low", {"minimum": "1,000 EUR"})
     assert parse("Testland 80000 pln", index, CURRENCIES | {"PLN"}, in_eur=in_eur).salary == 80_000
 
 
@@ -181,3 +181,8 @@ def test_grouped_thousands_stop_before_a_count(
 ) -> None:
     query = p(text, index)
     assert (query.salary, query.people, query.months) == (salary, people, months)
+
+
+def test_lev_is_named_as_a_currency(index: CountryIndex) -> None:
+    error = err("Testland 80000 bgn", index)
+    assert (error.code, error.params) == ("unknown_currency", {"currency": "BGN"})

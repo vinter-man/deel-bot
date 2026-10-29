@@ -383,7 +383,15 @@ async def on_error(event: ErrorEvent, **data: Any) -> bool:
     )
     # Tell the user rather than leave them waiting (or a button spinning). Best effort only:
     # if Telegram itself is what failed, this fails too, and that is already logged.
-    lang: Lang = data.get("lang", "en")
+    # aiogram does not pass middleware data to error handlers, so the language is looked up again.
+    update = event.update
+    source = update.callback_query or update.message
+    user = source.from_user if source is not None else None
+    services: Services | None = data.get("services")
+    lang: Lang = "en"
+    if user is not None:
+        stored = await services.prefs.get(user.id) if services is not None else None
+        lang = stored or pick_lang(user.language_code)
     with contextlib.suppress(TelegramAPIError):
         if event.update.callback_query is not None:
             await event.update.callback_query.answer(t(lang, "err.internal"), show_alert=True)

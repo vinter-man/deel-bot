@@ -262,3 +262,17 @@ async def test_crash_is_reported_to_the_user(dispatcher: Dispatcher, env: Any, m
     assert isinstance(answer, AnswerCallbackQuery)
     assert answer.text
     assert "Something went wrong" in answer.text
+
+
+async def test_crash_message_is_in_the_users_language(
+    dispatcher: Dispatcher, env: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bot, session, _ = env
+
+    def boom(*_: Any) -> Any:
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr("deel_advisor.bot.handlers.render", boom)
+    russian = User(id=4242, is_bot=False, first_name="R", language_code="ru")
+    await send(dispatcher, bot, _message("Германия 80k", russian))
+    assert "Что-то сломалось" in session.last_text()

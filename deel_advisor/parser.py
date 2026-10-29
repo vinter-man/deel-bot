@@ -32,6 +32,8 @@ _CURRENCY_WORDS = {
     **dict.fromkeys(("usd", "dollar", "dollars", "доллар", "долларов", "доларів", "долар"), "USD"),
     **dict.fromkeys(("gbp", "pound", "pounds", "фунт", "фунтов", "фунтів"), "GBP"),
     **dict.fromkeys(("pln", "zloty", "zł", "злотых", "злотих", "злотый"), "PLN"),
+    # Not an ECB currency any more (Bulgaria uses the euro since 2026), but people still type it.
+    **dict.fromkeys(("bgn", "лв", "лева", "leva"), "BGN"),
 }
 _PEOPLE_WORDS = {
     "people", "person", "persons", "ppl", "employee", "employees", "hire", "hires", "heads", "head",
@@ -192,7 +194,7 @@ def _currency(token: str, currencies: Collection[str]) -> str | None:
         code = token.upper()
     if code is None or code in currencies:
         return code
-    if code in _SYMBOLS.values():
+    if code in _SYMBOLS.values() or code in _CURRENCY_WORDS.values():
         raise ParseError("unknown_currency", currency=code)
     return None  # some other three-letter word: let the caller decide what it is
 
@@ -334,9 +336,9 @@ def build_query(
         raise ParseError("same_country")
     comparable = in_eur(salary, currency or countries[0].currency) if in_eur else salary
     if comparable < MIN_SALARY:
-        raise ParseError("salary_too_low", minimum=f"{MIN_SALARY} EUR")
+        raise ParseError("salary_too_low", minimum=f"{MIN_SALARY:,} EUR")
     if comparable > MAX_SALARY:
-        raise ParseError("salary_too_high", maximum=f"{MAX_SALARY} EUR")
+        raise ParseError("salary_too_high", maximum=f"{MAX_SALARY:,} EUR")
     if not 1 <= people <= MAX_PEOPLE:
         raise ParseError("people_range", maximum=str(MAX_PEOPLE))
     if not 1 <= months <= MAX_MONTHS:

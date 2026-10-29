@@ -1,0 +1,254 @@
+{
+  "country": "Spain",
+  "code": "ES",
+  "flag": "🇪🇸",
+  "aliases": [
+    "spain",
+    "españa",
+    "espana",
+    "es",
+    "испания",
+    "іспанія",
+    "испании",
+    "іспанії"
+  ],
+  "currency": "EUR",
+  "year": 2026,
+  "effectiveFrom": "2026-01-01",
+  "contributions": [
+    {
+      "id": "common_contingencies",
+      "name": "Common contingencies",
+      "localName": "Contingencias comunes",
+      "rate": "0.236",
+      "cap": "5101.20",
+      "capPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "unemployment",
+      "name": "Unemployment (open-ended)",
+      "localName": "Desempleo",
+      "rate": "0.055",
+      "cap": "5101.20",
+      "capPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "mei",
+      "name": "Intergenerational equity (MEI)",
+      "localName": "MEI",
+      "rate": "0.0075",
+      "cap": "5101.20",
+      "capPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "training",
+      "name": "Vocational training",
+      "localName": "Formación profesional",
+      "rate": "0.006",
+      "cap": "5101.20",
+      "capPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "fogasa",
+      "name": "Wage guarantee fund",
+      "localName": "FOGASA",
+      "rate": "0.002",
+      "cap": "5101.20",
+      "capPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "accident",
+      "name": "Occupational risks, office",
+      "localName": "AT/EP",
+      "rate": "0.015",
+      "cap": "5101.20",
+      "capPeriod": "month",
+      "estimate": true,
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-2548"
+    },
+    {
+      "id": "solidarity_1",
+      "name": "Solidarity, up to +10%",
+      "localName": "Cotización de solidaridad",
+      "rate": "0.0096",
+      "cap": "5611.32",
+      "capPeriod": "month",
+      "floor": "5101.20",
+      "floorPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "solidarity_2",
+      "name": "Solidarity, +10–50%",
+      "localName": "Cotización de solidaridad",
+      "rate": "0.0104",
+      "cap": "7651.80",
+      "capPeriod": "month",
+      "floor": "5611.32",
+      "floorPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    },
+    {
+      "id": "solidarity_3",
+      "name": "Solidarity, above +50%",
+      "localName": "Cotización de solidaridad",
+      "rate": "0.0122",
+      "floor": "7651.80",
+      "floorPeriod": "month",
+      "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+    }
+  ],
+  "minimumWage": {
+    "amount": "1221.00",
+    "period": "month",
+    "paymentsPerYear": 14,
+    "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-3815"
+  },
+  "entity": {
+    "setupCost": [
+      {
+        "name": "Company name certificate",
+        "amount": "20.00",
+        "kind": "estimate",
+        "source": "https://www.billeo.es/blog/cuanto-cuesta-crear-una-empresa-en-espana"
+      },
+      {
+        "name": "Formation adviser incl. notary + registry",
+        "amount": "2000.00",
+        "kind": "estimate",
+        "source": "https://www.teamed.global/country-hiring-guides/spain/entity-setup"
+      }
+    ],
+    "monthlyFixed": [
+      {
+        "name": "Gestoría: accounting + tax",
+        "amount": "250.00",
+        "kind": "estimate",
+        "source": "https://gestoria247.com/sociedades/precios"
+      },
+      {
+        "name": "Registered address",
+        "amount": "50.00",
+        "kind": "estimate",
+        "source": "https://wezoo.com/insights/oficina-virtual-madrid"
+      },
+      {
+        "name": "Business bank account",
+        "amount": "19.00",
+        "kind": "estimate",
+        "source": "https://qonto.com/es/pricing"
+      },
+      {
+        "name": "Payroll",
+        "amount": "15.00",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://afinom.es/gestoria-laboral-online/"
+      }
+    ],
+    "shareCapital": {
+      "amount": "3000.00",
+      "source": "https://getrenn.com/es/blog/crear-empresa"
+    },
+    "notes": [
+      "Sociedad Limitada. The legal minimum capital is EUR 1 since 2022; EUR 3,000 is the usual choice.",
+      "Formation for a foreign parent: EUR 500-3,500 including notary and registry; EUR 2,000 is the midpoint.",
+      "Not included: the external prevention service (servicio de prevención ajeno), required from the first employee; no published price found."
+    ]
+  },
+  "deelGuide": {
+    "url": "https://www.deel.com/hiring/employees/spain/",
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "1262.28",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "quote": "The Minimum Wage is €1,262.28"
+      },
+      "common_contingencies_rate": {
+        "value": "0.236",
+        "kind": "rate",
+        "quote": "Social Security (Common Contingencies) - 23.6%"
+      },
+      "mei_rate": {
+        "value": "0.0075",
+        "kind": "rate",
+        "quote": "Intergenerational Equity Mechanism (MEI) - 0.75%"
+      },
+      "training_rate": {
+        "value": "0.006",
+        "kind": "rate",
+        "quote": "Professional Training and Development - 0.60%"
+      },
+      "fogasa_rate": {
+        "value": "0.002",
+        "kind": "rate",
+        "quote": "Social Fund for the Guarantee of Salaries (FOGASA) - 0.20%"
+      },
+      "max_insurable_income": {
+        "value": "5101.20",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "quote": "maximum salary for the contributions of €5,101.20 per month"
+      },
+      "employer_total_rate": {
+        "value": "0.3275",
+        "kind": "rate",
+        "quote": "32.75%"
+      }
+    }
+  },
+  "official": {
+    "checkedAt": "2026-10-29",
+    "figures": {
+      "minimum_wage": {
+        "value": "1221",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-3815"
+      },
+      "common_contingencies_rate": {
+        "value": "0.236",
+        "kind": "rate",
+        "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+      },
+      "mei_rate": {
+        "value": "0.0075",
+        "kind": "rate",
+        "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+      },
+      "training_rate": {
+        "value": "0.006",
+        "kind": "rate",
+        "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+      },
+      "fogasa_rate": {
+        "value": "0.002",
+        "kind": "rate",
+        "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+      },
+      "max_insurable_income": {
+        "value": "5101.20",
+        "kind": "money",
+        "currency": "EUR",
+        "period": "month",
+        "source": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296"
+      }
+    }
+  },
+  "notes": [
+    "Rates from Orden PJC/297/2026 (BOE 31.03.2026), applied from 1 January 2026.",
+    "The annual salary is spread over 12 contribution months, extra payments included, as the Orden prescribes.",
+    "Minimum wage (SMI): EUR 1,221 x 14 payments = EUR 17,094 a year.",
+    "Occupational risks: 1.5% is the office-work rate; other staff pay their activity's rate."
+  ]
+}

@@ -1,6 +1,6 @@
 # Secrets and runtime state never leave the machine they were made on.
 .env
-data/
+/data/
 *.db
 
 __pycache__/

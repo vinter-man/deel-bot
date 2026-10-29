@@ -55,7 +55,7 @@ async def test_daily_check_refreshes_and_reports_once(tmp_path: Path, real_catal
             assert bot.send_message.await_count == 1
 
 
-async def test_daily_check_is_quiet_when_all_is_well(tmp_path: Path, real_catalog: Catalog) -> None:
+async def test_daily_check_reports_only_the_known_guide_differences(tmp_path: Path, real_catalog: Catalog) -> None:
     bot = AsyncMock()
     reported: set[str] = set()
     async with httpx.AsyncClient() as client:
@@ -98,3 +98,15 @@ async def test_set_commands_per_language() -> None:
     await app.set_commands(bot)
     langs = [call.kwargs["language_code"] for call in bot.set_my_commands.await_args_list]
     assert langs == [None, "uk", "ru"]
+
+
+async def test_failed_owner_message_is_retried_next_time(tmp_path: Path, real_catalog: Catalog) -> None:
+    bot = AsyncMock()
+    bot.send_message.side_effect = TelegramNetworkError(method=AsyncMock(), message="down")
+    reported: set[str] = set()
+    async with httpx.AsyncClient() as client:
+        services = _services(tmp_path, real_catalog, client, date(2026, 10, 29))
+        with respx.mock:
+            respx.get(ECB_URL).respond(503)
+            await app.daily_check(services, bot, reported)
+    assert not any("Deel guide" in p for p in reported)

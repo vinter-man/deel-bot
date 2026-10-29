@@ -133,4 +133,4 @@ async def test_robots_network_error_means_no_fetching() -> None:
         async with httpx.AsyncClient() as client:
             [result] = await guides.run(["ES"], client, delay=0)
     assert not page.called
-    assert result.reason == "disallowed by robots.txt"
+    assert result.reason == "robots.txt unreachable, fetching nothing"

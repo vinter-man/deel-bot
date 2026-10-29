@@ -1,0 +1,8 @@
+{
+  "provider": "Deel",
+  "monthlyFee": "599.00",
+  "currency": "USD",
+  "source": "https://www.deel.com/pricing/",
+  "checkedAt": "2026-10-29",
+  "note": "Public list price: \"Starting at $599 per EOR employee per month\". Negotiated and volume prices are lower; the bot uses the list price."
+}

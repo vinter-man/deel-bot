@@ -230,3 +230,11 @@ def test_share_capital_has_a_source(real_catalog: Catalog, fixed_rates: Rates) -
     assert germany is not None
     text = replies.sources("en", germany, replies.Context(real_catalog, fixed_rates, TODAY))
     assert "Share capital €25,000: stays the company's, not a cost — <a href=" in text
+
+
+def test_ceiling_note_waits_for_its_date(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    bulgaria = parse("Bulgaria 60k 3 people", real_catalog.index, {"EUR"})
+    july = replies.Context(real_catalog, fixed_rates, date(2026, 7, 15))
+    assert "ceiling as in force since" not in replies.plan("en", bulgaria, july)
+    autumn = replies.Context(real_catalog, fixed_rates, TODAY)
+    assert "ceiling as in force since 01.08.2026" in replies.plan("en", bulgaria, autumn)

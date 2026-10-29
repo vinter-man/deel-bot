@@ -72,6 +72,7 @@ class Robots:
     def __init__(self, client: httpx.AsyncClient) -> None:
         self._client = client
         self._parsers: dict[str, RobotFileParser] = {}
+        self.unreachable: set[str] = set()
 
     async def _parser(self, url: str) -> RobotFileParser:
         parts = urlsplit(url)
@@ -83,6 +84,7 @@ class Robots:
             except httpx.HTTPError:
                 response = None
             if response is None or response.status_code >= 500:
+                self.unreachable.add(base)
                 # Unreachable robots.txt: assume the worst and fetch nothing from this host.
                 parser.parse(["User-agent: *", "Disallow: /"])
             elif response.status_code >= 400:
@@ -103,7 +105,10 @@ class Robots:
 async def check_country(country: Country, client: httpx.AsyncClient, robots: Robots) -> Result:
     url = str(country.deel_guide.url)
     if not await robots.allowed(url):
-        return Result(country, fetched=False, reason="disallowed by robots.txt")
+        parts = urlsplit(url)
+        unreachable = f"{parts.scheme}://{parts.netloc}" in robots.unreachable
+        reason = "robots.txt unreachable, fetching nothing" if unreachable else "disallowed by robots.txt"
+        return Result(country, fetched=False, reason=reason)
     try:
         response = await client.get(url, follow_redirects=True)
         response.raise_for_status()
