@@ -115,6 +115,17 @@ async def test_main_strict_exit_code(capsys: pytest.CaptureFixture[str]) -> None
     assert "PL  CHECK" in capsys.readouterr().out
 
 
+def test_banner_is_the_real_calculation() -> None:
+    data = export_shots.banner()
+    assert len(data["eor"]) == len(data["entity"]) == data["months"] + 1
+    assert data["eor"][0] == 0  # no EOR fee before anyone is hired
+    assert data["entity"][0] == data["setup"]  # the entity costs money before its first payroll
+    cross = data["breakeven"]
+    assert data["eor"][cross - 1] <= data["entity"][cross - 1]
+    assert data["eor"][cross] > data["entity"][cross]  # the lines cross where the bot says
+    assert data["eor"][-1] - data["entity"][-1] == data["saving"]
+
+
 def test_export_shots_uses_real_replies() -> None:
     shots = export_shots.build()
     assert set(shots) == {"start", "plan", "plan24", "scale", "cost", "compare", "sources", "errors", "de"}

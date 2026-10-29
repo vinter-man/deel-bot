@@ -357,7 +357,8 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 
 The screenshots in this README are not screenshots. `scripts/export_shots.py` runs the bot's own
 reply functions and writes them to JSON, and [Remotion](https://www.remotion.dev) draws them in a
-Telegram window (`docs/remotion`), together with the demo GIF. A wording change
+Telegram window (`docs/remotion`), together with the demo GIF and the banner — whose chart is
+the bot's own calculation for Germany, three people, two years. A wording change
 in the bot is a re-render, not a retake:
 
 ```bash

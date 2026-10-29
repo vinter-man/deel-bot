@@ -12,12 +12,13 @@ from __future__ import annotations
 import json
 import sys
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from aiogram.types import InlineKeyboardMarkup
 
-from deel_advisor import catalog, replies
+from deel_advisor import calc, catalog, replies
 from deel_advisor.bot import keyboards as kb
 from deel_advisor.bot.handlers import error_text, render
 from deel_advisor.fx import bundled_rates
@@ -25,6 +26,9 @@ from deel_advisor.i18n import Lang, t
 from deel_advisor.parser import ParseError, find_country, parse
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "remotion" / "src" / "shots.json"
+BANNER_OUT = OUT.with_name("banner.json")
+# The banner's chart: the case where the answer changes inside the horizon.
+BANNER_CASE = ("DE", 80_000, 3, 24)
 TODAY = date(2026, 10, 29)
 
 
@@ -79,9 +83,41 @@ def build() -> dict[str, Any]:
     }
 
 
+def banner() -> dict[str, Any]:
+    """Cumulative EOR fees and entity overhead, month by month, from the real calculation.
+
+    Each point is the plan for that horizon (so the entity line includes closing the entity at
+    that month, as /plan does); month 0 is what the entity costs before anyone is paid.
+    """
+    ctx = replies.Context(catalog.load(), bundled_rates(), TODAY)
+    code, salary, people, horizon = BANNER_CASE
+    country = find_country(code, ctx.catalog.index)
+    fee = replies.eor_fee(country, ctx)
+    payroll = replies.payroll_fee(country, ctx)
+    plans = [calc.plan(country, Decimal(salary), fee, people, m, payroll) for m in range(1, horizon + 1)]
+    entity = plans[0].entity
+    final = plans[-1]
+    return {
+        "country": country.country,
+        "people": people,
+        "salary": salary,
+        "months": horizon,
+        "eor": [0, *(round(p.eor_fees) for p in plans)],
+        "entity": [round(entity.setup + entity.exit), *(round(p.entity_overhead) for p in plans)],
+        "fee": round(fee),
+        "setup": round(entity.setup + entity.exit),
+        "monthly": round(entity.monthly_fixed + entity.per_employee_monthly * people),
+        "setupWeeks": country.entity.setup_time.weeks,
+        "breakeven": final.breakeven_months,
+        "saving": round(final.entity_saving),
+        "employment": round(final.employment),
+    }
+
+
 def main() -> int:
     OUT.write_text(json.dumps(build(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {OUT}")
+    BANNER_OUT.write_text(json.dumps(banner(), indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {OUT} and {BANNER_OUT}")
     return 0
 
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import {Composition, Still} from 'remotion';
+import {Banner, BANNER_H, BANNER_W} from './Banner';
 import {Demo, FPS, H, TOTAL, W} from './Demo';
 import {Shot, type ShotName} from './shots';
 
@@ -18,6 +19,7 @@ const SHOT_W = 1000;
 
 export const Root: React.FC = () => (
   <>
+    <Still id="banner" component={Banner} width={BANNER_W} height={BANNER_H} />
     <Composition
       id="demo"
       component={Demo}
