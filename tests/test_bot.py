@@ -373,3 +373,28 @@ async def test_every_language_answers_every_flow(dispatcher: Dispatcher, env: An
                      kb.PlanCb(code="ES", cur="EUR", minor=5_000_000, people=3, months=24).pack()):  # fmt: skip
             await send(dispatcher, bot, _callback(data))
             assert "{" not in session.last_text(), (lang, data)  # no unfilled placeholder
+
+
+async def test_team_flow(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _message("/team Germany 2 UK 1 Spain 1 Poland 1 70k"))
+    reply = session.sent()[-1]
+    assert "Team in 4 countries" in reply.text
+    data = [b.callback_data for row in reply.reply_markup.inline_keyboard for b in row]
+    assert data == [f"tm:DE2.GB1.ES1.PL1:EUR:7000000:{n}" for n in (6, 12, 24, 36)]
+    await send(dispatcher, bot, _callback("tm:DE2.GB1.ES1.PL1:EUR:7000000:24"))
+    assert isinstance(session.sent()[-1], EditMessageText)
+    assert "24 months" in session.last_text()
+
+
+@pytest.mark.parametrize(
+    "data", ["tm:DE2.XX1:EUR:7000000:12", "tm:DE2:EUR:7000000:12", "tm:DE2.GB0:EUR:7000000:12",
+             "tm:DE2.GB1:XYZ:7000000:12", "tm:de2.gb1:EUR:7000000:12", "tm:DE2.DE1:EUR:7000000:12",
+             "tm:DE2.GB1:EUR:7000000:999", "tm:DE2..GB1:EUR:7000000:12"],
+)  # fmt: skip
+async def test_forged_team_buttons_are_refused(dispatcher: Dispatcher, env: Any, data: str) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _callback(data))
+    assert isinstance(session.calls[-1], AnswerCallbackQuery)
+    assert session.calls[-1].show_alert
+    assert not session.sent()

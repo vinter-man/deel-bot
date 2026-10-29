@@ -241,3 +241,36 @@ def test_ceiling_note_is_in_plan_replies_too(real_catalog: Catalog, fixed_rates:
     # Even before the date the calculation uses the newer ceiling, so the note is always there.
     july = replies.Context(real_catalog, fixed_rates, date(2026, 7, 15))
     assert "ceiling from 1 Aug 2026, applied to every month" in replies.plan("en", bulgaria, july)
+
+
+def test_team_reply_on_real_data(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    query = parse("Germany 2 UK 1 Spain 1 Poland 1 70k", real_catalog.index, {"EUR", *fixed_rates.per_eur})
+    text = replies.team("en", query, ctx)
+    assert text.startswith("🌍 <b>Team in 4 countries</b> · 5 people × €70,000 a year · 12 months")
+    assert text.count("✅ EOR") == 4
+    assert "EOR saves ~" in text
+    assert "no company to open, run and close in 4 countries" in text
+    assert "Cheapest mix" not in text  # every country is on the same side
+
+
+def test_team_mix_when_countries_disagree(testland: Country, fixed_rates: Rates) -> None:
+    cheap = country_data(country="Cheapland", code="CH", aliases=["cheapland"])
+    cheap["entity"]["setupCost"][0]["amount"] = "1"
+    cheap["entity"]["monthlyFixed"][0]["amount"] = "1"
+    cheapland = Country.model_validate(cheap)
+    ctx = replies.Context(_catalog(testland, cheapland), fixed_rates, TODAY)
+    query = build_query("team", (testland, cheapland), Decimal(48_000), currency="EUR", counts=(1, 1))
+    text = replies.team("en", query, ctx)
+    assert "🏳️ <b>Testland</b> × 1: EOR €6,600 · own entity €6,600 ✅ EOR" in text  # a tie stays on EOR
+    assert "✅ entity" in text
+    assert "Cheapest mix" in text
+
+
+@pytest.mark.parametrize("lang", ["en", "de", "es", "pl", "bg"])
+def test_team_reply_in_every_language(real_catalog: Catalog, fixed_rates: Rates, lang: str) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    query = parse("Germany 2 Spain 2 Poland 1 70k 24 months", real_catalog.index, {"EUR", *fixed_rates.per_eur})
+    text = replies.team(lang, query, ctx)  # type: ignore[arg-type]
+    assert "{" not in text
+    assert text.count("<b>") == text.count("</b>")

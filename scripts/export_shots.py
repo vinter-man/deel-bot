@@ -27,8 +27,9 @@ from deel_advisor.parser import ParseError, find_country, parse
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "remotion" / "src" / "shots.json"
 BANNER_OUT = OUT.with_name("banner.json")
-# The banner's chart: the case where the answer changes inside the horizon.
-BANNER_CASE = ("DE", 80_000, 3, 24)
+# The banner's chart and the README's lead case: a small team spread over four countries.
+TEAM = "Germany 2 UK 1 Spain 1 Poland 1 70k"
+TEAM_MONTHS = 24
 TODAY = date(2026, 10, 29)
 
 
@@ -57,9 +58,10 @@ def build() -> dict[str, Any]:
             {"in": {"html": t(lang, "lang.prompt"), "keyboard": _keys(kb.languages())}},
             {"in": {"html": t(lang, "start", countries=countries), "keyboard": _keys(kb.start_examples(lang))}},
         ],
-        "plan": [{"out": "Germany 80k 2 people"}, {"in": _reply(ctx, lang, "Germany 80k 2 people")}],
+        "team": [{"out": TEAM}, {"in": _reply(ctx, lang, TEAM)}],
         # The demo GIF taps "24 mo" on the reply above; this is what the bot edits it into.
-        "plan24": [{"out": "Germany 80k 2 people"}, {"in": _reply(ctx, lang, "Germany 80k 2 people 24 months")}],
+        "team24": [{"out": TEAM}, {"in": _reply(ctx, lang, f"{TEAM} {TEAM_MONTHS} months")}],
+        "plan": [{"out": "Germany 80k 2 people"}, {"in": _reply(ctx, lang, "Germany 80k 2 people")}],
         # And the other side of the break-even: a team big enough for its own entity.
         "scale": [{"out": "Germany 80k 10 people"}, {"in": _reply(ctx, lang, "Germany 80k 10 people")}],
         "cost": [{"out": "/cost Bulgaria 60000 EUR"}, {"in": _reply(ctx, lang, "Bulgaria 60000 EUR")}],
@@ -84,33 +86,38 @@ def build() -> dict[str, Any]:
 
 
 def banner() -> dict[str, Any]:
-    """Cumulative EOR fees and entity overhead, month by month, from the real calculation.
+    """Cumulative EOR fees and own-entity costs for the README team, month by month.
 
-    Each point is the plan for that horizon (so the entity line includes closing the entity at
-    that month, as /plan does); month 0 is what the entity costs before anyone is paid.
+    Each point is the bot's own calculation for that horizon, summed over the countries in EUR
+    (so the entity line includes closing each entity at that month, as /team does); month 0 is
+    what the entities cost before anyone is paid.
     """
     ctx = replies.Context(catalog.load(), bundled_rates(), TODAY)
-    code, salary, people, horizon = BANNER_CASE
-    country = find_country(code, ctx.catalog.index)
-    fee = replies.eor_fee(country, ctx)
-    payroll = replies.payroll_fee(country, ctx)
-    plans = [calc.plan(country, Decimal(salary), fee, people, m, payroll) for m in range(1, horizon + 1)]
-    entity = plans[0].entity
-    final = plans[-1]
+    query = parse(TEAM, ctx.catalog.index, {"EUR", *ctx.rates.per_eur})
+    eor = [Decimal(0)] * (TEAM_MONTHS + 1)
+    entity = [Decimal(0)] * (TEAM_MONTHS + 1)
+    for country, count in zip(query.countries, query.counts, strict=True):
+        salary = ctx.rates.convert(query.salary, "EUR", country.currency)
+        fee, payroll = replies.eor_fee(country, ctx), replies.payroll_fee(country, ctx)
+        for month in range(1, TEAM_MONTHS + 1):
+            result = calc.plan(country, salary, fee, count, month, payroll)
+            eor[month] += ctx.rates.convert(result.eor_fees, country.currency, "EUR")
+            entity[month] += ctx.rates.convert(result.entity_overhead, country.currency, "EUR")
+        first = calc.entity_cost(country, payroll)
+        entity[0] += ctx.rates.convert(first.setup + first.exit, country.currency, "EUR")
     return {
-        "country": country.country,
-        "people": people,
-        "salary": salary,
-        "months": horizon,
-        "eor": [0, *(round(p.eor_fees) for p in plans)],
-        "entity": [round(entity.setup + entity.exit), *(round(p.entity_overhead) for p in plans)],
-        "fee": round(fee),
-        "setup": round(entity.setup + entity.exit),
-        "monthly": round(entity.monthly_fixed + entity.per_employee_monthly * people),
-        "setupWeeks": country.entity.setup_time.weeks,
-        "breakeven": final.breakeven_months,
-        "saving": round(final.entity_saving),
-        "employment": round(final.employment),
+        "team": " · ".join(
+            f"{c.country.replace('United Kingdom', 'UK')} {n}"
+            for c, n in zip(query.countries, query.counts, strict=True)
+        ),
+        "people": query.people,
+        "entities": len(query.countries),
+        "salary": int(query.salary),
+        "months": TEAM_MONTHS,
+        "fee": round(replies.eor_fee(query.countries[0], ctx)),
+        "eor": [round(v) for v in eor],
+        "entity": [round(v) for v in entity],
+        "saving": round(entity[-1] - eor[-1]),
     }
 
 

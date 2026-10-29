@@ -119,19 +119,20 @@ def test_banner_is_the_real_calculation() -> None:
     data = export_shots.banner()
     assert len(data["eor"]) == len(data["entity"]) == data["months"] + 1
     assert data["eor"][0] == 0  # no EOR fee before anyone is hired
-    assert data["entity"][0] == data["setup"]  # the entity costs money before its first payroll
-    cross = data["breakeven"]
-    assert data["eor"][cross - 1] <= data["entity"][cross - 1]
-    assert data["eor"][cross] > data["entity"][cross]  # the lines cross where the bot says
-    assert data["eor"][-1] - data["entity"][-1] == data["saving"]
+    assert data["entity"][0] > 0  # the entities cost money before their first payroll
+    assert all(e < n for e, n in zip(data["eor"], data["entity"], strict=True))  # "cheaper every month"
+    assert abs(data["entity"][-1] - data["eor"][-1] - data["saving"]) <= 1
+    assert (data["people"], data["entities"]) == (5, 4)
 
 
 def test_export_shots_uses_real_replies() -> None:
     shots = export_shots.build()
-    assert set(shots) == {"start", "plan", "plan24", "scale", "cost", "compare", "sources", "errors", "de"}
+    assert set(shots) == {"start", "team", "team24", "plan", "scale", "cost", "compare", "sources", "errors", "de"}
     plan_reply = shots["plan"][1]["in"]
     assert "EOR (Deel)" in plan_reply["html"]
     assert plan_reply["keyboard"][0][1] == "• 12 mo"
+    assert "Team in 4 countries" in shots["team"][1]["in"]["html"]
+    assert shots["team24"][1]["in"]["keyboard"][0][2] == "• 24 mo"
     assert "Did you mean <b>Germany</b>" in shots["errors"][1]["in"]["html"]
     assert "annual gross salary" in shots["errors"][3]["in"]["html"]
     assert "between 1 and" in shots["errors"][5]["in"]["html"]

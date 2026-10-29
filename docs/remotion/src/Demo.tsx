@@ -1,6 +1,6 @@
 /**
  * The 10-second demo GIF: type a question, get the answer, tap a horizon, watch it change.
- * Both replies are the bot's real output (shots.json: `plan` and `plan24`).
+ * Both replies are the bot's real output (shots.json: `team` and `team24`).
  */
 import React from 'react';
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
@@ -10,19 +10,19 @@ import {DayDivider, In, Out, Window} from './telegram';
 
 export const FPS = 30;
 export const W = 1000;
-export const H = 940;
+export const H = 720;
 export const TOTAL = 11 * FPS;
 
-const QUESTION = 'Germany 80k 2 people';
-const TYPE_END = Math.round(1.6 * FPS);
+const QUESTION = 'Germany 2 UK 1 Spain 1 Poland 1 70k';
+const TYPE_END = Math.round(2.2 * FPS);
 const SENT = TYPE_END + 6;
 const ANSWER = SENT + Math.round(0.7 * FPS);
 const TAP = Math.round(5.6 * FPS);
 const EDITED = TAP + 8;
 
 type Reply = {html: string; keyboard: string[][]};
-const plan12 = (data.plan[1] as {in: Reply}).in;
-const plan24 = (data.plan24[1] as {in: Reply}).in;
+const plan12 = (data.team[1] as {in: Reply}).in;
+const plan24 = (data.team24[1] as {in: Reply}).in;
 
 export const Demo: React.FC = () => {
   const frame = useCurrentFrame();

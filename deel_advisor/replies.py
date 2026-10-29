@@ -323,6 +323,68 @@ def compare(lang: Lang, query: Query, ctx: Context) -> str:
     return "\n".join(out)
 
 
+def team(lang: Lang, query: Query, ctx: Context) -> str:
+    """A team spread over several countries: EOR fees against one entity per country.
+
+    Salary and contributions are the same either way, so only the overhead is compared, in the
+    currency the salary was typed in (EUR by default).
+    """
+    common = query.currency or "EUR"
+    out = [
+        t(lang, "team.header", countries=len(query.countries), team=i18n.people(lang, query.people),
+          salary=_money(lang, query.salary, common), months=i18n.months(lang, query.months)),
+        "",
+    ]  # fmt: skip
+    total_eor = total_entity = employment = best = Decimal(0)
+    breakevens: list[str] = []
+    on_eor: list[str] = []
+    on_entity: list[str] = []
+    for country, count in zip(query.countries, query.counts, strict=True):
+        local = ctx.rates.convert(query.salary, common, country.currency)
+        result = calc.plan(country, local, eor_fee(country, ctx), count, query.months, payroll_fee(country, ctx))
+        eor = ctx.rates.convert(result.eor_fees, country.currency, common)
+        entity = ctx.rates.convert(result.entity_overhead, country.currency, common)
+        total_eor += eor
+        total_entity += entity
+        employment += ctx.rates.convert(result.employment, country.currency, common)
+        best += min(eor, entity)
+        (on_eor if eor <= entity else on_entity).append(country.flag)
+        key = "team.row_eor" if eor <= entity else "team.row_entity"
+        out.append(
+            t(lang, key, flag=country.flag, country=country_name(lang, country), count=count,
+              eor=_money(lang, eor, common), entity=_money(lang, entity, common))
+        )  # fmt: skip
+        team_size = result.breakeven_people
+        breakevens.append(f"{country.flag} {team_size}" if team_size is not None else f"{country.flag} —")
+
+    entities = len(query.countries)
+    out += [
+        "",
+        t(lang, "team.total", eor=_money(lang, total_eor, common), entities=entities,
+          entity=_money(lang, total_entity, common)),
+    ]  # fmt: skip
+    diff = whole(abs(total_entity - total_eor))
+    if total_eor < total_entity:
+        out.append(t(lang, "team.eor_saves", months=i18n.months(lang, query.months),
+                     diff=_money(lang, diff, common), entities=entities))  # fmt: skip
+    else:
+        out.append(t(lang, "team.entities_win", months=i18n.months(lang, query.months),
+                     diff=_money(lang, diff, common)))  # fmt: skip
+    if on_eor and on_entity:
+        # Each country on its own cheaper side beats both all-EOR and all-entities.
+        out.append(t(lang, "team.mix", eor=" ".join(on_eor), entity=" ".join(on_entity),
+                     total=_money(lang, best, common)))  # fmt: skip
+    out += [
+        t(lang, "team.breakeven", list=" · ".join(breakevens), months=i18n.months(lang, query.months)),
+        t(lang, "team.same", amount=_money(lang, employment, common)),
+        "",
+        t(lang, "plan.note"),
+    ]
+    if query.currency is None or any(c.currency != common for c in query.countries):
+        out.append(t(lang, "compare.fx", date=_date(ctx.rates.day, lang)))
+    return "\n".join(out)
+
+
 def _link(url: object, text: str) -> str:
     return f'<a href="{html.escape(str(url), quote=True)}">{html.escape(text)}</a>'
 

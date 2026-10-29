@@ -63,6 +63,18 @@ class SourcesCb(CallbackData, prefix="src"):
     code: str
 
 
+class TeamCb(CallbackData, prefix="tm"):
+    # "DE2.GB1.ES1": country code and head count per country. Five countries fit in 64 bytes.
+    team: str
+    cur: str
+    minor: int
+    months: int
+
+
+def team_spec(codes: list[str], counts: tuple[int, ...]) -> str:
+    return ".".join(f"{code}{count}" for code, count in zip(codes, counts, strict=True))
+
+
 def languages() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for lang in LANGS:
@@ -75,16 +87,17 @@ def start_examples(lang: Lang) -> InlineKeyboardMarkup:
     """Two taps to a real answer, for whoever opens the bot from a README link."""
     names = COUNTRY_NAMES[lang]
     de, bg = names.get("DE", "Germany"), names.get("BG", "Bulgaria")
-    gb, pl = names.get("GB", "United Kingdom"), names.get("PL", "Poland")
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=f"🇩🇪 {de} · €80k · 👥 5",
-                                  callback_data=PlanCb(code="DE", cur="EUR", minor=8_000_000, people=5,
+            [InlineKeyboardButton(text="🌍 🇩🇪 2 · 🇬🇧 1 · 🇪🇸 1 · 🇵🇱 1 · €70k",
+                                  callback_data=TeamCb(team="DE2.GB1.ES1.PL1", cur="EUR", minor=7_000_000,
+                                                       months=12).pack())],
+            [InlineKeyboardButton(text=f"🇩🇪 {de} · €80k · 👥 2",
+                                  callback_data=PlanCb(code="DE", cur="EUR", minor=8_000_000, people=2,
                                                        months=12).pack())],
             [InlineKeyboardButton(text=f"🇧🇬 {bg} · €60k",
                                   callback_data=CostCb(code="BG", cur="EUR", minor=6_000_000).pack())],
-            [InlineKeyboardButton(text=f"🇬🇧 {gb} vs 🇵🇱 {pl} · £50k",
-                                  callback_data=CompareCb(a="GB", b="PL", cur="GBP", minor=5_000_000).pack())],
+
         ]
     )  # fmt: skip
 
@@ -138,6 +151,18 @@ def after_plan(lang: Lang, cb: PlanCb) -> InlineKeyboardMarkup:
                                   callback_data=PickCompareCb(code=cb.code, cur=cb.cur, minor=cb.minor).pack())],
             [InlineKeyboardButton(text=t(lang, "btn.sources"), callback_data=SourcesCb(code=cb.code).pack())],
         ]
+    )  # fmt: skip
+
+
+def after_team(lang: Lang, cb: TeamCb) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[
+            InlineKeyboardButton(
+                text=("• " if n == cb.months else "") + t(lang, "btn.months", n=n),
+                callback_data=TeamCb(team=cb.team, cur=cb.cur, minor=cb.minor, months=n).pack(),
+            )
+            for n in MONTH_CHOICES
+        ]]
     )  # fmt: skip
 
 

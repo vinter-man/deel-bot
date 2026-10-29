@@ -12,8 +12,17 @@
 
 ## Short description
 
-You type a country, an annual gross salary and a team size. The bot answers in a second with
-three things:
+Two engineers in Berlin, one in London, one in Madrid, one in Warsaw. Open four companies, or
+hire them through an Employer of Record? Type `Germany 2 UK 1 Spain 1 Poland 1 70k`:
+
+![team](docs/assets/team.png)
+
+Four entities would cost ~€24,000 more in the first year — before anyone counts the work of
+running a company in four countries — and the gap keeps growing in the second. That is the
+case EOR exists for, and the bot shows it with every cost line sourced.
+
+For one country, you type a country, an annual gross salary and a team size, and get three
+things:
 
 1. **The full employer cost** — salary plus every employer contribution (pension, health,
    unemployment, accident, the levies nobody remembers), with contribution ceilings applied,
@@ -45,6 +54,7 @@ Germany, United Kingdom, Spain, Poland and Bulgaria, with 2026 rates.
 
 * [User guide](#user-guide)
   * [First steps](#fs)
+  * [A team across countries](#team)
   * [What it costs to employ someone](#cost)
   * [EOR or your own entity](#plan)
   * [Two countries side by side](#compare)
@@ -71,6 +81,24 @@ Germany, United Kingdom, Spain, Poland and Bulgaria, with 2026 rates.
 > even — the key is an HMAC of your Telegram id under a secret that never leaves the server, so
 > the table cannot be joined back to an account. No names, no queries, no message text in the
 > logs; `/stats` (owner only) is a counter per command and nothing else. `prefs.py`.
+
+### <a name="team"></a> A team across countries
+
+`/team Germany 2 UK 1 Spain 1 Poland 1 70k` — a head count after each country, one salary for
+everyone (in any ECB currency), and optionally a horizon: `… 24 months`. The free-text form works
+too, as above.
+
+Each country gets the same comparison as `/plan`: EOR fees against what an own entity costs
+there — setup, running costs, the weeks before its first payroll, closing it. Then the totals,
+the team size from which an entity would start to pay off in each country, and buttons to
+change the horizon. If the countries disagree — EOR cheaper in some, an entity in others —
+the reply names the cheapest mix, with the entities run on Deel Payroll.
+
+> :suspect: A number right after a country is its head count (`Germany 2`), unless the next
+> word makes it an amount (`80 tys.`, `900 /mo`, `500 EUR`). With a single country it simply
+> means "that many people"; a bare `Testland 500` is still read as a (too small) salary rather
+> than five hundred hires. Buttons carry the whole team in their callback data (`DE2.GB1.ES1.PL1`)
+> and go through the same validation as typed text.
 
 ### <a name="cost"></a> What it costs to employ someone
 
@@ -221,13 +249,14 @@ people`, `80k 90k`) is an error rather than a guess.
 |---|---|
 | `/cost <country> <salary> [currency]` | employer cost with the breakdown by contribution |
 | `/plan <country> <salary> <people> [months]` | EOR vs own entity, break-even team and month |
+| `/team <country> <count> … <salary> [months]` | a team across countries: EOR vs one entity each, and the cheapest mix |
 | `/compare <country1> <country2> <salary>` | two countries, totals in one currency |
 | `/sources <country>` | every source, check dates, where Deel's guide differs |
 | `/lang` | change language |
 | `/help` | all of the above, in your language |
 
 Anything else you type is parsed as free text: `Germany 80k`, `Spain 50k 3 people 24 months`,
-`Германия vs Польша 70k`.
+`Германия vs Польша 70k`, `Germany 2 Spain 1 Poland 1 70k`.
 
 ---
 ---
@@ -340,11 +369,11 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 
 > :godmode: Coverage says a line ran; it does not say a test would notice the line being wrong.
 > So the logic modules (`calc`, `money`, `parser`, `freshness`, `fx`, `models`) are also
-> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,111 small deliberate bugs,
+> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,257 small deliberate bugs,
 > each run against the suite. The first run caught **84%**. The survivors were real holes — a
 > salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
 > wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
-> **96.8%** are caught, and the 35 left alive are equivalent mutants (`//` vs `/` on positive
+> **96.8%** are caught, and the 40 left alive are equivalent mutants (`//` vs `/` on positive
 > numbers, a temp file's name, the wording of a log line).
 >
 > ```bash

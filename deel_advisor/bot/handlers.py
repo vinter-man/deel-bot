@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import html
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -100,6 +101,10 @@ def render(query: Query, lang: Lang, ctx: replies.Context) -> tuple[str, InlineK
     if query.kind == "plan":
         cb = kb.PlanCb(code=first.code, cur=cur, minor=minor, people=query.people, months=query.months)
         return replies.plan(lang, query, ctx), kb.after_plan(lang, cb)
+    if query.kind == "team":
+        spec = kb.team_spec([c.code for c in query.countries], query.counts)
+        team_cb = kb.TeamCb(team=spec, cur=query.currency or "EUR", minor=minor, months=query.months)
+        return replies.team(lang, query, ctx), kb.after_team(lang, team_cb)
     return replies.compare(lang, query, ctx), kb.after_compare(lang, *query.countries)
 
 
@@ -174,6 +179,11 @@ async def plan_cmd(message: Message, command: CommandObject, services: Services,
 async def compare_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
     services.stats.hit("compare")
     await _answer_text(message, command.args, "compare", services, lang)
+
+
+async def team_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
+    services.stats.hit("team")
+    await _answer_text(message, command.args, "team", services, lang)
 
 
 async def sources_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
@@ -342,6 +352,30 @@ async def on_plan(callback: CallbackQuery, callback_data: kb.PlanCb, services: S
     await _send_or_edit(callback, *render(query, lang, services.context()), edit=True)
 
 
+TEAM_SPEC = re.compile(r"^([A-Z]{2})(\d{1,4})$")
+
+
+async def on_team(callback: CallbackQuery, callback_data: kb.TeamCb, services: Services, lang: Lang) -> None:
+    services.stats.hit("button.team")
+    cb = callback_data
+    try:
+        parts = [TEAM_SPEC.match(part) for part in cb.team.split(".")]
+        if not all(parts):
+            raise ParseError("stale_button")
+        codes = tuple(m.group(1) for m in parts if m)
+        counts = tuple(int(m.group(2)) for m in parts if m)
+        if cb.cur not in _currencies(services):
+            raise ParseError("stale_button")
+        countries = tuple(_country(services, code) for code in codes)
+        query = build_query("team", countries, from_minor(cb.minor), currency=cb.cur, months=cb.months,
+                            counts=counts, in_eur=_in_eur(services))  # fmt: skip
+    except ParseError as error:
+        await _button_error(callback, lang, error)
+        return
+    await callback.answer()
+    await _send_or_edit(callback, *render(query, lang, services.context()), edit=True)
+
+
 async def on_sources(callback: CallbackQuery, callback_data: kb.SourcesCb, services: Services, lang: Lang) -> None:
     services.stats.hit("button.sources")
     try:
@@ -400,6 +434,7 @@ def create_router() -> Router:
     router.message.register(cost_cmd, Command("cost"))
     router.message.register(plan_cmd, Command("plan"))
     router.message.register(compare_cmd, Command("compare"))
+    router.message.register(team_cmd, Command("team"))
     router.message.register(sources_cmd, Command("sources"))
     router.message.register(stats_cmd, Command("stats"))
     router.message.register(unknown_command, F.text.startswith("/"))
@@ -411,6 +446,7 @@ def create_router() -> Router:
     router.callback_query.register(on_compare, kb.CompareCb.filter())
     router.callback_query.register(on_pick_people, kb.PickPeopleCb.filter())
     router.callback_query.register(on_plan, kb.PlanCb.filter())
+    router.callback_query.register(on_team, kb.TeamCb.filter())
     router.callback_query.register(on_sources, kb.SourcesCb.filter())
     router.callback_query.register(on_unknown_button)
     router.errors.register(on_error)

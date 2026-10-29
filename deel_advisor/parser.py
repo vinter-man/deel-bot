@@ -16,7 +16,7 @@ from typing import Literal
 
 from deel_advisor.models import Country
 
-Kind = Literal["cost", "compare", "plan"]
+Kind = Literal["cost", "compare", "plan", "team"]
 # (amount, currency) -> amount in EUR; the parser knows nothing about exchange rates itself.
 InEur = Callable[[Decimal, str], Decimal]
 
@@ -25,6 +25,8 @@ MAX_SALARY = Decimal(10_000_000)
 MAX_PEOPLE = 10_000
 MAX_MONTHS = 120
 DEFAULT_MONTHS = 12
+# A bare number this big after a country, with no other amount, is a salary typed too small.
+SALARY_NOT_COUNT = 100
 
 _SYMBOLS = {"€": "EUR", "$": "USD", "£": "GBP", "zł": "PLN"}
 # The vocabulary is English plus the four languages of the countries the bot covers: German,
@@ -89,6 +91,8 @@ _MULTIPLIERS = {
     "млн": 1_000_000,
     "млн.": 1_000_000,
 }
+# Words after a number that make it an amount rather than a head count: "80 tys.", "900 /mo".
+_AMOUNT_WORDS = {*_MULTIPLIERS, *_MONTHLY_SALARY, *_PER_WORDS}
 
 
 class ParseError(Exception):
@@ -110,6 +114,8 @@ class Query:
     people: int = 1
     months: int = DEFAULT_MONTHS
     salary_was_monthly: bool = False
+    # For a team: how many people in each of `countries`, in the same order.
+    counts: tuple[int, ...] = ()
 
 
 @dataclass(slots=True)
@@ -121,6 +127,8 @@ class _Found:
     months: int | None = None
     bare: list[int] = field(default_factory=list)
     monthly: bool = False
+    # A small number right after a country is its head count: "Germany 2 Spain 1".
+    counts: list[int | None] = field(default_factory=list)
 
     def set_people(self, value: int, word: str) -> None:
         if self.people is not None:
@@ -240,6 +248,15 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
         if hit is not None:
             found.countries.append(hit[0])
             i += hit[1]
+            count = tokens[i] if i < len(tokens) else ""
+            after = tokens[i + 1] if i + 1 < len(tokens) else ""
+            # Not a count when the next word makes it an amount: "80 tys.", "900 /mo", "500 EUR".
+            amount_follows = after in _AMOUNT_WORDS or _currency(after, currencies) is not None
+            if count.isdigit() and 1 <= int(count) < MIN_SALARY and not amount_follows:
+                found.counts.append(int(count))  # a following "people" is skipped as filler
+                i += 1
+            else:
+                found.counts.append(None)
             continue
 
         times = _TIMES.match(token)
@@ -309,6 +326,12 @@ def parse(
 
     if not found.countries:
         raise ParseError("no_country")
+    counts = [(i, c) for i, c in enumerate(found.counts) if c is not None]
+    if found.salary is None and counts and counts[-1][1] >= SALARY_NOT_COUNT:
+        # "Testland 500": the only number was read as a head count, but it is a (too small)
+        # salary. "Germany 2" stays a head count, and the error asks for the salary.
+        last, value = counts[-1]
+        found.salary, found.counts[last] = Decimal(value), None
     if found.salary is None:
         raise ParseError("no_salary", example=f"{found.countries[0].country} 80000")
 
@@ -321,10 +344,29 @@ def parse(
         else:
             raise ParseError("unexpected", word=str(number))
 
+    counted = any(c is not None for c in found.counts)
+    single = found.counts[0] if len(found.counts) == 1 else None
+    if single is not None and kind != "team":
+        found.set_people(single, str(single))  # "Germany 2 80k" is "Germany 80k 2 people"
+    elif counted and kind is None:
+        kind = "team"
     if kind is None:
         kind = "compare" if len(found.countries) >= 2 else "cost"
     if kind == "cost" and (found.people is not None or found.months is not None):
         kind = "plan"  # "Germany 80k 5 people", or "/cost Germany 80k 5 people", asks a planning question
+    if kind == "team":
+        if found.people is not None:
+            raise ParseError("unexpected", word=str(found.people))  # a team has a count per country
+        return build_query(
+            kind,
+            tuple(found.countries),
+            found.salary * 12 if found.monthly else found.salary,
+            currency=found.currency,
+            months=found.months if found.months is not None else DEFAULT_MONTHS,
+            salary_was_monthly=found.monthly,
+            counts=tuple(c if c is not None else 1 for c in found.counts),
+            in_eur=in_eur,
+        )
     return build_query(
         kind,
         tuple(found.countries),
@@ -346,14 +388,25 @@ def build_query(
     people: int = 1,
     months: int = DEFAULT_MONTHS,
     salary_was_monthly: bool = False,
+    counts: tuple[int, ...] = (),
     in_eur: InEur | None = None,
 ) -> Query:
     """The checks every query passes, whether it was typed or came back from a button."""
-    expected = 2 if kind == "compare" else 1
-    if len(countries) < expected:
-        raise ParseError("need_two_countries")
-    if len(countries) > expected:
-        raise ParseError("too_many_countries")
+    if kind == "team":
+        if len(countries) < 2:
+            raise ParseError("team_needs_two")
+        if len({c.code for c in countries}) != len(countries):
+            raise ParseError("same_country")
+        if len(counts) != len(countries) or min(counts, default=0) < 1:
+            raise ParseError("people_range", maximum=str(MAX_PEOPLE))
+        people = sum(counts)  # the team's total is held to MAX_PEOPLE below
+    else:
+        expected = 2 if kind == "compare" else 1
+        if len(countries) < expected:
+            raise ParseError("need_two_countries")
+        if len(countries) > expected:
+            raise ParseError("too_many_countries")
+        counts = ()
     if kind == "compare" and countries[0].code == countries[1].code:
         raise ParseError("same_country")
     comparable = in_eur(salary, currency or countries[0].currency) if in_eur else salary
@@ -365,7 +418,7 @@ def build_query(
         raise ParseError("people_range", maximum=str(MAX_PEOPLE))
     if not 1 <= months <= MAX_MONTHS:
         raise ParseError("months_range", maximum=str(MAX_MONTHS))
-    return Query(kind, countries, salary, currency, people, months, salary_was_monthly)
+    return Query(kind, countries, salary, currency, people, months, salary_was_monthly, counts)
 
 
 def find_country(text: str, countries: CountryIndex) -> Country:

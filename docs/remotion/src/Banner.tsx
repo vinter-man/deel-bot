@@ -2,8 +2,8 @@
  * The README header: a pencil-on-paper chart of the bot's own answer for one real case.
  *
  * Every number on it comes from banner.json, which scripts/export_shots.py computes with the
- * bot's calculation (Germany, 3 people, 24 months): change the data or the model and the banner
- * follows on the next render.
+ * bot's calculation for the README's team (Germany 2, UK 1, Spain 1, Poland 1, two years):
+ * change the data or the model and the banner follows on the next render.
  */
 import React from 'react';
 import {AbsoluteFill} from 'remotion';
@@ -85,17 +85,32 @@ const Mono: React.FC<{
   </div>
 );
 
+const Label: React.FC<{
+  x: number;
+  y: number;
+  children: React.ReactNode;
+  color?: string;
+  size?: number;
+}> = ({x: lx, y: ly, children, color = INK, size = 21}) => (
+  <text x={lx} y={ly} fontFamily={mono} fontSize={size} fill={color}>
+    {children}
+  </text>
+);
+
 export const Banner: React.FC = () => {
-  const cross = data.breakeven ?? data.months;
-  const crossX = x(cross);
-  const crossY = y(data.eor[cross]!);
-  const lastEor = y(data.eor[data.months]!);
-  const lastEntity = y(data.entity[data.months]!);
-  const ticks = Array.from({length: data.months / 4 + 1}, (_, i) => i * 4);
-  const eorAngle =
-    (Math.atan2(y(data.eor[data.months]!) - y(0), x(data.months) - x(0)) * 180) / Math.PI;
-  const labelX = x(cross * 0.38);
-  const labelY = y(data.eor[Math.round(cross * 0.38)]!) + 46;
+  const last = data.months;
+  const lastEor = y(data.eor[last]!);
+  const lastEntity = y(data.entity[last]!);
+  const ticks = Array.from({length: last / 4 + 1}, (_, i) => i * 4);
+  // The EOR label runs along its line, in the gap between the two.
+  const eorAngle = (Math.atan2(lastEor - y(0), x(last) - x(0)) * 180) / Math.PI;
+  const labelAt = Math.round(last * 0.54);
+  const labelX = x(labelAt);
+  const labelY = y(data.eor[labelAt]!) - 16; // just above the line, inside the gap
+  // The callout points into the gap a third of the way along.
+  const mid = Math.round(last / 3);
+  const midX = x(mid);
+  const midY = (y(data.eor[mid]!) + y(data.entity[mid]!)) / 2;
 
   return (
     <AbsoluteFill style={{backgroundColor: PAPER}}>
@@ -167,9 +182,9 @@ export const Banner: React.FC = () => {
 
         {/* axes */}
         <Pencil d={`M${X0},${Y1 - 20} L${X0},${Y0} L${X1 + 10},${Y0}`} width={3.5} />
-        <text x={X0 - 28} y={Y1 - 8} fontFamily={mono} fontSize={22} fill={INK}>
+        <Label x={X0 - 28} y={Y1 - 8} size={22}>
           €
-        </text>
+        </Label>
         {ticks.map((m) => (
           <g key={m}>
             <Pencil d={`M${x(m)},${Y0} L${x(m)},${Y0 + 9}`} width={2.5} />
@@ -193,7 +208,6 @@ export const Banner: React.FC = () => {
         <Pencil d={path(data.eor)} width={5} />
         <Pencil d={path(data.entity)} width={5} />
 
-        {/* under the EOR line, before the crossing, where nothing else is drawn */}
         <text
           x={labelX}
           y={labelY}
@@ -202,37 +216,24 @@ export const Banner: React.FC = () => {
           fill={INK}
           transform={`rotate(${eorAngle} ${labelX} ${labelY})`}
         >
-          EOR · {data.people} × {euro(data.fee)} a month
+          EOR · {data.people} people × {euro(data.fee)} a month
         </text>
-        <text x={x(13.2)} y={y(data.entity[13]!) + 46} fontFamily={mono} fontSize={21} fill={INK}>
-          own entity on Deel Payroll
-        </text>
-        <text x={x(13.2)} y={y(data.entity[13]!) + 74} fontFamily={mono} fontSize={21} fill={GREY}>
-          {euro(data.setup)} + {euro(data.monthly)} a month
-        </text>
+        <Label x={x(2)} y={y(data.entity[13]!) - 80}>
+          {data.entities} own entities on Deel Payroll
+        </Label>
+        <Label x={x(2)} y={y(data.entity[13]!) - 52} color={GREY}>
+          {euro(data.entity[0]!)} before the first payslip
+        </Label>
 
-        {/* where the answer changes */}
-        <circle cx={crossX} cy={crossY} r={11} fill={INK} filter="url(#pencil)" />
-        <Pencil d={`M${crossX - 6},${crossY - 18} L${crossX - 30},${crossY - 120}`} width={2.5} />
-        <text
-          x={crossX - 210}
-          y={crossY - 200}
-          fontFamily={sans}
-          fontSize={34}
-          fontWeight={500}
-          fill={INK}
-        >
-          EOR until month {cross},
+        {/* the point of the picture: the gap never closes */}
+        <circle cx={midX} cy={midY} r={9} fill={INK} filter="url(#pencil)" />
+        {/* the callout sits under the EOR line on the right, where the chart is empty */}
+        <Pencil d={`M${midX + 10},${midY + 14} L${x(12.4)},${Y0 - 140}`} width={2.5} />
+        <text x={x(12.6)} y={Y0 - 105} fontFamily={sans} fontSize={34} fontWeight={500} fill={INK}>
+          EOR is cheaper every month
         </text>
-        <text
-          x={crossX - 210}
-          y={crossY - 158}
-          fontFamily={sans}
-          fontSize={34}
-          fontWeight={500}
-          fill={INK}
-        >
-          then your own entity
+        <text x={x(12.6)} y={Y0 - 63} fontFamily={sans} fontSize={34} fontWeight={500} fill={INK}>
+          of the two years
         </text>
 
         {/* the gap at the end of the horizon */}
@@ -240,10 +241,9 @@ export const Banner: React.FC = () => {
           d={`M${X1 + 26},${lastEor} L${X1 + 26},${lastEntity} M${X1 + 18},${lastEor} L${X1 + 34},${lastEor} M${X1 + 18},${lastEntity} L${X1 + 34},${lastEntity}`}
           width={2.5}
         />
-        {/* low in the gap, just above the entity line: the EOR line climbs through the top of it */}
         <text
           x={X1 - 6}
-          y={lastEntity - 14}
+          y={(lastEor + lastEntity) / 2 + 40}
           textAnchor="end"
           fontFamily={sans}
           fontSize={38}
@@ -253,13 +253,12 @@ export const Banner: React.FC = () => {
           ~{euro(data.saving)}
         </text>
 
-        <text x={X0} y={Y0 + 120} fontFamily={mono} fontSize={21} fill={GREY}>
-          {data.country} · {data.people} people × {euro(data.salary)} · overhead only. Salary +
-          contributions
-        </text>
-        <text x={X0} y={Y0 + 148} fontFamily={mono} fontSize={21} fill={GREY}>
-          ({euro(data.employment)}) are identical either way.
-        </text>
+        <Label x={X0} y={Y0 + 120} color={GREY}>
+          Team: {data.team} × {euro(data.salary)} · overhead only.
+        </Label>
+        <Label x={X0} y={Y0 + 148} color={GREY}>
+          Salary + contributions are identical either way.
+        </Label>
 
         <rect width="100%" height="100%" filter="url(#grain)" opacity={0.05} />
       </svg>
@@ -290,7 +289,7 @@ export const Banner: React.FC = () => {
         <Boxed>Remotion</Boxed>
       </div>
       <svg width={BANNER_W} height={BANNER_H} style={{position: 'absolute', inset: 0}}>
-        <Pencil d={`M90,945 L1910,945`} width={3} />
+        <Pencil d="M90,945 L1910,945" width={3} />
       </svg>
     </AbsoluteFill>
   );

@@ -414,3 +414,80 @@ def test_find_country_error_params(index: CountryIndex) -> None:
 
 def test_months_alone_make_a_plan(index: CountryIndex) -> None:
     assert p("Testland 80k 24 months", index).kind == "plan"
+
+
+# --- teams across countries ------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "counts", "months"),
+    [("Testland 2 Otherland 1 70k", (2, 1), 12), ("Testland 2, Otherland 3, 70000 EUR 24 months", (2, 3), 24),
+     ("Testland 2 people Otherland 1 person 70k", (2, 1), 12), ("70k Testland 4 Otherland 1", (4, 1), 12),
+     ("Testland 2 Otherland 70k", (2, 1), 12)],
+)  # fmt: skip
+def test_team(text: str, counts: tuple[int, ...], months: int, index: CountryIndex) -> None:
+    query = p(text, index)
+    assert (query.kind, query.counts, query.people, query.months) == ("team", counts, sum(counts), months)
+
+
+def test_team_command_and_count_after_one_country(index: CountryIndex) -> None:
+    assert p("Testland 2 Otherland 1 70k", index, "team").kind == "team"
+    single = p("Testland 2 80k", index)  # one country with a count is a plan for that many
+    assert (single.kind, single.people) == ("plan", 2)
+    assert err("Testland 2 70k", index, "team").code == "team_needs_two"
+
+
+@pytest.mark.parametrize(
+    ("text", "code"),
+    [("Testland 2 Testland 1 70k", "same_country"), ("Testland 2 Otherland 1 70k 5 people", "unexpected"),
+     ("Testland 2", "no_salary"), ("Testland 2 Otherland 1", "no_salary")],
+)  # fmt: skip
+def test_team_errors(text: str, code: str, index: CountryIndex) -> None:
+    assert err(text, index).code == code
+
+
+@pytest.mark.parametrize("text", ["Testland 80 tys.", "Testland 900 /mo", "Testland 60 mil EUR"])
+def test_a_number_before_an_amount_word_is_not_a_head_count(text: str, index: CountryIndex) -> None:
+    assert p(text, index).counts == ()
+
+
+def test_team_bounds(testland: Country) -> None:
+    other = Country.model_validate(country_data(country="Other", code="OT", aliases=["other"]))
+    for counts in ((2,), (0, 1)):
+        with pytest.raises(ParseError) as caught:
+            build_query("team", (testland, other), D(50_000), counts=counts)
+        assert (caught.value.code, caught.value.params) == ("people_range", {"maximum": str(MAX_PEOPLE)})
+    assert build_query("team", (testland, other), D(50_000), counts=(3, 4)).people == 7
+
+
+def test_team_carries_currency_monthly_salary_and_bounds(index: CountryIndex) -> None:
+    usd = p("Testland 2 Otherland 1 60000 USD", index)
+    assert (usd.kind, usd.currency) == ("team", "USD")
+    monthly = p("Testland 2 Otherland 1 5000/mo", index)
+    assert (monthly.salary, monthly.salary_was_monthly) == (60_000, True)
+
+    def in_eur(amount: Decimal, currency: str) -> Decimal:
+        return amount / {"EUR": 1, "JPY": 175}[currency]
+
+    with pytest.raises(ParseError, match="salary_too_low"):
+        parse("Testland 2 Otherland 1 80000 jpy", index, CURRENCIES, in_eur=in_eur)
+
+
+def test_head_count_boundaries(index: CountryIndex) -> None:
+    assert p("Testland 999 Otherland 1 70k", index).counts == (999, 1)
+    assert err("Testland 1000 Otherland 1 70k", index).params == {"word": "70k"}  # 1000 is an amount
+    assert err("Testland 100", index).code == "salary_too_low"  # big enough to be a salary
+    assert err("Testland 99", index).code == "no_salary"  # small enough to be a head count
+
+
+def test_head_count_and_people_together_is_said_twice(index: CountryIndex) -> None:
+    assert err("Testland 2 80k 3 people", index).params == {"word": "2"}
+
+
+def test_team_error_params(index: CountryIndex, testland: Country) -> None:
+    assert err("Testland 2 Otherland 1 70k 5 people", index).params == {"word": "5"}
+    other = Country.model_validate(country_data(country="Other", code="OT", aliases=["other"]))
+    with pytest.raises(ParseError) as caught:
+        build_query("team", (testland, other), D(50_000), counts=(MAX_PEOPLE, 1))  # 10,001 in total
+    assert (caught.value.code, caught.value.params) == ("people_range", {"maximum": str(MAX_PEOPLE)})
+    assert build_query("team", (testland, other), D(50_000), counts=(MAX_PEOPLE - 1, 1)).people == MAX_PEOPLE

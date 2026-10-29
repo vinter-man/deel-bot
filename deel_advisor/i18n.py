@@ -132,6 +132,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "/cost <code>country salary [currency]</code> — employer cost with a breakdown\n"
             "/plan <code>country salary people [months]</code> — EOR vs own entity, break-even\n"
             "/compare <code>country1 country2 salary</code> — two countries side by side\n"
+            "/team <code>country count … salary</code> — a team across countries: EOR vs one entity each\n"
             "/sources <code>country</code> — where every figure comes from\n"
             "/lang — change language\n\n"
             "Or just type: <code>Bulgaria 60000 EUR</code>, <code>Spain 50k 3 people 24 months</code>, "
@@ -172,6 +173,15 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "plan.never_months": "With {team} it never pays off: the fixed costs eat the saving.",
         "plan.never_people": "At these prices an entity never pays off.",
         "plan.note": "<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>",
+        "team.header": "🌍 <b>Team in {countries} countries</b> · {team} × {salary} a year · {months}",
+        "team.row_eor": "{flag} <b>{country}</b> × {count}: EOR {eor} · own entity {entity} ✅ EOR",
+        "team.row_entity": "{flag} <b>{country}</b> × {count}: EOR {eor} · own entity {entity} ✅ entity",
+        "team.total": "<b>Total</b>: EOR (Deel) {eor} · {entities} own entities {entity}",
+        "team.eor_saves": "💡 Over {months} EOR saves ~{diff} — and no company to open, run and close in {entities} countries.",
+        "team.entities_win": "💡 Over {months} own entities would be ~{diff} cheaper — Deel Payroll can run their payroll.",
+        "team.mix": "💡 Cheapest mix: EOR in {eor}, own entity on Deel Payroll in {entity} — {total}.",
+        "team.breakeven": "An own entity pays off from: {list} people (over {months}).",
+        "team.same": "Salary + contributions, identical either way: {amount}",
         "compare.header": "<b>{a} vs {b}</b> · {salary} gross a year",
         "compare.row": "{flag} <b>{country}</b>: {total} a year · +{rate}",
         "compare.row_local": "in {currency}: {total}",
@@ -220,12 +230,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.same_country": "Those are the same country — pick two different ones.",
         "err.unexpected": "I didn't understand “{word}”.",
         "err.twice": "“{word}” says the same thing twice — keep one.",
+        "err.team_needs_two": "A team spans at least two countries: <code>/team Germany 2 Spain 1 70k</code>.",
         "err.stale_button": "That button belongs to an old message. Send the query again.",
         "err.internal": "Something went wrong on my side. Please try again in a minute.",
         "usage.cost": "Usage: <code>/cost Bulgaria 60000 EUR</code>",
         "usage.plan": "Usage: <code>/plan Germany 80000 5 12</code> (country, salary, people, months)",
         "usage.compare": "Usage: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Usage: <code>/sources Spain</code>",
+        "usage.team": "Usage: <code>/team Germany 2 UK 1 Spain 1 70k</code> (a head count after each country)",
         "usage.free": "Try <code>Germany 80k</code> or /help.",
         "stats": "<b>Since start</b> ({since})\n{lines}",
     },
@@ -245,6 +257,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "/cost <code>Land Gehalt [Währung]</code> – Arbeitgeberkosten mit Aufschlüsselung\n"
             "/plan <code>Land Gehalt Personen [Monate]</code> – EOR oder eigene Gesellschaft, Break-even\n"
             "/compare <code>Land1 Land2 Gehalt</code> – zwei Länder nebeneinander\n"
+            "/team <code>Land Anzahl … Gehalt</code> – ein Team über mehrere Länder: EOR oder je eine Gesellschaft\n"
             "/sources <code>Land</code> – woher jede Zahl stammt\n"
             "/lang – Sprache ändern\n\n"
             "Oder einfach schreiben: <code>Bulgarien 60000 EUR</code>, <code>Spanien 50k 3 Personen 24 Monate</code>, "
@@ -286,6 +299,15 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "plan.never_months": "Mit {team} rechnet sie sich nie: Die Fixkosten fressen die Ersparnis.",
         "plan.never_people": "Zu diesen Preisen rechnet sich eine Gesellschaft nie.",
         "plan.note": "<i>Jede Zeile hat eine Quelle (/sources). Nicht eingepreist, und alles zugunsten des EOR: die Zeit deines Teams für die Gesellschaft, die Monate einer Liquidation und das Risiko von Scheinselbstständigkeit und Betriebsstätte, das ein EOR für dich trägt.</i>",
+        "team.header": "🌍 <b>Team in {countries} Ländern</b> · {team} × {salary} im Jahr · {months}",
+        "team.row_eor": "{flag} <b>{country}</b> × {count}: EOR {eor} · eigene Gesellschaft {entity} ✅ EOR",
+        "team.row_entity": "{flag} <b>{country}</b> × {count}: EOR {eor} · eigene Gesellschaft {entity} ✅ Gesellschaft",
+        "team.total": "<b>Gesamt</b>: EOR (Deel) {eor} · {entities} eigene Gesellschaften {entity}",
+        "team.eor_saves": "💡 Über {months} spart EOR ~{diff} – und keine Gesellschaft zu gründen, zu führen und zu schließen in {entities} Ländern.",
+        "team.entities_win": "💡 Über {months} wären eigene Gesellschaften ~{diff} günstiger – Deel Payroll kann ihre Abrechnung übernehmen.",
+        "team.mix": "💡 Günstigste Kombination: EOR in {eor}, eigene Gesellschaft mit Deel Payroll in {entity} – {total}.",
+        "team.breakeven": "Eine eigene Gesellschaft rechnet sich ab: {list} Personen (über {months}).",
+        "team.same": "Gehalt + Beiträge, in beiden Fällen gleich: {amount}",
         "compare.header": "<b>{a} vs. {b}</b> · {salary} brutto im Jahr",
         "compare.row": "{flag} <b>{country}</b>: {total} im Jahr · +{rate}",
         "compare.row_local": "in {currency}: {total}",
@@ -334,12 +356,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.same_country": "Das ist zweimal dasselbe Land – wähle zwei verschiedene.",
         "err.unexpected": "„{word}“ habe ich nicht verstanden.",
         "err.twice": "„{word}“ sagt etwas zum zweiten Mal – lass eins weg.",
+        "err.team_needs_two": "Ein Team umfasst mindestens zwei Länder: <code>/team Germany 2 Spain 1 70k</code>.",
         "err.stale_button": "Diese Schaltfläche gehört zu einer alten Nachricht. Schick die Anfrage noch einmal.",
         "err.internal": "Bei mir ist etwas schiefgelaufen. Versuch es in einer Minute noch einmal.",
         "usage.cost": "Beispiel: <code>/cost Bulgaria 60000 EUR</code>",
         "usage.plan": "Beispiel: <code>/plan Germany 80000 5 12</code> (Land, Gehalt, Personen, Monate)",
         "usage.compare": "Beispiel: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Beispiel: <code>/sources Spain</code>",
+        "usage.team": "Beispiel: <code>/team Germany 2 UK 1 Spain 1 70k</code> (nach jedem Land die Personenzahl)",
         "usage.free": "Probier <code>Deutschland 80k</code> oder /help.",
         "stats": "<b>Seit dem Start</b> ({since})\n{lines}",
     },
@@ -358,6 +382,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "/cost <code>país salario [moneda]</code> — coste para la empresa, desglosado\n"
             "/plan <code>país salario personas [meses]</code> — EOR o sociedad propia, punto de equilibrio\n"
             "/compare <code>país1 país2 salario</code> — dos países lado a lado\n"
+            "/team <code>país número … salario</code> — un equipo en varios países: EOR o una sociedad en cada uno\n"
             "/sources <code>país</code> — de dónde sale cada cifra\n"
             "/lang — cambiar idioma\n\n"
             "O escribe sin más: <code>Bulgaria 60000 EUR</code>, <code>España 50k 3 personas 24 meses</code>, "
@@ -399,6 +424,15 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "plan.never_months": "Con {team} no se amortiza nunca: los costes fijos se comen el ahorro.",
         "plan.never_people": "A estos precios, una sociedad no compensa nunca.",
         "plan.note": "<i>Cada línea tiene su fuente (/sources). Sin incluir, y todo a favor del EOR: el tiempo de tu equipo dedicado a la sociedad, los meses que dura una liquidación y el riesgo de falsos autónomos y de establecimiento permanente que el EOR asume por ti.</i>",
+        "team.header": "🌍 <b>Equipo en {countries} países</b> · {team} × {salary} al año · {months}",
+        "team.row_eor": "{flag} <b>{country}</b> × {count}: EOR {eor} · sociedad propia {entity} ✅ EOR",
+        "team.row_entity": "{flag} <b>{country}</b> × {count}: EOR {eor} · sociedad propia {entity} ✅ sociedad",
+        "team.total": "<b>Total</b>: EOR (Deel) {eor} · {entities} sociedades propias {entity}",
+        "team.eor_saves": "💡 En {months}, el EOR ahorra ~{diff}, sin ninguna sociedad que abrir, gestionar y cerrar en {entities} países.",
+        "team.entities_win": "💡 En {months}, las sociedades propias saldrían ~{diff} más baratas; Deel Payroll puede gestionar sus nóminas.",
+        "team.mix": "💡 La combinación más barata: EOR en {eor}, sociedad propia con Deel Payroll en {entity}: {total}.",
+        "team.breakeven": "Una sociedad propia compensa a partir de: {list} personas (en {months}).",
+        "team.same": "Salario + cotizaciones, igual en ambos casos: {amount}",
         "compare.header": "<b>{a} vs. {b}</b> · {salary} brutos al año",
         "compare.row": "{flag} <b>{country}</b>: {total} al año · +{rate}",
         "compare.row_local": "en {currency}: {total}",
@@ -447,12 +481,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.same_country": "Es el mismo país dos veces; elige dos distintos.",
         "err.unexpected": "No he entendido «{word}».",
         "err.twice": "«{word}» repite algo que ya has dicho; deja solo uno.",
+        "err.team_needs_two": "Un equipo abarca al menos dos países: <code>/team Germany 2 Spain 1 70k</code>.",
         "err.stale_button": "Ese botón es de un mensaje antiguo. Vuelve a enviar la consulta.",
         "err.internal": "Algo ha fallado por mi parte. Inténtalo de nuevo en un minuto.",
         "usage.cost": "Ejemplo: <code>/cost Bulgaria 60000 EUR</code>",
         "usage.plan": "Ejemplo: <code>/plan Germany 80000 5 12</code> (país, salario, personas, meses)",
         "usage.compare": "Ejemplo: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Ejemplo: <code>/sources Spain</code>",
+        "usage.team": "Ejemplo: <code>/team Germany 2 UK 1 Spain 1 70k</code> (el número de personas tras cada país)",
         "usage.free": "Prueba <code>España 80k</code> o /help.",
         "stats": "<b>Desde el inicio</b> ({since})\n{lines}",
     },
@@ -471,6 +507,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "/cost <code>kraj pensja [waluta]</code> — koszt pracodawcy z rozbiciem\n"
             "/plan <code>kraj pensja osoby [miesiące]</code> — EOR czy własna spółka, próg opłacalności\n"
             "/compare <code>kraj1 kraj2 pensja</code> — dwa kraje obok siebie\n"
+            "/team <code>kraj liczba … pensja</code> — zespół w kilku krajach: EOR czy spółka w każdym\n"
             "/sources <code>kraj</code> — skąd pochodzi każda liczba\n"
             "/lang — zmiana języka\n\n"
             "Możesz też po prostu napisać: <code>Bułgaria 60000 EUR</code>, "
@@ -512,6 +549,15 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "plan.never_months": "Dla {team} nigdy się nie zwraca: koszty stałe zjadają oszczędność.",
         "plan.never_people": "Przy tych cenach spółka nigdy się nie opłaca.",
         "plan.note": "<i>Każda pozycja ma źródło (/sources). Nie wliczono, a wszystko to przemawia za EOR: czasu twojego zespołu poświęconego spółce, miesięcy trwania likwidacji oraz ryzyka błędnej kwalifikacji i zakładu podatkowego, które EOR bierze na siebie.</i>",
+        "team.header": "🌍 <b>Zespół w {countries} krajach</b> · {team} × {salary} rocznie · {months}",
+        "team.row_eor": "{flag} <b>{country}</b> × {count}: EOR {eor} · własna spółka {entity} ✅ EOR",
+        "team.row_entity": "{flag} <b>{country}</b> × {count}: EOR {eor} · własna spółka {entity} ✅ spółka",
+        "team.total": "<b>Razem</b>: EOR (Deel) {eor} · własne spółki ({entities}) {entity}",
+        "team.eor_saves": "💡 Przez {months} EOR oszczędza ~{diff} — i nie trzeba zakładać, prowadzić ani likwidować spółek w {entities} krajach.",
+        "team.entities_win": "💡 Przez {months} własne spółki byłyby tańsze o ~{diff} — Deel Payroll może prowadzić ich płace.",
+        "team.mix": "💡 Najtańsze połączenie: EOR w {eor}, własna spółka z Deel Payroll w {entity} — {total}.",
+        "team.breakeven": "Własna spółka opłaca się od: {list} os. (przez {months}).",
+        "team.same": "Wynagrodzenie + składki, tak samo w obu wariantach: {amount}",
         "compare.header": "<b>{a} vs {b}</b> · {salary} brutto rocznie",
         "compare.row": "{flag} <b>{country}</b>: {total} rocznie · +{rate}",
         "compare.row_local": "w {currency}: {total}",
@@ -560,12 +606,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.same_country": "To ten sam kraj — wybierz dwa różne.",
         "err.unexpected": "Nie rozumiem „{word}”.",
         "err.twice": "„{word}” powtarza coś, co już podano — zostaw jedno.",
+        "err.team_needs_two": "Zespół obejmuje co najmniej dwa kraje: <code>/team Germany 2 Spain 1 70k</code>.",
         "err.stale_button": "Ten przycisk pochodzi ze starej wiadomości. Wyślij zapytanie jeszcze raz.",
         "err.internal": "Coś poszło nie tak po mojej stronie. Spróbuj ponownie za minutę.",
         "usage.cost": "Przykład: <code>/cost Bulgaria 60000 EUR</code>",
         "usage.plan": "Przykład: <code>/plan Germany 80000 5 12</code> (kraj, pensja, osoby, miesiące)",
         "usage.compare": "Przykład: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Przykład: <code>/sources Spain</code>",
+        "usage.team": "Przykład: <code>/team Germany 2 UK 1 Spain 1 70k</code> (po każdym kraju liczba osób)",
         "usage.free": "Spróbuj <code>Polska 80k</code> lub /help.",
         "stats": "<b>Od startu</b> ({since})\n{lines}",
     },
@@ -584,6 +632,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "/cost <code>държава заплата [валута]</code> — разход на работодателя с разбивка\n"
             "/plan <code>държава заплата хора [месеци]</code> — EOR или собствено дружество, точка на изплащане\n"
             "/compare <code>държава1 държава2 заплата</code> — две държави една до друга\n"
+            "/team <code>държава брой … заплата</code> — екип в няколко държави: EOR или дружество във всяка\n"
             "/sources <code>държава</code> — откъде е всяка цифра\n"
             "/lang — смяна на езика\n\n"
             "Или просто напишете: <code>България 60000 EUR</code>, <code>Испания 50k 3 служители 24 месеца</code>, "
@@ -624,6 +673,15 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "plan.never_months": "При {team} никога не се изплаща: постоянните разходи изяждат спестеното.",
         "plan.never_people": "При тези цени дружеството никога не се изплаща.",
         "plan.note": "<i>Всеки ред има източник (/sources). Не са включени, и всичко е в полза на EOR: времето на екипа ви за дружеството, месеците, които отнема ликвидацията, и рискът от прекласифициране и място на стопанска дейност, който EOR поема вместо вас.</i>",
+        "team.header": "🌍 <b>Екип в {countries} държави</b> · {team} × {salary} годишно · {months}",
+        "team.row_eor": "{flag} <b>{country}</b> × {count}: EOR {eor} · собствено дружество {entity} ✅ EOR",
+        "team.row_entity": "{flag} <b>{country}</b> × {count}: EOR {eor} · собствено дружество {entity} ✅ дружество",
+        "team.total": "<b>Общо</b>: EOR (Deel) {eor} · собствени дружества ({entities}) {entity}",
+        "team.eor_saves": "💡 За {months} EOR спестява ~{diff} — и няма дружества за учредяване, поддръжка и закриване в {entities} държави.",
+        "team.entities_win": "💡 За {months} собствените дружества биха били по-евтини с ~{diff} — Deel Payroll може да поеме ведомостите им.",
+        "team.mix": "💡 Най-евтината комбинация: EOR в {eor}, собствено дружество с Deel Payroll в {entity} — {total}.",
+        "team.breakeven": "Собствено дружество се изплаща от: {list} служители (за {months}).",
+        "team.same": "Заплата + осигуровки, еднакви и в двата варианта: {amount}",
         "compare.header": "<b>{a} vs {b}</b> · {salary} бруто годишно",
         "compare.row": "{flag} <b>{country}</b>: {total} годишно · +{rate}",
         "compare.row_local": "в {currency}: {total}",
@@ -672,12 +730,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.same_country": "Това е една и съща държава — изберете две различни.",
         "err.unexpected": "Не разбрах „{word}“.",
         "err.twice": "„{word}“ повтаря вече казаното — оставете едно.",
+        "err.team_needs_two": "Екипът обхваща поне две държави: <code>/team Germany 2 Spain 1 70k</code>.",
         "err.stale_button": "Този бутон е от старо съобщение. Изпратете заявката отново.",
         "err.internal": "Нещо се обърка при мен. Опитайте пак след минута.",
         "usage.cost": "Пример: <code>/cost Bulgaria 60000 EUR</code>",
         "usage.plan": "Пример: <code>/plan Germany 80000 5 12</code> (държава, заплата, хора, месеци)",
         "usage.compare": "Пример: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Пример: <code>/sources Spain</code>",
+        "usage.team": "Пример: <code>/team Germany 2 UK 1 Spain 1 70k</code> (след всяка държава броят хора)",
         "usage.free": "Опитайте <code>България 60k</code> или /help.",
         "stats": "<b>От старта</b> ({since})\n{lines}",
     },
