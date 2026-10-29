@@ -42,13 +42,13 @@ def test_cost_reply(testland: Country, ctx: replies.Context) -> None:
     assert "• Accident ~1% — €480" in text
     assert "typical rate" in text
     # Testland's guide disagrees with the official minimum wage:
-    assert "Deel's guide still shows minimum wage: €950/mo; the official figure since 01.01.2026 is €1,000/mo" in text
+    assert "Deel's guide still shows minimum wage: €950/mo; the official figure since 1 Jan 2026 is €1,000/mo" in text
 
 
 def test_cost_in_another_currency(testland: Country, ctx: replies.Context) -> None:
     text = replies.cost("en", build_query("cost", (testland,), Decimal(60_000), currency="USD"), ctx)
     assert "€48,000 gross a year" in text  # 60,000 USD at 1.25
-    assert "≈ $60,000 at the ECB rate of 29.10.2026" in text
+    assert "≈ $60,000 at the ECB rate of 29 Oct 2026" in text
 
 
 def test_monthly_input_is_shown(testland: Country, ctx: replies.Context) -> None:
@@ -67,8 +67,8 @@ def test_stale_fx_and_old_year(testland: Country) -> None:
     ctx = replies.Context(_catalog(testland), old_rates, date(2027, 5, 1))
     text = replies.cost("en", build_query("cost", (testland,), Decimal(48_000)), ctx)
     assert "These are 2026 rates; 2027 figures may differ" in text
-    assert "Official figures last checked 01.10.2026" in text  # 212 days ago
-    assert "Exchange rates are from 02.01.2026" in text
+    assert "Official figures last checked 1 Oct 2026" in text  # 212 days ago
+    assert "Exchange rates are from 2 Jan 2026" in text
 
 
 def test_plan_entity_cheaper(testland: Country, ctx: replies.Context) -> None:
@@ -126,7 +126,7 @@ def test_compare(testland: Country, fixed_rates: Rates) -> None:
     assert "<b>Testland vs Pricey</b> · €48,000 gross a year" in text
     assert "in PLN:" in text
     assert "💡 Cheaper: " in text
-    assert "Converted at ECB rates of 29.10.2026" in text
+    assert "Converted at ECB rates of 29 Oct 2026" in text
 
 
 def test_compare_identical_countries_has_no_winner(testland: Country, fixed_rates: Rates) -> None:
@@ -191,14 +191,14 @@ def test_monthly_hint_keeps_the_currency(testland: Country, ctx: replies.Context
 def test_plan_discloses_conversions(testland: Country, ctx: replies.Context) -> None:
     query = build_query("plan", (testland,), Decimal(60_000), currency="USD", people=2)
     text = replies.plan("en", query, ctx)
-    assert "≈ $60,000 at the ECB rate of 29.10.2026" in text
+    assert "≈ $60,000 at the ECB rate of 29 Oct 2026" in text
     assert "fee €550 per person a month" in text  # Testland's EOR price is already in EUR
 
 
 def test_plan_names_the_list_price_when_converted(real_catalog: Catalog, fixed_rates: Rates) -> None:
     ctx = replies.Context(real_catalog, fixed_rates, TODAY)
     query = parse("Germany 80k 5 people", real_catalog.index, {"EUR", "USD"})
-    assert "fee €479 per person a month ($599 list price, ECB rate of 29.10.2026)" in replies.plan("en", query, ctx)
+    assert "fee €479 per person a month ($599 list price, ECB rate of 29 Oct 2026)" in replies.plan("en", query, ctx)
 
 
 def test_compare_percentage_is_share_of_the_dearer_total(testland: Country, fixed_rates: Rates) -> None:
@@ -224,7 +224,7 @@ def test_uk_rates_hold_until_april(real_catalog: Catalog, fixed_rates: Rates) ->
 def test_mid_year_ceiling_is_announced(real_catalog: Catalog, fixed_rates: Rates) -> None:
     ctx = replies.Context(real_catalog, fixed_rates, TODAY)
     bulgaria = parse("Bulgaria 60k", real_catalog.index, {"EUR"})
-    assert "ceiling from 01.08.2026, applied to every month" in replies.cost("en", bulgaria, ctx)
+    assert "ceiling from 1 Aug 2026, applied to every month" in replies.cost("en", bulgaria, ctx)
     germany = parse("Germany 60k", real_catalog.index, {"EUR"})
     assert "ceiling from" not in replies.cost("en", germany, ctx)
 
@@ -240,4 +240,4 @@ def test_ceiling_note_is_in_plan_replies_too(real_catalog: Catalog, fixed_rates:
     bulgaria = parse("Bulgaria 60k 3 people", real_catalog.index, {"EUR"})
     # Even before the date the calculation uses the newer ceiling, so the note is always there.
     july = replies.Context(real_catalog, fixed_rates, date(2026, 7, 15))
-    assert "ceiling from 01.08.2026, applied to every month" in replies.plan("en", bulgaria, july)
+    assert "ceiling from 1 Aug 2026, applied to every month" in replies.plan("en", bulgaria, july)

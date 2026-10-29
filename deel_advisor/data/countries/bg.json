@@ -135,12 +135,6 @@
       "weeks": 6,
       "source": "https://www.innovires.com/en/blog/register-company-bulgaria-foreigner.html"
     },
-    "adminTime": {
-      "hoursPerYear": 441,
-      "hoursSource": "https://archive.doingbusiness.org/content/dam/doingBusiness/country/b/bulgaria/BGR.pdf",
-      "hourlyCost": "12.00",
-      "hourlyCostSource": "https://ec.europa.eu/eurostat/databrowser/view/lc_lci_lev/default/table"
-    },
     "exitCost": [
       {
         "name": "Liquidation: fees and professional services",
@@ -156,7 +150,6 @@
     "notes": [
       "EOOD (single-member limited company); minimum capital EUR 1 since the euro switch.",
       "The formation package (EUR 1,100-1,700) includes the EUR 28 state fee and the lawyer.",
-      "Not included: the occupational health service, required from the first employee; no published price found.",
       "Liquidation takes about 11 months, including a 6-month creditor period.",
       "Late taxes and contributions accrue interest at the ECB rate + 8 points (10.40% in H2 2026)."
     ]

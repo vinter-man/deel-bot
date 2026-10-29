@@ -33,7 +33,13 @@ class Context:
     today: date
 
 
+_MONTH_ABBR = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
 def _date(value: date, lang: Lang) -> str:
+    """29 Oct 2026 in English (no day/month ambiguity), 29/10/2026 in Spanish, 29.10.2026 elsewhere."""
+    if lang == "en":
+        return f"{value.day} {_MONTH_ABBR[value.month - 1]} {value.year}"
     return value.strftime("%d/%m/%Y" if lang == "es" else "%d.%m.%Y")
 
 
@@ -222,7 +228,6 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
     team, horizon = i18n.people_for(lang, query.people), i18n.months(lang, query.months)
     eor = ctx.catalog.eor
     entity = result.entity
-    admin = country.entity.admin_time
     fee_source = ""
     if eor.currency != cur:
         list_price = _money(lang, eor.monthly_fee, eor.currency)
@@ -241,12 +246,10 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
         "   " + t(lang, "plan.entity_detail", setup=_money(lang, entity.setup, cur),
                   exit=_money(lang, entity.exit, cur), fixed=_money(lang, entity.monthly_fixed, cur),
                   per_employee=_money(lang, entity.per_employee_monthly, cur)),
-        "   " + t(lang, "plan.entity_admin", hours=admin.hours_per_year,
-                  amount=_money(lang, entity.admin_monthly, cur)),
     ]  # fmt: skip
     if result.bridge_months:
         out.append(
-            "   " + t(lang, "plan.entity_bridge", weeks=country.entity.setup_time.weeks,
+            "   " + t(lang, "plan.entity_bridge", weeks=i18n.weeks(lang, country.entity.setup_time.weeks),
                       amount=_money(lang, result.bridge_fees, cur))
         )  # fmt: skip
     out += [t(lang, "plan.same", amount=_money(lang, result.employment, cur)), ""]
@@ -353,15 +356,13 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
         amount = format_money(item.amount, cur, lang, with_cents=item.amount != whole(item.amount))
         if item in country.entity.monthly_fixed:
             amount += t(lang, "sources.per_person") if item.per_employee else i18n.PERIODS[lang]["month"]
+        if item.payroll and eor.payroll is not None:
+            amount += f" ({t(lang, 'sources.replaced')})"
         official = f" · {t(lang, 'sources.official')}" if item.kind == "official" else ""
         out.append(f"• {html.escape(item.name)} {amount}{official} — {_link(item.source, _host(item.source))}")
-    setup_time, admin, exit_items = country.entity.setup_time, country.entity.admin_time, country.entity.exit_cost
-    out.append(f"• {t(lang, 'sources.setup_time', weeks=setup_time.weeks)} — "
-               f"{_link(setup_time.source, _host(setup_time.source))}")  # fmt: skip
-    rate = format_money(admin.hourly_cost, cur, lang, with_cents=True)
-    out.append(f"• {t(lang, 'sources.admin', hours=admin.hours_per_year, rate=rate)} — "
-               f"{_link(admin.hours_source, _host(admin.hours_source))}, "
-               f"{_link(admin.hourly_cost_source, _host(admin.hourly_cost_source))}")  # fmt: skip
+    setup_time, exit_items = country.entity.setup_time, country.entity.exit_cost
+    weeks = i18n.weeks(lang, setup_time.weeks)
+    out.append(f"• {t(lang, 'sources.setup_time', weeks=weeks)} — {_link(setup_time.source, _host(setup_time.source))}")
     for item in exit_items:
         amount = format_money(item.amount, cur, lang, with_cents=item.amount != whole(item.amount))
         out.append(f"• {t(lang, 'sources.exit')} {html.escape(item.name)} {amount} — "

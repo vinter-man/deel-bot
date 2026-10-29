@@ -139,15 +139,6 @@ class SetupTime(_Model):
     source: Source
 
 
-class AdminTime(_Model):
-    """Your own team's hours on payroll-tax and contribution compliance, and what an hour costs."""
-
-    hours_per_year: int = Field(ge=0, le=2000)
-    hours_source: Source
-    hourly_cost: Amount
-    hourly_cost_source: Source
-
-
 class ShareCapital(_Model):
     amount: Amount
     source: Source
@@ -159,7 +150,6 @@ class Entity(_Model):
     setup_cost: list[CostItem] = Field(min_length=1)
     monthly_fixed: list[CostItem] = Field(min_length=1)
     setup_time: SetupTime
-    admin_time: AdminTime
     # Closing the entity at the end of the horizon: liquidation fees, liquidator, final filings.
     exit_cost: list[CostItem] = Field(min_length=1)
     # Paid-up share capital: money that stays the company's, so it is shown but never added

@@ -13,7 +13,7 @@ export const W = 1000;
 export const H = 940;
 export const TOTAL = 11 * FPS;
 
-const QUESTION = 'Germany 80k 3 people';
+const QUESTION = 'Germany 80k 2 people';
 const TYPE_END = Math.round(1.6 * FPS);
 const SENT = TYPE_END + 6;
 const ANSWER = SENT + Math.round(0.7 * FPS);

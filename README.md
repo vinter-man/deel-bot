@@ -18,17 +18,18 @@ three things:
 1. **The full employer cost** — salary plus every employer contribution (pension, health,
    unemployment, accident, the levies nobody remembers), with contribution ceilings applied,
    line by line.
-2. **EOR versus your own entity** — Deel's list price per person per month against everything
-   a local company really costs: setting it up, running it, your own team's hours on its tax and
-   payroll filings, the weeks before it can run its first payroll, and closing it again. Every
-   line has a source.
+2. **EOR versus your own entity** — Deel's list price per person per month against what a local
+   company really costs: setting it up, running it (accountant, address, bank, chamber fees,
+   occupational health, the UK audit), the weeks before it can run its first payroll, and closing
+   it again. Every line has a source.
 3. **The break-even point** — up to which team size the EOR is the cheaper way in, and from which
    one it is time for your own entity, run on Deel Payroll.
 
 And a fourth one I did not plan for: when **Deel's own public country guide** shows a figure
 that has since changed, the reply says so — *"Deel's guide still shows 0.06%; the official figure
-since 01.01.2026 is 0.15% (source)"*. Six of those turned up in five countries; the checker that
-found them is in the repo.
+since 1 Jan 2026 is 0.15% (source)"*. I compared the guides with the official sources by hand and
+found six in five countries; a script in the repo re-checks that the quoted figures are still on
+Deel's pages.
 
 Try it: [@deel_hea_unofficial_bot](https://t.me/deel_hea_unofficial_bot). It speaks the
 languages of the countries it covers — English, German, Spanish, Polish and Bulgarian — and asks
@@ -100,12 +101,12 @@ the country's minimum wage, the reply suggests you probably meant a monthly one.
 
 ### <a name="plan"></a> EOR or your own entity
 
-`/plan Germany 80000 3 12` — country, salary, people, months. Or `Germany 80k 3 people`.
+`/plan Germany 80000 2 12` — country, salary, people, months. Or `Germany 80k 2 people`.
 
 ![plan](docs/assets/plan.png)
 
-Three people in Germany: the EOR is cheaper, and an entity starts to pay off at five. Ten
-people, and the answer turns — with the next step spelled out:
+Two people in Germany: the EOR is cheaper, and a GmbH starts to pay off at three. Ten people,
+and the answer turns — with the next step spelled out:
 
 ![scale](docs/assets/scale.png)
 
@@ -123,28 +124,37 @@ miesiącach*, *przez 24 miesiące*. Numbers follow the language too: `80.000 €
 > |---|---|
 > | setup: registration, notary, formation for a foreign owner | official fee schedules, law-firm price pages |
 > | running: accountant, address, bank, chamber fees, occupational health | official fees, provider price pages |
-> | your team's hours on tax and payroll filings | World Bank *Paying Taxes* hours × Eurostat (ONS for the UK) hourly labour cost |
-> | the setup weeks, during which the team is on the EOR anyway | law firms and Big-4 guides for a foreign-owned company: 6–16 weeks |
+> | the UK statutory audit, required unless the whole group is small | a UK audit firm's published starting fee |
+> | the setup weeks, during which the team is on the EOR anyway | law firms, RSM and Grant Thornton guides for a foreign-owned company: 6–16 weeks |
 > | closing the entity at the end of the horizon | liquidation fees and statutory waiting periods |
 > | payroll per person | Deel Payroll's list price |
 >
 > ```
 > entity cheaper for N people over M months  ⇔
->     N · (M − setup months) · (fee − payroll per head)  >  setup + exit + M · (fixed + admin)
+>     N · (M − setup months) · (fee − payroll per head)  >  setup + exit + M · fixed
 > ```
+>
+> The fixed costs run from incorporation, setup months included (the company keeps books and an
+> address before its first payroll), and the exit is paid at the end of the horizon — so "pays
+> off after M months" means "if you closed it at month M".
 >
 > which gives the smallest team for a horizon and the shortest horizon for a team, both strict
 > (equal cost is not "cheaper"); a test checks both closed forms against brute force.
 >
-> **What the numbers say.** With Deel's list price and every sourced cost, one hire is cheaper
-> on the EOR in every country at any horizon, and two are almost everywhere; an entity pays off
-> from three to five people over a year (five in Germany, where the admin hours are dearest).
-> Where a source gives a range, the model takes the upper half and says so in `/sources`. What is
-> still not priced — management time beyond filings, and the misclassification and
-> permanent-establishment exposure an EOR takes on — only moves the line further towards the
-> EOR. There is no hidden "risk" percentage: nobody publishes one I could cite, so penalty
-> regimes (Germany's 1% a month on late contributions, Spain's 10–20% surcharges, ZUS's up to
-> 100%) are listed as notes instead of being turned into a number.
+> **What the numbers say.** With Deel's list price and every sourced cost, a single hire is
+> cheaper on the EOR for the whole first year in all five countries, two people are in Germany,
+> Spain and the UK, and an entity pays off from two to four people over a year. Where a source
+> gives a range the data takes a mid-range value, and `/sources` links the range.
+>
+> What is not priced, and would only move the line towards the EOR: your team's own time on the
+> entity (management, HR, working with the accountant), the months a liquidation takes (a GmbH
+> needs 14–24, with its fixed costs still running), and the misclassification and
+> permanent-establishment exposure an EOR takes on. I left them out rather than guess: an earlier
+> version priced the team's time with the World Bank's *Paying Taxes* hours, until a review
+> pointed out that those hours are for a 60-employee firm and overlap with the accountant and
+> payroll fees already counted. There is no hidden "risk" percentage either — nobody publishes
+> one I could cite — so penalty regimes (Germany's 1% a month on late contributions, Spain's
+> 10–20% surcharges, ZUS's up to 100%) are listed as notes instead of being turned into a number.
 
 ### <a name="compare"></a> Two countries side by side
 
@@ -166,7 +176,7 @@ figure by figure: ✅ agrees, ⚠️ differs.
 >
 > | Country | Deel's guide | Official 2026 |
 > |---|---|---|
-> | 🇩🇪 long-term care, employer | 1.7% | 1.8% (since 2025) |
+> | 🇩🇪 long-term care, employer | 1.7% | 1.8% |
 > | 🇩🇪 insolvency levy | 0.06% | 0.15% (§ 360 SGB III) |
 > | 🇬🇧 National Living Wage | £12.21/h ("as of April 2025") | £12.71/h from 01.04.2026 |
 > | 🇵🇱 pension/disability ceiling | PLN 260,190 (the 2025 limit) | PLN 282,600 |
@@ -326,11 +336,11 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 
 > :godmode: Coverage says a line ran; it does not say a test would notice the line being wrong.
 > So the logic modules (`calc`, `money`, `parser`, `freshness`, `fx`, `models`) are also
-> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,117 small deliberate bugs,
+> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,111 small deliberate bugs,
 > each run against the suite. The first run caught **84%**. The survivors were real holes — a
 > salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
 > wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
-> **96.8%** are caught, and the 36 left alive are equivalent mutants (`//` vs `/` on positive
+> **96.8%** are caught, and the 35 left alive are equivalent mutants (`//` vs `/` on positive
 > numbers, a temp file's name, the wording of a log line).
 >
 > ```bash

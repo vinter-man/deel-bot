@@ -179,24 +179,11 @@
         "amount": "2.33",
         "kind": "official",
         "source": "https://www.gesetze-im-internet.de/jvkostg/anlage.html"
-      },
-      {
-        "name": "Company doctor",
-        "amount": "1.71",
-        "perEmployee": true,
-        "kind": "estimate",
-        "source": "https://www.provestiga.de/beitrag/betriebsarzt-kosten-fuer-arbeitgeber.html"
       }
     ],
     "setupTime": {
       "weeks": 7,
       "source": "https://lawyersgermany.com/starting-a-gmbh-in-germany/"
-    },
-    "adminTime": {
-      "hoursPerYear": 218,
-      "hoursSource": "https://archive.doingbusiness.org/content/dam/doingBusiness/country/g/germany/DEU.pdf",
-      "hourlyCost": "45.00",
-      "hourlyCostSource": "https://ec.europa.eu/eurostat/databrowser/view/lc_lci_lev/default/table"
     },
     "exitCost": [
       {

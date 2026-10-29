@@ -45,7 +45,6 @@ def country_data(**overrides: Any) -> dict[str, Any]:
             # Zero by default so the arithmetic in the older tests stays round; tests of these
             # costs set them explicitly (see test_calc.hidden).
             "setupTime": {"weeks": 0, "source": src},
-            "adminTime": {"hoursPerYear": 0, "hoursSource": src, "hourlyCost": "0", "hourlyCostSource": src},
             "exitCost": [{"name": "Closing", "amount": "0", "kind": "estimate", "source": src}],
         },
         "deelGuide": {

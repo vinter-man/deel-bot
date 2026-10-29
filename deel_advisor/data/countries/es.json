@@ -169,12 +169,6 @@
       "weeks": 16,
       "source": "https://www.lawants.com/en/timeline-company-setup-spain/"
     },
-    "adminTime": {
-      "hoursPerYear": 143,
-      "hoursSource": "https://web.archive.org/web/20200614101943/https://www.doingbusiness.org/content/dam/doingBusiness/country/s/spain/ESP.pdf",
-      "hourlyCost": "26.40",
-      "hourlyCostSource": "https://ec.europa.eu/eurostat/databrowser/view/lc_lci_lev/default/table"
-    },
     "exitCost": [
       {
         "name": "Dissolution and liquidation",
@@ -190,7 +184,6 @@
     "notes": [
       "Sociedad Limitada. The legal minimum capital is EUR 1 since 2022; EUR 3,000 is the usual choice.",
       "Formation for a foreign parent: EUR 500-3,500 including notary and registry; EUR 2,000 is the midpoint.",
-      "Not included: the external prevention service (servicio de prevención ajeno), required from the first employee; no published price found.",
       "Late Social Security contributions carry a 10% or 20% surcharge (LGSS art. 30)."
     ]
   },

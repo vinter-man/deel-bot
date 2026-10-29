@@ -187,9 +187,7 @@ async def test_plan_flow_through_buttons(dispatcher: Dispatcher, env: Any) -> No
 async def test_sources(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _message("/sources Spain"))
-    parts = [m.text for m in session.sent()]
-    assert len(parts) >= 2  # long enough to be split, and split at block boundaries
-    text = "\n\n".join(parts)
+    text = "\n\n".join(m.text for m in session.sent())  # one message or several, joined back
     assert "boe.es" in text
     assert "deel.com" in text
     assert "Deel Payroll" in text

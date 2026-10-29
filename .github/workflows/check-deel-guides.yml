@@ -19,4 +19,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
-      - run: uv run python scripts/check_deel_guides.py --strict ${{ inputs.countries }}
+      - name: Check
+        # Through an environment variable, never interpolated into the script: the input is text.
+        env:
+          COUNTRIES: ${{ inputs.countries }}
+        run: |
+          # shellcheck disable=SC2086 # split on purpose: one argument per country code
+          uv run python scripts/check_deel_guides.py --strict $COUNTRIES

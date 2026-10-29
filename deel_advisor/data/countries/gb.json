@@ -83,6 +83,12 @@
         "source": "https://www.theaccountancy.co.uk/pricing"
       },
       {
+        "name": "Statutory audit (£9,735 a year)",
+        "amount": "811.25",
+        "kind": "estimate",
+        "source": "https://thp.co.uk/accountancy-services/audit-services/audit-fees-what-you-should-expect-to-pay"
+      },
+      {
         "name": "Registered office",
         "amount": "40.00",
         "kind": "estimate",
@@ -120,26 +126,20 @@
       "weeks": 12,
       "source": "https://www.rsmuk.com/insights/considerations-for-international-businesses-when-setting-up-in-the-uk/branch-vs-subsidiary"
     },
-    "adminTime": {
-      "hoursPerYear": 114,
-      "hoursSource": "https://archive.doingbusiness.org/content/dam/doingBusiness/country/u/united-kingdom/GBR.pdf",
-      "hourlyCost": "24.08",
-      "hourlyCostSource": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/bulletins/annualsurveyofhoursandearnings/latest"
-    },
     "exitCost": [
       {
-        "name": "Members' voluntary liquidation",
-        "amount": "5623.75",
-        "kind": "estimate",
-        "source": "https://www.gov.uk/government/publications/members-voluntary-liquidations-a-statistical-review-of-mvl-practice-and-outcomes/members-voluntary-liquidations-a-statistical-review-of-mvl-practice-and-outcomes"
+        "name": "Voluntary strike-off (DS01)",
+        "amount": "13.00",
+        "kind": "official",
+        "source": "https://www.gov.uk/government/publications/companies-house-fees/companies-house-fees"
       }
     ],
     "notes": [
+      "Audit: a UK subsidiary is exempt only if its whole worldwide group is small — at most two of £15m turnover, £7.5m balance sheet, 50 staff (s479 Companies Act 2006). The audit is priced at a firm's published starting fee; take it out if your group is small.",
       "Private limited company; no minimum share capital.",
       "Employers' liability insurance is a legal requirement from the first employee.",
-      "A foreign-owned UK subsidiary is audit-exempt only if the whole worldwide group is small (s479 Companies Act 2006); the audit is not priced here.",
-      "Hourly cost: ONS median full-time pay (April 2026) plus employer NIC and 3% pension.",
-      "Late payroll reports: £100 a month for 1-9 employees; late PAYE 1-4% plus 5% at 6 and 12 months."
+      "Late payroll reports: £100 a month for 1-9 employees; late PAYE 1-4% plus 5% at 6 and 12 months.",
+      "Closing: a solvent company with nothing left to distribute can be struck off for £13; one with assets to return goes through a members' voluntary liquidation, not priced here."
     ]
   },
   "deelGuide": {

@@ -97,20 +97,16 @@ class EntityCost:
 
     `bridge_months` is the setup time: until the entity can run payroll, the team is employed
     through the EOR anyway (or not at all), so those months carry the EOR fee on the entity side.
-    `admin_monthly` is your own team's time on tax and payroll compliance, which an EOR does
-    for you; `exit` is closing the entity at the end of the horizon.
+    `exit` is closing the entity at the end of the horizon. The monthly overhead runs from
+    incorporation, setup months included: the company keeps books and an address before its
+    first payroll.
     """
 
     setup: Decimal
     exit: Decimal
     monthly_fixed: Decimal
-    admin_monthly: Decimal
     per_employee_monthly: Decimal
     bridge_months: int
-
-    @property
-    def overhead_monthly(self) -> Decimal:
-        return self.monthly_fixed + self.admin_monthly
 
 
 WEEKS_PER_MONTH = Decimal(52) / 12
@@ -124,12 +120,10 @@ def entity_cost(country: Country, payroll_fee: Decimal | None = None) -> EntityC
     per_employee = [i.amount for i in items if i.per_employee and not (payroll_fee is not None and i.payroll)]
     if payroll_fee is not None:
         per_employee.append(payroll_fee)
-    admin = entity.admin_time
     return EntityCost(
         setup=sum((item.amount for item in entity.setup_cost), ZERO),
         exit=sum((item.amount for item in entity.exit_cost), ZERO),
         monthly_fixed=sum((item.amount for item in items if not item.per_employee), ZERO),
-        admin_monthly=cents(admin.hourly_cost * admin.hours_per_year / MONTHS_PER_YEAR),
         per_employee_monthly=sum(per_employee, ZERO),
         # Part of a month is a month: payroll runs monthly, so 7 weeks means two EOR invoices.
         # (Not `-(-a // b)`: Decimal's `//` truncates towards zero rather than flooring.)
@@ -148,7 +142,7 @@ def breakeven_people(entity: EntityCost, eor_fee: Decimal, months: int) -> int |
     margin = (eor_fee - entity.per_employee_monthly) * running
     if margin <= 0:
         return None
-    overhead = entity.setup + entity.exit + entity.overhead_monthly * months
+    overhead = entity.setup + entity.exit + entity.monthly_fixed * months
     return int(overhead // margin) + 1
 
 
@@ -156,10 +150,11 @@ def breakeven_months(entity: EntityCost, eor_fee: Decimal, people: int) -> int |
     """Shortest horizon over which the entity is strictly cheaper; None if it never is.
 
     For a horizon M past the setup months the entity's advantage is
-    `M × slope − (setup + exit + bridge months × people × margin)`.
+    `M × slope − (setup + exit + bridge months × people × margin)`, where the slope is what the
+    team saves a month minus the monthly overhead.
     """
     per_person = eor_fee - entity.per_employee_monthly
-    slope = per_person * people - entity.overhead_monthly
+    slope = per_person * people - entity.monthly_fixed
     if slope <= 0:
         return None
     sunk = entity.setup + entity.exit + per_person * people * entity.bridge_months
@@ -197,16 +192,11 @@ class Plan:
         return self.eor_fee * self.people * self.bridge_months
 
     @property
-    def admin(self) -> Decimal:
-        return self.entity.admin_monthly * self.months
-
-    @property
     def entity_overhead(self) -> Decimal:
         return (
             self.entity.setup
             + self.entity.exit
             + self.entity.monthly_fixed * self.months
-            + self.admin
             + self.entity.per_employee_monthly * self.people * self.running_months
             + self.bridge_fees
         )

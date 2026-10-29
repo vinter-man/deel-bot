@@ -68,9 +68,8 @@ def test_rejects_non_positive_salary(testland: Country) -> None:
 def test_entity_cost_splits_fixed_and_per_employee(testland: Country) -> None:
     entity = calc.entity_cost(testland)
     assert entity == calc.EntityCost(
-        setup=D(2400), exit=D(0), monthly_fixed=D(300), admin_monthly=D(0), per_employee_monthly=D(50), bridge_months=0
+        setup=D(2400), exit=D(0), monthly_fixed=D(300), per_employee_monthly=D(50), bridge_months=0
     )
-    assert entity.overhead_monthly == D(300)
 
 
 def test_deel_payroll_replaces_the_local_provider(testland: Country) -> None:
@@ -176,11 +175,10 @@ def test_breakeven_people_floors_rather_than_rounds(testland: Country) -> None:
 
 @pytest.fixture
 def hidden() -> Country:
-    """Testland with a 6-week setup, 120 admin hours a year at €40 and €1,000 to close."""
+    """Testland with a 6-week setup and €1,000 to close."""
     data = country_data()
     src = "https://example.gov/rates"
     data["entity"]["setupTime"] = {"weeks": 6, "source": src}
-    data["entity"]["adminTime"] = {"hoursPerYear": 120, "hoursSource": src, "hourlyCost": "40", "hourlyCostSource": src}
     data["entity"]["exitCost"] = [{"name": "Closing", "amount": "1000", "kind": "estimate", "source": src}]
     return Country.model_validate(data)
 
@@ -195,13 +193,13 @@ def test_setup_weeks_round_up_to_whole_payroll_months(weeks: int, months: int) -
 
 def test_hidden_costs_on_the_entity_side(hidden: Country) -> None:
     entity = calc.entity_cost(hidden)
-    assert (entity.bridge_months, entity.admin_monthly, entity.exit) == (2, D(400), D(1000))
+    assert (entity.bridge_months, entity.exit) == (2, D(1000))
     plan = calc.plan(hidden, D(48_000), eor_fee=D(550), people=3, months=12)
     assert plan.bridge_fees == D(550 * 3 * 2)  # two months on the EOR while the entity is set up
     assert plan.running_months == 10
-    # setup + exit + 12 × (fixed + admin) + payroll for the running months + the bridge fees
-    assert plan.entity_overhead == D(2400 + 1000 + 12 * (300 + 400) + 50 * 3 * 10 + 3300)
-    assert plan.entity_saving == plan.eor_fees - plan.entity_overhead == D(19_800 - 16_600)
+    # setup + exit + 12 months of fixed costs + payroll for the running months + the bridge fees
+    assert plan.entity_overhead == D(2400 + 1000 + 12 * 300 + 50 * 3 * 10 + 3300)
+    assert plan.entity_saving == plan.eor_fees - plan.entity_overhead == D(19_800 - 11_800)
 
 
 def test_horizon_shorter_than_setup(hidden: Country) -> None:
