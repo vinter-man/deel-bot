@@ -5,12 +5,16 @@
     },
     {
       "in": {
-        "html": "🌐 Choose your language · Оберіть мову · Выберите язык",
+        "html": "🌐 Choose your language · Sprache wählen · Elige idioma · Wybierz język · Изберете език",
         "keyboard": [
           [
             "🇬🇧 English",
-            "🇺🇦 Українська",
-            "Русский"
+            "🇩🇪 Deutsch",
+            "🇪🇸 Español"
+          ],
+          [
+            "🇵🇱 Polski",
+            "🇧🇬 Български"
           ]
         ]
       }
@@ -113,7 +117,7 @@
     },
     {
       "in": {
-        "html": "<b>United Kingdom vs Poland</b> · £50,000 gross a year\n\n🇬🇧 <b>United Kingdom</b>: £58,063 a year · +16.1%\n   EOR £451 a month · entity from 1 person (12 mo)\n🇵🇱 <b>Poland</b>: £60,240 a year · +20.5%\n   in PLN: 316,676 zł\n   EOR £451 a month · entity from 2 people (12 mo)\n\n💡 United Kingdom is cheaper to employ in by ~£2,177 a year (3.6% less).\n<i>Converted at ECB rates of 28.10.2026.</i>\n\n⚠️ Deel's guide says minimum wage: £12.21/h; officially from 01.04.2026: £12.71/h (<a href=\"https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour\">source</a>).\n⚠️ Deel's guide says pension contribution ceiling: 260,190 zł/yr; officially from 01.01.2026: 282,600 zł/yr (<a href=\"https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r.\">source</a>).",
+        "html": "<b>United Kingdom vs Poland</b> · £50,000 gross a year\n\n🇬🇧 <b>United Kingdom</b>: £58,063 a year · +16.1%\n   EOR £451 a month · entity from 1 person (12 mo)\n🇵🇱 <b>Poland</b>: £60,240 a year · +20.5%\n   in PLN: 316,676 zł\n   EOR £451 a month · entity from 2 people (12 mo)\n\n💡 Cheaper: United Kingdom, by ~£2,177 a year (3.6% less).\n<i>Converted at ECB rates of 28.10.2026.</i>\n\n⚠️ Deel's guide says minimum wage: £12.21/h; officially from 01.04.2026: £12.71/h (<a href=\"https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour\">source</a>).\n⚠️ Deel's guide says pension contribution ceiling: 260,190 zł/yr; officially from 01.01.2026: 282,600 zł/yr (<a href=\"https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r.\">source</a>).",
         "keyboard": [
           [
             "📚 Sources 🇬🇧",
@@ -163,28 +167,28 @@
       }
     }
   ],
-  "ru": [
+  "de": [
     {
-      "out": "Испания 50k 3 человека 24 месяца"
+      "out": "Spanien 50k 3 Personen 24 Monate"
     },
     {
       "in": {
-        "html": "🇪🇸 <b>Испания</b> · 3 человека × 50 000 € в год · 24 месяца\n\n<b>EOR (Deel)</b>: 435 189 €\n   комиссия 538 € за человека в месяц (прайс 599 $, курс ЕЦБ на 28.10.2026)\n<b>Своё юрлицо</b>: 407 206 €\n   открытие 2 020 € + 319 € в месяц + 15 € за человека в месяц\nЗарплата + взносы, одинаково в обоих вариантах: 396 450 €\n\n💡 Для 3 человек на 24 месяца своё юрлицо дешевле на ~27 983 €.\nДля 3 человек оно окупится через 2 месяца.\n\n<i>Только прямые расходы, каждая с источником (/sources). Не учтены: недели на открытие юрлица, время вашей команды и комплаенс-риск, который EOR берёт на себя.</i>\n\n⚠️ В гайде Deel минимальная зарплата: 1 262,28 €/мес; официально с 01.01.2026: 1 221 €/мес (<a href=\"https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-3815\">источник</a>).",
+        "html": "🇪🇸 <b>Spanien</b> · 3 Personen × 50.000 € im Jahr · 24 Monate\n\n<b>EOR (Deel)</b>: 435.189 €\n   Gebühr 538 € pro Person und Monat (Listenpreis 599 $, EZB-Kurs vom 28.10.2026)\n<b>Eigene Gesellschaft</b>: 407.206 €\n   Gründung 2.020 € + 319 € im Monat + 15 € pro Person und Monat\nGehalt + Beiträge, in beiden Fällen gleich: 396.450 €\n\n💡 Für 3 Personen über 24 Monate ist die eigene Gesellschaft um ~27.983 € günstiger.\nMit 3 Personen rechnet sie sich nach 2 Monaten.\n\n<i>Nur direkte Kosten, jede mit Quelle (/sources). Nicht eingepreist: die Wochen bis zur Gründung, die Zeit deines Teams und das Compliance-Risiko, das ein EOR für dich trägt.</i>\n\n⚠️ Im Deel-Leitfaden: Mindestlohn 1.262,28 €/Mon.; amtlich ab 01.01.2026: 1.221 €/Mon. (<a href=\"https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-3815\">Quelle</a>).",
         "keyboard": [
           [
-            "6 мес.",
-            "12 мес.",
-            "• 24 мес.",
-            "36 мес."
+            "6 Mon.",
+            "12 Mon.",
+            "• 24 Mon.",
+            "36 Mon."
           ],
           [
-            "👥 Посчитать на N человек"
+            "👥 Für N Personen rechnen"
           ],
           [
-            "🔁 Сравнить с другой страной"
+            "🔁 Mit anderem Land vergleichen"
           ],
           [
-            "📚 Источники"
+            "📚 Quellen"
           ]
         ]
       }

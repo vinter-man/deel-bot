@@ -33,8 +33,8 @@ class Context:
     today: date
 
 
-def _date(value: date) -> str:
-    return value.strftime("%d.%m.%Y")
+def _date(value: date, lang: Lang) -> str:
+    return value.strftime("%d/%m/%Y" if lang == "es" else "%d.%m.%Y")
 
 
 def _money(lang: Lang, amount: Decimal, currency: str) -> str:
@@ -74,7 +74,7 @@ def warnings(lang: Lang, country: Country, ctx: Context) -> list[str]:
     if state.outdated_year:
         lines.append(t(lang, "warn.year", year=country.year, current=ctx.today.year))
     if state.unchecked_days:
-        lines.append(t(lang, "warn.unchecked", date=_date(country.official.checked_at)))
+        lines.append(t(lang, "warn.unchecked", date=_date(country.official.checked_at, lang)))
     for mismatch in state.mismatches:
         lines.append(
             t(
@@ -83,7 +83,7 @@ def warnings(lang: Lang, country: Country, ctx: Context) -> list[str]:
                 label=figure_label(lang, mismatch.key),
                 deel=figure_value(lang, mismatch.deel),
                 official=figure_value(lang, mismatch.official),
-                since=_date(mismatch.official.effective_from or country.effective_from),
+                since=_date(mismatch.official.effective_from or country.effective_from, lang),
                 url=html.escape(str(mismatch.official.source), quote=True),
             )
         )
@@ -92,7 +92,7 @@ def warnings(lang: Lang, country: Country, ctx: Context) -> list[str]:
 
 def _fx_warning(lang: Lang, ctx: Context) -> list[str]:
     if (ctx.today - ctx.rates.day).days > FX_STALE_DAYS:
-        return [t(lang, "warn.fx_old", date=_date(ctx.rates.day))]
+        return [t(lang, "warn.fx_old", date=_date(ctx.rates.day, lang))]
     return []
 
 
@@ -115,7 +115,7 @@ def _input_lines(lang: Lang, query: Query, country: Country, ctx: Context) -> li
         lines.append(t(lang, "cost.monthly_input", monthly=monthly))
     if query.currency and query.currency != country.currency:
         amount = _money(lang, query.salary, query.currency)
-        lines.append(t(lang, "cost.converted", amount=amount, date=_date(ctx.rates.day)))
+        lines.append(t(lang, "cost.converted", amount=amount, date=_date(ctx.rates.day, lang)))
     return lines
 
 
@@ -161,9 +161,9 @@ def cost(lang: Lang, query: Query, ctx: Context) -> str:
         # A band (floor and cap: UK pension, Spanish solidarity tiers) being full is not news.
         capped = f", {t(lang, 'cost.capped')}" if line.capped and c.floor is None else ""
         out.append(f"• {contribution_name(lang, c)} {rate}{capped} — {_money(lang, line.annual, cur)}")
-    out += ["", t(lang, "cost.footer", year=country.year, since=_date(country.effective_from))]
+    out += ["", t(lang, "cost.footer", year=country.year, since=_date(country.effective_from, lang))]
     if (cap_since := _ceiling_changed(country)) is not None:
-        out.append(t(lang, "cost.cap_since", date=_date(cap_since)))
+        out.append(t(lang, "cost.cap_since", date=_date(cap_since, lang)))
     if any(c.estimate for c in country.contributions):
         out.append(t(lang, "cost.estimate_note"))
 
@@ -190,15 +190,15 @@ def _pays_off(lang: Lang, result: calc.Plan) -> list[str]:
     if team is None:
         lines.append(t(lang, "plan.never_people"))
     elif team > result.people:
-        lines.append(t(lang, "plan.pays_off_people", team=i18n.people_gen(lang, team), months=horizon))
+        lines.append(t(lang, "plan.pays_off_people", team=i18n.people_for(lang, team), months=horizon))
     after = result.breakeven_months
     if after is None:
         if team is not None:
-            lines.append(t(lang, "plan.never_months", team=i18n.people_gen(lang, result.people)))
+            lines.append(t(lang, "plan.never_months", team=i18n.people_for(lang, result.people)))
     else:
         lines.append(
-            t(lang, "plan.pays_off_months", team=i18n.people_gen(lang, result.people),
-              months=i18n.months(lang, after))
+            t(lang, "plan.pays_off_months", team=i18n.people_for(lang, result.people),
+              months=i18n.months_after(lang, after))
         )  # fmt: skip
     return lines
 
@@ -208,12 +208,12 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
     cur = country.currency
     fee = eor_fee(country, ctx)
     result = calc.plan(country, local_salary(query, country, ctx.rates), fee, query.people, query.months)
-    team, horizon = i18n.people_gen(lang, query.people), i18n.months(lang, query.months)
+    team, horizon = i18n.people_for(lang, query.people), i18n.months(lang, query.months)
     eor = ctx.catalog.eor
     fee_source = ""
     if eor.currency != cur:
         list_price = _money(lang, eor.monthly_fee, eor.currency)
-        fee_source = " " + t(lang, "plan.eor_fx", price=list_price, date=_date(ctx.rates.day))
+        fee_source = " " + t(lang, "plan.eor_fx", price=list_price, date=_date(ctx.rates.day, lang))
 
     out = [
         t(lang, "plan.header", flag=country.flag, country=country_name(lang, country),
@@ -240,7 +240,7 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
     out += _pays_off(lang, result)
     out += ["", t(lang, "plan.note")]
     if (cap_since := _ceiling_changed(country)) is not None:
-        out.append(t(lang, "cost.cap_since", date=_date(cap_since)))
+        out.append(t(lang, "cost.cap_since", date=_date(cap_since, lang)))
     extra = warnings(lang, country, ctx) + _fx_warning(lang, ctx)
     if extra:
         out += ["", *extra]
@@ -277,7 +277,7 @@ def compare(lang: Lang, query: Query, ctx: Context) -> str:
         if team is None:
             out.append("   " + t(lang, "compare.row_never", fee=fee_text))
         else:
-            out.append("   " + t(lang, "compare.row_eor", fee=fee_text, team=i18n.people_gen(lang, team)))
+            out.append("   " + t(lang, "compare.row_eor", fee=fee_text, team=i18n.people_for(lang, team)))
 
     (c1, total1, _), (c2, total2, _) = totals
     if whole(total1) != whole(total2):
@@ -290,7 +290,7 @@ def compare(lang: Lang, query: Query, ctx: Context) -> str:
               rate=rate),
         ]  # fmt: skip
     if first.currency != common or second.currency != common or query.currency:
-        out.append(t(lang, "compare.fx", date=_date(ctx.rates.day)))
+        out.append(t(lang, "compare.fx", date=_date(ctx.rates.day, lang)))
     extra = warnings(lang, first, ctx) + warnings(lang, second, ctx) + _fx_warning(lang, ctx)
     if extra:
         out += ["", *extra]
@@ -312,8 +312,8 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
     out = [
         t(lang, "sources.header", flag=country.flag, country=country_name(lang, country)),
         "",
-        t(lang, "sources.rates", year=country.year, since=_date(country.effective_from),
-          checked=_date(country.official.checked_at)),
+        t(lang, "sources.rates", year=country.year, since=_date(country.effective_from, lang),
+          checked=_date(country.official.checked_at, lang)),
     ]  # fmt: skip
     for c in country.contributions:
         rate = ("~" if c.estimate else "") + format_rate(c.rate, lang)
@@ -342,9 +342,9 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
         "",
         t(lang, "sources.eor", provider=html.escape(eor.provider),
           fee=_money(lang, eor.monthly_fee, eor.currency),
-          url=html.escape(str(eor.source), quote=True), checked=_date(eor.checked_at)),
+          url=html.escape(str(eor.source), quote=True), checked=_date(eor.checked_at, lang)),
         t(lang, "sources.guide", url=html.escape(str(guide.url), quote=True),
-          checked=_date(guide.checked_at)),
+          checked=_date(guide.checked_at, lang)),
     ]  # fmt: skip
     bad = {m.key: m for m in freshness.mismatches(country)}
     for key in sorted(guide.figures.keys() & country.official.figures.keys()):
@@ -359,7 +359,7 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
     notes = [*country.notes, *country.entity.notes]
     if notes:
         out += ["", t(lang, "sources.notes"), *(f"• {html.escape(note)}" for note in notes)]
-    out += ["", t(lang, "sources.fx", date=_date(ctx.rates.day))]
+    out += ["", t(lang, "sources.fx", date=_date(ctx.rates.day, lang))]
     return "\n".join(out)
 
 

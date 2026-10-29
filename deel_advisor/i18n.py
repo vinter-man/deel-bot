@@ -1,6 +1,7 @@
-"""The bot's copy in English, Ukrainian and Russian.
+"""The bot's copy in the languages of the countries it covers: English, German, Spanish, Polish
+and Bulgarian.
 
-Plain dictionaries rather than gettext: three languages and ~90 strings do not need a build
+Plain dictionaries rather than gettext: five languages and ~95 strings do not need a build
 step, and a test makes sure every key exists in every language with the same placeholders.
 """
 
@@ -8,67 +9,105 @@ from __future__ import annotations
 
 from typing import Final, Literal
 
-Lang = Literal["en", "uk", "ru"]
-LANGS: Final[tuple[Lang, ...]] = ("en", "uk", "ru")
+Lang = Literal["en", "de", "es", "pl", "bg"]
+LANGS: Final[tuple[Lang, ...]] = ("en", "de", "es", "pl", "bg")
 DEFAULT: Final[Lang] = "en"
-LANG_NAMES: Final[dict[Lang, str]] = {"en": "🇬🇧 English", "uk": "🇺🇦 Українська", "ru": "Русский"}
+LANG_NAMES: Final[dict[Lang, str]] = {
+    "en": "🇬🇧 English",
+    "de": "🇩🇪 Deutsch",
+    "es": "🇪🇸 Español",
+    "pl": "🇵🇱 Polski",
+    "bg": "🇧🇬 Български",
+}
 
 
 def pick_lang(code: str | None) -> Lang:
-    """A Telegram `language_code` to one of ours; `uk` and `ru` as themselves, else English."""
+    """A Telegram `language_code` (`de`, `pl-PL`, …) to one of ours, else English."""
     if code:
         base = code.split("-")[0].lower()
-        if base == "uk":
-            return "uk"
-        if base in ("ru", "be", "kk"):
-            return "ru"
+        for lang in LANGS:
+            if base == lang:
+                return lang
     return DEFAULT
 
 
-def plural(lang: Lang, n: int, forms: tuple[str, str, str]) -> str:
-    """forms = (one, few, many); English uses only one/many."""
-    if lang == "en":
-        return forms[0] if n == 1 else forms[2]
-    if n % 10 == 1 and n % 100 != 11:
-        return forms[0]
-    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
-        return forms[1]
-    return forms[2]
+Category = Literal["one", "few", "many"]
 
 
-_PEOPLE: dict[Lang, tuple[str, str, str]] = {
-    "en": ("person", "people", "people"),
-    "uk": ("особа", "особи", "осіб"),
-    "ru": ("человек", "человека", "человек"),
+def category(lang: Lang, n: int) -> Category:
+    """CLDR plural category. Polish alone has "few": 2–4, except 12–14 (22 osoby, 25 osób)."""
+    if n == 1:
+        return "one"
+    if lang == "pl" and 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return "few"
+    return "many"
+
+
+Forms = dict[Category, str]
+
+
+def _forms(one: str, few: str, many: str | None = None) -> Forms:
+    return {"one": one, "few": few, "many": few if many is None else many}
+
+
+# A noun after a number takes a different form depending on what the sentence does with it:
+# Polish "5 osób" but "dla 1 osoby", German "12 Monate" but "nach 2 Monaten". The templates only
+# put a count in one of these four slots, and each slot has its own forms.
+_PEOPLE: Final[dict[Lang, Forms]] = {  # a headline count: "5 people"
+    "en": _forms("person", "people"),
+    "de": _forms("Person", "Personen"),
+    "es": _forms("persona", "personas"),
+    "pl": _forms("osoba", "osoby", "osób"),
+    "bg": _forms("служител", "служители"),
 }
-# After "for"/"from" Russian and Ukrainian need the genitive: "для 3 человек", "від 9 осіб".
-_PEOPLE_GEN: dict[Lang, tuple[str, str, str]] = {
-    "en": ("person", "people", "people"),
-    "uk": ("особи", "осіб", "осіб"),
-    "ru": ("человека", "человек", "человек"),
+_PEOPLE_FOR: Final[dict[Lang, Forms]] = {  # after "for", "from", "with": "dla 3 osób"
+    "en": _forms("person", "people"),
+    "de": _forms("Person", "Personen"),
+    "es": _forms("persona", "personas"),
+    "pl": _forms("osoby", "osób"),
+    "bg": _forms("служител", "служители"),
 }
-_MONTHS: dict[Lang, tuple[str, str, str]] = {
-    "en": ("month", "months", "months"),
-    "uk": ("місяць", "місяці", "місяців"),
-    "ru": ("месяц", "месяца", "месяцев"),
+_MONTHS: Final[dict[Lang, Forms]] = {  # a duration: "over 12 months", "przez 2 miesiące"
+    "en": _forms("month", "months"),
+    "de": _forms("Monat", "Monate"),
+    "es": _forms("mes", "meses"),
+    "pl": _forms("miesiąc", "miesiące", "miesięcy"),
+    "bg": _forms("месец", "месеца"),
 }
+_MONTHS_AFTER: Final[dict[Lang, Forms]] = {  # "after 2 months": "nach 2 Monaten", "po 2 miesiącach"
+    "en": _forms("month", "months"),
+    "de": _forms("Monat", "Monaten"),
+    "es": _forms("mes", "meses"),
+    "pl": _forms("miesiącu", "miesiącach"),
+    "bg": _forms("месец", "месеца"),
+}
+
+
+def _count(table: dict[Lang, Forms], lang: Lang, n: int) -> str:
+    return f"{n} {table[lang][category(lang, n)]}"
 
 
 def people(lang: Lang, n: int) -> str:
-    return f"{n} {plural(lang, n, _PEOPLE[lang])}"
+    return _count(_PEOPLE, lang, n)
 
 
-def people_gen(lang: Lang, n: int) -> str:
-    return f"{n} {plural(lang, n, _PEOPLE_GEN[lang])}"
+def people_for(lang: Lang, n: int) -> str:
+    return _count(_PEOPLE_FOR, lang, n)
 
 
 def months(lang: Lang, n: int) -> str:
-    return f"{n} {plural(lang, n, _MONTHS[lang])}"
+    return _count(_MONTHS, lang, n)
 
+
+def months_after(lang: Lang, n: int) -> str:
+    return _count(_MONTHS_AFTER, lang, n)
+
+
+_PROMPT = "🌐 Choose your language · Sprache wählen · Elige idioma · Wybierz język · Изберете език"
 
 MESSAGES: Final[dict[Lang, dict[str, str]]] = {
     "en": {
-        "lang.prompt": "🌐 Choose your language · Оберіть мову · Выберите язык",
+        "lang.prompt": _PROMPT,
         "lang.set": "Language: English. Change it any time with /lang.",
         "start": (
             "👋 <b>Hire-or-Entity Advisor</b> <i>(unofficial)</i>\n\n"
@@ -127,7 +166,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "compare.row_local": "in {currency}: {total}",
         "compare.row_eor": "EOR {fee} a month · entity from {team} (12 mo)",
         "compare.row_never": "EOR {fee} a month · entity never pays off",
-        "compare.cheaper": "💡 {country} is cheaper to employ in by ~{diff} a year ({rate} less).",
+        "compare.cheaper": "💡 Cheaper: {country}, by ~{diff} a year ({rate} less).",
         "compare.fx": "<i>Converted at ECB rates of {date}.</i>",
         "sources.header": "{flag} <b>{country}: sources</b>",
         "sources.rates": "<b>Rates {year}</b>, in force since {since} · checked {checked}",
@@ -177,227 +216,451 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "usage.free": "Try <code>Germany 80k</code> or /help.",
         "stats": "<b>Since start</b> ({since})\n{lines}",
     },
-    "uk": {
-        "lang.prompt": "🌐 Choose your language · Оберіть мову · Выберите язык",
-        "lang.set": "Мова: українська. Змінити будь-коли: /lang.",
+    "de": {
+        "lang.prompt": _PROMPT,
+        "lang.set": "Sprache: Deutsch. Ändern kannst du sie jederzeit mit /lang.",
         "start": (
-            "👋 <b>Hire-or-Entity Advisor</b> <i>(неофіційний)</i>\n\n"
-            "Напишіть країну, річну зарплату брутто й розмір команди — покажу повну вартість "
-            "для роботодавця, EOR проти власної юрособи і коли юрособа почне окуповуватися.\n\n"
-            "Спробуйте: <code>Germany 80k 5 people</code>\n\n"
-            "{countries}\n/help — усі команди"
+            "👋 <b>Hire-or-Entity Advisor</b> <i>(inoffiziell)</i>\n\n"
+            "Nenne mir ein Land, ein Bruttojahresgehalt und eine Teamgröße – ich zeige die vollen "
+            "Arbeitgeberkosten, EOR im Vergleich zur eigenen Gesellschaft und ab wann sich die "
+            "Gesellschaft rechnet.\n\n"
+            "Probier: <code>Deutschland 80k 5 Personen</code>\n\n"
+            "{countries}\n/help – alle Befehle"
+        ),
+        "help": (
+            "<b>Befehle</b>\n"
+            "/cost <code>Land Gehalt [Währung]</code> – Arbeitgeberkosten mit Aufschlüsselung\n"
+            "/plan <code>Land Gehalt Personen [Monate]</code> – EOR oder eigene Gesellschaft, Break-even\n"
+            "/compare <code>Land1 Land2 Gehalt</code> – zwei Länder nebeneinander\n"
+            "/sources <code>Land</code> – woher jede Zahl stammt\n"
+            "/lang – Sprache ändern\n\n"
+            "Oder einfach schreiben: <code>Bulgarien 60000 EUR</code>, <code>Spanien 50k 3 Personen 24 Monate</code>, "
+            "<code>Deutschland vs Polen 70k</code>.\n"
+            "Gehälter sind <b>Jahresbrutto</b>; für ein Monatsgehalt <code>/mo</code> anhängen.\n\n"
+            "{countries}\n\n"
+            "<i>Inoffiziell, nur Schätzungen, keine Rechts- oder Steuerberatung.</i>"
+        ),
+        "countries": "Länder: {list}",
+        "cost.header": "{flag} <b>{country}</b> · {salary} brutto im Jahr",
+        "cost.monthly_input": "{monthly} im Monat × 12",
+        "cost.converted": "≈ {amount} zum EZB-Kurs vom {date}",
+        "cost.total": "Arbeitgeberkosten: <b>{annual}</b> im Jahr · {monthly} im Monat",
+        "cost.burden": "Zusätzlich zum Gehalt: +{amount} im Jahr ({rate})",
+        "cost.capped": "gedeckelt",
+        "cost.footer": (
+            "<i>Sätze {year}, gültig seit {since}. Abrechnungszeilen auf den Cent gerundet, "
+            "in ganzen Beträgen angezeigt.</i>"
+        ),
+        "cost.estimate_note": "<i>~ typischer Satz, hängt vom Arbeitgeber ab.</i>",
+        "cost.cap_since": "<i>Beitragsbemessungsgrenze ab {date}, auf jeden Monat angewandt.</i>",
+        "cost.below_min_wage": "⚠️ Unter dem Mindestlohn {year} ({minimum} im Jahr).",
+        "cost.monthly_hint": "Ich erwarte ein <b>Jahresgehalt</b>; für ein Monatsgehalt schreib <code>{example}</code>.",
+        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} im Jahr · {months}",
+        "plan.eor": "<b>EOR ({provider})</b>: {total}",
+        "plan.eor_detail": "Gebühr {fee} pro Person und Monat",
+        "plan.eor_fx": "(Listenpreis {price}, EZB-Kurs vom {date})",
+        "plan.entity": "<b>Eigene Gesellschaft</b>: {total}",
+        "plan.entity_detail": "Gründung {setup} + {fixed} im Monat + {per_employee} pro Person und Monat",
+        "plan.same": "Gehalt + Beiträge, in beiden Fällen gleich: {amount}",
+        "plan.eor_cheaper": "💡 Für {team} über {months} ist EOR um ~{diff} günstiger.",
+        "plan.entity_cheaper": "💡 Für {team} über {months} ist die eigene Gesellschaft um ~{diff} günstiger.",
+        "plan.even": "💡 Für {team} über {months} kosten beide etwa gleich viel.",
+        "plan.pays_off_people": "Eine Gesellschaft rechnet sich ab {team} (über {months}).",
+        "plan.pays_off_months": "Mit {team} rechnet sie sich nach {months}.",
+        "plan.never_months": "Mit {team} rechnet sie sich nie: Die Fixkosten fressen die Ersparnis.",
+        "plan.never_people": "Zu diesen Preisen rechnet sich eine Gesellschaft nie.",
+        "plan.note": (
+            "<i>Nur direkte Kosten, jede mit Quelle (/sources). Nicht eingepreist: die Wochen bis zur "
+            "Gründung, die Zeit deines Teams und das Compliance-Risiko, das ein EOR für dich trägt.</i>"
+        ),
+        "compare.header": "<b>{a} vs. {b}</b> · {salary} brutto im Jahr",
+        "compare.row": "{flag} <b>{country}</b>: {total} im Jahr · +{rate}",
+        "compare.row_local": "in {currency}: {total}",
+        "compare.row_eor": "EOR {fee} im Monat · Gesellschaft ab {team} (12 Mon.)",
+        "compare.row_never": "EOR {fee} im Monat · Gesellschaft rechnet sich nie",
+        "compare.cheaper": "💡 Günstiger: {country}, um ~{diff} im Jahr ({rate} weniger).",
+        "compare.fx": "<i>Umgerechnet zu EZB-Kursen vom {date}.</i>",
+        "sources.header": "{flag} <b>{country}: Quellen</b>",
+        "sources.rates": "<b>Sätze {year}</b>, gültig seit {since} · geprüft am {checked}",
+        "sources.entity": "<b>Eigene Gesellschaft</b> (Schätzungen, sofern nicht als amtlich markiert)",
+        "sources.official": "amtlich",
+        "sources.per_person": "/Mon. pro Person",
+        "sources.notes": "<b>Hinweise</b> (auf Englisch)",
+        "sources.capital": "Stammkapital {amount}: bleibt in der Gesellschaft, keine Kosten",
+        "sources.eor": '<b>EOR-Preis</b>: {provider} ab {fee} im Monat · <a href="{url}">Preise</a>, geprüft am {checked}',
+        "sources.guide": '<b>Deel-Leitfaden</b> · <a href="{url}">Seite</a>, geprüft am {checked}',
+        "sources.guide_ok": "✅ {label}: {value}",
+        "sources.guide_bad": "⚠️ {label}: Deel {deel}, amtlich {official}",
+        "sources.fx": "Wechselkurse: EZB-Referenzkurse vom {date}.",
+        "warn.year": "⚠️ Das sind Sätze für {year}; für {current} können die Zahlen abweichen.",
+        "warn.unchecked": "⚠️ Amtliche Zahlen zuletzt geprüft am {date}.",
+        "warn.mismatch": (
+            '⚠️ Im Deel-Leitfaden: {label} {deel}; amtlich ab {since}: {official} (<a href="{url}">Quelle</a>).'
+        ),
+        "warn.fx_old": "⚠️ Wechselkurse vom {date}.",
+        "btn.compare": "🔁 Mit anderem Land vergleichen",
+        "btn.plan": "👥 Für N Personen rechnen",
+        "btn.sources": "📚 Quellen",
+        "btn.months": "{n} Mon.",
+        "pick.country": "{country} vergleichen mit:",
+        "pick.people": "Wie viele Personen?",
+        "err.empty": "Schick ein Land und ein Jahresgehalt, z. B. <code>Deutschland 80k</code>.",
+        "err.no_country": "Welches Land? {countries}",
+        "err.no_salary": "Ich brauche auch ein Bruttojahresgehalt, z. B. <code>{example}</code>.",
+        "err.unknown_word": "„{word}“ kenne ich nicht.",
+        "err.unknown_word_suggest": "„{word}“ kenne ich nicht. Meintest du <b>{suggestion}</b>?",
+        "err.unknown_currency": "Für {currency} gibt es keinen EZB-Kurs. Nimm EUR, USD, GBP, PLN oder eine andere EZB-Währung.",
+        "err.salary_too_low": "Für ein Jahresgehalt zu niedrig (mindestens {minimum}). Monatlich? <code>/mo</code> anhängen.",
+        "err.salary_too_high": "Das Gehalt liegt über {maximum} – wohl ein Tippfehler.",
+        "err.people_range": "Die Teamgröße muss zwischen 1 und {maximum} liegen.",
+        "err.months_range": "Der Zeitraum muss zwischen 1 und {maximum} Monaten liegen.",
+        "err.need_two_countries": "Nenne zwei Länder: <code>/compare Germany Poland 60000</code>.",
+        "err.too_many_countries": "Hier geht nur ein Land; zum Vergleichen gibt es /compare.",
+        "err.same_country": "Das ist zweimal dasselbe Land – wähle zwei verschiedene.",
+        "err.unexpected": "„{word}“ habe ich nicht verstanden.",
+        "err.twice": "„{word}“ sagt etwas zum zweiten Mal – lass eins weg.",
+        "err.stale_button": "Diese Schaltfläche gehört zu einer alten Nachricht. Schick die Anfrage noch einmal.",
+        "err.internal": "Bei mir ist etwas schiefgelaufen. Versuch es in einer Minute noch einmal.",
+        "usage.cost": "Beispiel: <code>/cost Bulgaria 60000 EUR</code>",
+        "usage.plan": "Beispiel: <code>/plan Germany 80000 5 12</code> (Land, Gehalt, Personen, Monate)",
+        "usage.compare": "Beispiel: <code>/compare Germany Poland 60000</code>",
+        "usage.sources": "Beispiel: <code>/sources Spain</code>",
+        "usage.free": "Probier <code>Deutschland 80k</code> oder /help.",
+        "stats": "<b>Seit dem Start</b> ({since})\n{lines}",
+    },
+    "es": {
+        "lang.prompt": _PROMPT,
+        "lang.set": "Idioma: español. Cámbialo cuando quieras con /lang.",
+        "start": (
+            "👋 <b>Hire-or-Entity Advisor</b> <i>(no oficial)</i>\n\n"
+            "Dime un país, un salario bruto anual y el tamaño del equipo: te muestro el coste total "
+            "para la empresa, EOR frente a sociedad propia y desde cuándo compensa la sociedad.\n\n"
+            "Prueba: <code>España 80k 5 personas</code>\n\n"
+            "{countries}\n/help — todos los comandos"
+        ),
+        "help": (
+            "<b>Comandos</b>\n"
+            "/cost <code>país salario [moneda]</code> — coste para la empresa, desglosado\n"
+            "/plan <code>país salario personas [meses]</code> — EOR o sociedad propia, punto de equilibrio\n"
+            "/compare <code>país1 país2 salario</code> — dos países lado a lado\n"
+            "/sources <code>país</code> — de dónde sale cada cifra\n"
+            "/lang — cambiar idioma\n\n"
+            "O escribe sin más: <code>Bulgaria 60000 EUR</code>, <code>España 50k 3 personas 24 meses</code>, "
+            "<code>Alemania vs Polonia 70k</code>.\n"
+            "Los salarios son <b>brutos anuales</b>; para uno mensual añade <code>/mo</code>.\n\n"
+            "{countries}\n\n"
+            "<i>No oficial, solo estimaciones, no es asesoramiento legal ni fiscal.</i>"
+        ),
+        "countries": "Países: {list}",
+        "cost.header": "{flag} <b>{country}</b> · {salary} brutos al año",
+        "cost.monthly_input": "{monthly} al mes × 12",
+        "cost.converted": "≈ {amount} al tipo del BCE del {date}",
+        "cost.total": "Coste para la empresa: <b>{annual}</b> al año · {monthly} al mes",
+        "cost.burden": "Además del salario: +{amount} al año ({rate})",
+        "cost.capped": "con tope",
+        "cost.footer": (
+            "<i>Tipos de {year}, vigentes desde el {since}. Líneas de nómina redondeadas al céntimo, "
+            "mostradas en unidades enteras.</i>"
+        ),
+        "cost.estimate_note": "<i>~ tipo habitual, depende de la empresa.</i>",
+        "cost.cap_since": "<i>Base máxima desde el {date}, aplicada a todos los meses.</i>",
+        "cost.below_min_wage": "⚠️ Por debajo del salario mínimo de {year} ({minimum} al año).",
+        "cost.monthly_hint": "Espero un salario <b>anual</b>; para uno mensual escribe <code>{example}</code>.",
+        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} al año · {months}",
+        "plan.eor": "<b>EOR ({provider})</b>: {total}",
+        "plan.eor_detail": "cuota de {fee} por persona al mes",
+        "plan.eor_fx": "(precio de lista {price}, tipo del BCE del {date})",
+        "plan.entity": "<b>Sociedad propia</b>: {total}",
+        "plan.entity_detail": "constitución {setup} + {fixed} al mes + {per_employee} por persona al mes",
+        "plan.same": "Salario + cotizaciones, igual en ambos casos: {amount}",
+        "plan.eor_cheaper": "💡 Para {team} durante {months}, el EOR sale ~{diff} más barato.",
+        "plan.entity_cheaper": "💡 Para {team} durante {months}, la sociedad propia sale ~{diff} más barata.",
+        "plan.even": "💡 Para {team} durante {months}, ambas opciones cuestan más o menos lo mismo.",
+        "plan.pays_off_people": "Una sociedad compensa a partir de {team} (en {months}).",
+        "plan.pays_off_months": "Con {team}, se amortiza en {months}.",
+        "plan.never_months": "Con {team} no se amortiza nunca: los costes fijos se comen el ahorro.",
+        "plan.never_people": "A estos precios, una sociedad no compensa nunca.",
+        "plan.note": (
+            "<i>Solo costes directos, cada uno con su fuente (/sources). Sin incluir: las semanas que tarda "
+            "en constituirse la sociedad, el tiempo de tu equipo y el riesgo de cumplimiento que el EOR "
+            "asume por ti.</i>"
+        ),
+        "compare.header": "<b>{a} vs. {b}</b> · {salary} brutos al año",
+        "compare.row": "{flag} <b>{country}</b>: {total} al año · +{rate}",
+        "compare.row_local": "en {currency}: {total}",
+        "compare.row_eor": "EOR {fee} al mes · sociedad desde {team} (12 meses)",
+        "compare.row_never": "EOR {fee} al mes · la sociedad no compensa nunca",
+        "compare.cheaper": "💡 Más barato: {country}, ~{diff} menos al año ({rate} menos).",
+        "compare.fx": "<i>Convertido a tipos del BCE del {date}.</i>",
+        "sources.header": "{flag} <b>{country}: fuentes</b>",
+        "sources.rates": "<b>Tipos {year}</b>, vigentes desde el {since} · revisado el {checked}",
+        "sources.entity": "<b>Sociedad propia</b> (estimaciones salvo las marcadas como oficiales)",
+        "sources.official": "oficial",
+        "sources.per_person": "/mes por persona",
+        "sources.notes": "<b>Notas</b> (en inglés)",
+        "sources.capital": "Capital social {amount}: se queda en la sociedad, no es un coste",
+        "sources.eor": '<b>Precio EOR</b>: {provider} desde {fee} al mes · <a href="{url}">precios</a>, revisado el {checked}',
+        "sources.guide": '<b>Guía de Deel</b> · <a href="{url}">página</a>, revisada el {checked}',
+        "sources.guide_ok": "✅ {label}: {value}",
+        "sources.guide_bad": "⚠️ {label}: Deel {deel}, oficial {official}",
+        "sources.fx": "Divisas: tipos de referencia del BCE del {date}.",
+        "warn.year": "⚠️ Son tipos de {year}; las cifras de {current} pueden ser distintas.",
+        "warn.unchecked": "⚠️ Cifras oficiales revisadas por última vez el {date}.",
+        "warn.mismatch": (
+            "⚠️ La guía de Deel indica {label}: {deel}; oficialmente desde el {since}: {official} "
+            '(<a href="{url}">fuente</a>).'
+        ),
+        "warn.fx_old": "⚠️ Los tipos de cambio son del {date}.",
+        "btn.compare": "🔁 Comparar con otro país",
+        "btn.plan": "👥 Calcular para N personas",
+        "btn.sources": "📚 Fuentes",
+        "btn.months": "{n} meses",
+        "pick.country": "¿Con qué país comparar {country}?",
+        "pick.people": "¿Cuántas personas?",
+        "err.empty": "Envía un país y un salario anual, p. ej. <code>España 80k</code>.",
+        "err.no_country": "¿Qué país? {countries}",
+        "err.no_salary": "También necesito un salario bruto anual, p. ej. <code>{example}</code>.",
+        "err.unknown_word": "No conozco «{word}».",
+        "err.unknown_word_suggest": "No conozco «{word}». ¿Querías decir <b>{suggestion}</b>?",
+        "err.unknown_currency": "No hay tipo del BCE para {currency}. Usa EUR, USD, GBP, PLN u otra moneda del BCE.",
+        "err.salary_too_low": "Parece poco para un salario anual (mínimo {minimum}). ¿Es mensual? Añade <code>/mo</code>.",
+        "err.salary_too_high": "El salario supera {maximum}; seguramente es una errata.",
+        "err.people_range": "El tamaño del equipo debe estar entre 1 y {maximum}.",
+        "err.months_range": "El horizonte debe estar entre 1 y {maximum} meses.",
+        "err.need_two_countries": "Indica dos países: <code>/compare Germany Poland 60000</code>.",
+        "err.too_many_countries": "Aquí va un solo país; para comparar dos usa /compare.",
+        "err.same_country": "Es el mismo país dos veces; elige dos distintos.",
+        "err.unexpected": "No he entendido «{word}».",
+        "err.twice": "«{word}» repite algo que ya has dicho; deja solo uno.",
+        "err.stale_button": "Ese botón es de un mensaje antiguo. Vuelve a enviar la consulta.",
+        "err.internal": "Algo ha fallado por mi parte. Inténtalo de nuevo en un minuto.",
+        "usage.cost": "Ejemplo: <code>/cost Bulgaria 60000 EUR</code>",
+        "usage.plan": "Ejemplo: <code>/plan Germany 80000 5 12</code> (país, salario, personas, meses)",
+        "usage.compare": "Ejemplo: <code>/compare Germany Poland 60000</code>",
+        "usage.sources": "Ejemplo: <code>/sources Spain</code>",
+        "usage.free": "Prueba <code>España 80k</code> o /help.",
+        "stats": "<b>Desde el inicio</b> ({since})\n{lines}",
+    },
+    "pl": {
+        "lang.prompt": _PROMPT,
+        "lang.set": "Język: polski. Zmienisz go w każdej chwili przez /lang.",
+        "start": (
+            "👋 <b>Hire-or-Entity Advisor</b> <i>(nieoficjalny)</i>\n\n"
+            "Podaj kraj, roczne wynagrodzenie brutto i wielkość zespołu — pokażę pełny koszt "
+            "pracodawcy, EOR w porównaniu z własną spółką i od kiedy spółka zaczyna się opłacać.\n\n"
+            "Spróbuj: <code>Polska 80k 5 osób</code>\n\n"
+            "{countries}\n/help — wszystkie polecenia"
+        ),
+        "help": (
+            "<b>Polecenia</b>\n"
+            "/cost <code>kraj pensja [waluta]</code> — koszt pracodawcy z rozbiciem\n"
+            "/plan <code>kraj pensja osoby [miesiące]</code> — EOR czy własna spółka, próg opłacalności\n"
+            "/compare <code>kraj1 kraj2 pensja</code> — dwa kraje obok siebie\n"
+            "/sources <code>kraj</code> — skąd pochodzi każda liczba\n"
+            "/lang — zmiana języka\n\n"
+            "Możesz też po prostu napisać: <code>Bułgaria 60000 EUR</code>, "
+            "<code>Hiszpania 50k 3 osoby 24 miesiące</code>, <code>Niemcy vs Polska 70k</code>.\n"
+            "Wynagrodzenie to <b>roczne brutto</b>; dla miesięcznego dodaj <code>/mo</code>.\n\n"
+            "{countries}\n\n"
+            "<i>Nieoficjalne, tylko szacunki, nie jest to porada prawna ani podatkowa.</i>"
+        ),
+        "countries": "Kraje: {list}",
+        "cost.header": "{flag} <b>{country}</b> · {salary} brutto rocznie",
+        "cost.monthly_input": "{monthly} miesięcznie × 12",
+        "cost.converted": "≈ {amount} po kursie EBC z {date}",
+        "cost.total": "Koszt pracodawcy: <b>{annual}</b> rocznie · {monthly} miesięcznie",
+        "cost.burden": "Ponad wynagrodzenie: +{amount} rocznie ({rate})",
+        "cost.capped": "limit",
+        "cost.footer": (
+            "<i>Stawki na {year}, obowiązują od {since}. Pozycje listy płac zaokrąglone do grosza, "
+            "pokazane w pełnych kwotach.</i>"
+        ),
+        "cost.estimate_note": "<i>~ typowa stawka, zależy od pracodawcy.</i>",
+        "cost.cap_since": "<i>Limit składek od {date}, zastosowany do każdego miesiąca.</i>",
+        "cost.below_min_wage": "⚠️ Poniżej płacy minimalnej na {year} ({minimum} rocznie).",
+        "cost.monthly_hint": "Oczekuję wynagrodzenia <b>rocznego</b>; dla miesięcznego napisz <code>{example}</code>.",
+        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} rocznie · {months}",
+        "plan.eor": "<b>EOR ({provider})</b>: {total}",
+        "plan.eor_detail": "opłata {fee} za osobę miesięcznie",
+        "plan.eor_fx": "(cena katalogowa {price}, kurs EBC z {date})",
+        "plan.entity": "<b>Własna spółka</b>: {total}",
+        "plan.entity_detail": "założenie {setup} + {fixed} miesięcznie + {per_employee} za osobę miesięcznie",
+        "plan.same": "Wynagrodzenie + składki, tak samo w obu wariantach: {amount}",
+        "plan.eor_cheaper": "💡 Dla {team} przez {months} EOR jest tańszy o ~{diff}.",
+        "plan.entity_cheaper": "💡 Dla {team} przez {months} własna spółka jest tańsza o ~{diff}.",
+        "plan.even": "💡 Dla {team} przez {months} oba warianty kosztują mniej więcej tyle samo.",
+        "plan.pays_off_people": "Spółka opłaca się od {team} (przez {months}).",
+        "plan.pays_off_months": "Dla {team} zwraca się po {months}.",
+        "plan.never_months": "Dla {team} nigdy się nie zwraca: koszty stałe zjadają oszczędność.",
+        "plan.never_people": "Przy tych cenach spółka nigdy się nie opłaca.",
+        "plan.note": (
+            "<i>Tylko koszty bezpośrednie, każdy ze źródłem (/sources). Nie wliczono: tygodni potrzebnych "
+            "na założenie spółki, czasu twojego zespołu i ryzyka zgodności, które EOR bierze na siebie.</i>"
+        ),
+        "compare.header": "<b>{a} vs {b}</b> · {salary} brutto rocznie",
+        "compare.row": "{flag} <b>{country}</b>: {total} rocznie · +{rate}",
+        "compare.row_local": "w {currency}: {total}",
+        "compare.row_eor": "EOR {fee} miesięcznie · spółka od {team} (12 mies.)",
+        "compare.row_never": "EOR {fee} miesięcznie · spółka nigdy się nie opłaca",
+        "compare.cheaper": "💡 Taniej: {country}, o ~{diff} rocznie ({rate} mniej).",
+        "compare.fx": "<i>Przeliczone po kursach EBC z {date}.</i>",
+        "sources.header": "{flag} <b>{country}: źródła</b>",
+        "sources.rates": "<b>Stawki {year}</b>, obowiązują od {since} · sprawdzono {checked}",
+        "sources.entity": "<b>Własna spółka</b> (szacunki, chyba że oznaczono jako oficjalne)",
+        "sources.official": "oficjalne",
+        "sources.per_person": "/mies. za osobę",
+        "sources.notes": "<b>Uwagi</b> (po angielsku)",
+        "sources.capital": "Kapitał zakładowy {amount}: zostaje w spółce, to nie koszt",
+        "sources.eor": '<b>Cena EOR</b>: {provider} od {fee} miesięcznie · <a href="{url}">cennik</a>, sprawdzono {checked}',
+        "sources.guide": '<b>Przewodnik Deel</b> · <a href="{url}">strona</a>, sprawdzono {checked}',
+        "sources.guide_ok": "✅ {label}: {value}",
+        "sources.guide_bad": "⚠️ {label}: Deel {deel}, oficjalnie {official}",
+        "sources.fx": "Kursy: kursy referencyjne EBC z {date}.",
+        "warn.year": "⚠️ To stawki na {year}; w {current} liczby mogą być inne.",
+        "warn.unchecked": "⚠️ Oficjalne dane ostatnio sprawdzono {date}.",
+        "warn.mismatch": (
+            '⚠️ Przewodnik Deel podaje {label}: {deel}; oficjalnie od {since}: {official} (<a href="{url}">źródło</a>).'
+        ),
+        "warn.fx_old": "⚠️ Kursy walut z {date}.",
+        "btn.compare": "🔁 Porównaj z innym krajem",
+        "btn.plan": "👥 Policz dla N osób",
+        "btn.sources": "📚 Źródła",
+        "btn.months": "{n} mies.",
+        "pick.country": "{country} — porównaj z:",
+        "pick.people": "Ile osób?",
+        "err.empty": "Wyślij kraj i roczne wynagrodzenie, np. <code>Polska 80k</code>.",
+        "err.no_country": "Który kraj? {countries}",
+        "err.no_salary": "Potrzebuję też rocznego wynagrodzenia brutto, np. <code>{example}</code>.",
+        "err.unknown_word": "Nie znam „{word}”.",
+        "err.unknown_word_suggest": "Nie znam „{word}”. Chodziło o <b>{suggestion}</b>?",
+        "err.unknown_currency": "Brak kursu EBC dla {currency}. Użyj EUR, USD, GBP, PLN lub innej waluty EBC.",
+        "err.salary_too_low": "To za mało na roczne wynagrodzenie (minimum {minimum}). Miesięczne? Dodaj <code>/mo</code>.",
+        "err.salary_too_high": "Wynagrodzenie powyżej {maximum} — pewnie literówka.",
+        "err.people_range": "Wielkość zespołu musi wynosić od 1 do {maximum}.",
+        "err.months_range": "Okres musi wynosić od 1 do {maximum} miesięcy.",
+        "err.need_two_countries": "Podaj dwa kraje: <code>/compare Germany Poland 60000</code>.",
+        "err.too_many_countries": "Tu tylko jeden kraj; do porównania dwóch służy /compare.",
+        "err.same_country": "To ten sam kraj — wybierz dwa różne.",
+        "err.unexpected": "Nie rozumiem „{word}”.",
+        "err.twice": "„{word}” powtarza coś, co już podano — zostaw jedno.",
+        "err.stale_button": "Ten przycisk pochodzi ze starej wiadomości. Wyślij zapytanie jeszcze raz.",
+        "err.internal": "Coś poszło nie tak po mojej stronie. Spróbuj ponownie za minutę.",
+        "usage.cost": "Przykład: <code>/cost Bulgaria 60000 EUR</code>",
+        "usage.plan": "Przykład: <code>/plan Germany 80000 5 12</code> (kraj, pensja, osoby, miesiące)",
+        "usage.compare": "Przykład: <code>/compare Germany Poland 60000</code>",
+        "usage.sources": "Przykład: <code>/sources Spain</code>",
+        "usage.free": "Spróbuj <code>Polska 80k</code> lub /help.",
+        "stats": "<b>Od startu</b> ({since})\n{lines}",
+    },
+    "bg": {
+        "lang.prompt": _PROMPT,
+        "lang.set": "Език: български. Можете да го смените по всяко време с /lang.",
+        "start": (
+            "👋 <b>Hire-or-Entity Advisor</b> <i>(неофициален)</i>\n\n"
+            "Напишете държава, годишна брутна заплата и размер на екипа — ще покажа пълния разход "
+            "на работодателя, EOR срещу собствено дружество и откога дружеството започва да се изплаща.\n\n"
+            "Опитайте: <code>България 60k 5 служители</code>\n\n"
+            "{countries}\n/help — всички команди"
         ),
         "help": (
             "<b>Команди</b>\n"
-            "/cost <code>країна зарплата [валюта]</code> — вартість роботодавця з розбивкою\n"
-            "/plan <code>країна зарплата люди [місяці]</code> — EOR проти юрособи, точка беззбитковості\n"
-            "/compare <code>країна1 країна2 зарплата</code> — дві країни поруч\n"
-            "/sources <code>країна</code> — звідки кожна цифра\n"
-            "/lang — змінити мову\n\n"
-            "Або просто напишіть: <code>Болгарія 60000 EUR</code>, <code>Іспанія 50k 3 особи 24 місяці</code>, "
-            "<code>Німеччина vs Польща 70k</code>.\n"
-            "Зарплата — <b>річна брутто</b>; для місячної додайте <code>/mo</code>.\n\n"
+            "/cost <code>държава заплата [валута]</code> — разход на работодателя с разбивка\n"
+            "/plan <code>държава заплата хора [месеци]</code> — EOR или собствено дружество, точка на изплащане\n"
+            "/compare <code>държава1 държава2 заплата</code> — две държави една до друга\n"
+            "/sources <code>държава</code> — откъде е всяка цифра\n"
+            "/lang — смяна на езика\n\n"
+            "Или просто напишете: <code>България 60000 EUR</code>, <code>Испания 50k 3 служители 24 месеца</code>, "
+            "<code>Германия vs Полша 70k</code>.\n"
+            "Заплатите са <b>годишни брутни</b>; за месечна добавете <code>/mo</code>.\n\n"
             "{countries}\n\n"
-            "<i>Неофіційно, лише оцінки, не юридична й не податкова консультація.</i>"
+            "<i>Неофициално, само оценки, не е правен или данъчен съвет.</i>"
         ),
-        "countries": "Країни: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} брутто на рік",
-        "cost.monthly_input": "{monthly} на місяць × 12",
-        "cost.converted": "≈ {amount} за курсом ЄЦБ на {date}",
-        "cost.total": "Вартість для роботодавця: <b>{annual}</b> на рік · {monthly} на місяць",
-        "cost.burden": "Понад зарплату: +{amount} на рік ({rate})",
-        "cost.capped": "стеля",
+        "countries": "Държави: {list}",
+        "cost.header": "{flag} <b>{country}</b> · {salary} бруто годишно",
+        "cost.monthly_input": "{monthly} месечно × 12",
+        "cost.converted": "≈ {amount} по курса на ЕЦБ от {date}",
+        "cost.total": "Разход на работодателя: <b>{annual}</b> годишно · {monthly} месечно",
+        "cost.burden": "Над заплатата: +{amount} годишно ({rate})",
+        "cost.capped": "таван",
         "cost.footer": (
-            "<i>Ставки {year} року, діють з {since}. Рядки розрахункового листа округлені до "
-            "цента, показано в цілих одиницях.</i>"
+            "<i>Ставки за {year}, в сила от {since}. Редовете от фиша са закръглени до цент, показани в цели суми.</i>"
         ),
-        "cost.estimate_note": "<i>~ типова ставка, залежить від роботодавця.</i>",
-        "cost.cap_since": "<i>Стеля внесків — з {date}, застосована до кожного місяця.</i>",
-        "cost.below_min_wage": "⚠️ Це нижче мінімальної зарплати {year} року ({minimum} на рік).",
-        "cost.monthly_hint": "Я чекаю <b>річну</b> зарплату; для місячної напишіть <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} на рік · {months}",
+        "cost.estimate_note": "<i>~ типична ставка, зависи от работодателя.</i>",
+        "cost.cap_since": "<i>Максимален осигурителен доход от {date}, приложен към всеки месец.</i>",
+        "cost.below_min_wage": "⚠️ Под минималната заплата за {year} ({minimum} годишно).",
+        "cost.monthly_hint": "Очаквам <b>годишна</b> заплата; за месечна напишете <code>{example}</code>.",
+        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} годишно · {months}",
         "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "комісія {fee} за особу на місяць",
-        "plan.eor_fx": "(прайс {price}, курс ЄЦБ на {date})",
-        "plan.entity": "<b>Власна юрособа</b>: {total}",
-        "plan.entity_detail": "відкриття {setup} + {fixed} на місяць + {per_employee} за особу на місяць",
-        "plan.same": "Зарплата + внески, однаково в обох варіантах: {amount}",
-        "plan.eor_cheaper": "💡 Для {team} на {months} EOR дешевший на ~{diff}.",
-        "plan.entity_cheaper": "💡 Для {team} на {months} власна юрособа дешевша на ~{diff}.",
-        "plan.even": "💡 Для {team} на {months} обидва варіанти коштують приблизно однаково.",
-        "plan.pays_off_people": "Юрособа окуповується від {team} (на {months}).",
-        "plan.pays_off_months": "Для {team} вона окупиться через {months}.",
-        "plan.never_months": "Для {team} вона не окупиться: фіксовані витрати з'їдають економію.",
-        "plan.never_people": "За таких цін юрособа не окуповується.",
+        "plan.eor_detail": "такса {fee} на служител месечно",
+        "plan.eor_fx": "(списъчна цена {price}, курс на ЕЦБ от {date})",
+        "plan.entity": "<b>Собствено дружество</b>: {total}",
+        "plan.entity_detail": "учредяване {setup} + {fixed} месечно + {per_employee} на служител месечно",
+        "plan.same": "Заплата + осигуровки, еднакви и в двата варианта: {amount}",
+        "plan.eor_cheaper": "💡 За {team} за {months} EOR е по-евтино с ~{diff}.",
+        "plan.entity_cheaper": "💡 За {team} за {months} собственото дружество е по-евтино с ~{diff}.",
+        "plan.even": "💡 За {team} за {months} двата варианта струват почти еднакво.",
+        "plan.pays_off_people": "Дружеството се изплаща от {team} нагоре (за {months}).",
+        "plan.pays_off_months": "При {team} се изплаща след {months}.",
+        "plan.never_months": "При {team} никога не се изплаща: постоянните разходи изяждат спестеното.",
+        "plan.never_people": "При тези цени дружеството никога не се изплаща.",
         "plan.note": (
-            "<i>Лише прямі витрати, кожна з джерелом (/sources). Не враховано: тижні на відкриття юрособи, "
-            "час вашої команди і комплаєнс-ризик, який EOR бере на себе.</i>"
+            "<i>Само преки разходи, всеки с източник (/sources). Не са включени: седмиците за учредяване "
+            "на дружеството, времето на екипа ви и рискът за съответствие, който EOR поема вместо вас.</i>"
         ),
-        "compare.header": "<b>{a} vs {b}</b> · {salary} брутто на рік",
-        "compare.row": "{flag} <b>{country}</b>: {total} на рік · +{rate}",
-        "compare.row_local": "у {currency}: {total}",
-        "compare.row_eor": "EOR {fee} на місяць · юрособа від {team} (12 міс.)",
-        "compare.row_never": "EOR {fee} на місяць · юрособа не окуповується",
-        "compare.cheaper": "💡 У країні {country} наймати дешевше на ~{diff} на рік (на {rate} менше).",
-        "compare.fx": "<i>Перераховано за курсами ЄЦБ на {date}.</i>",
-        "sources.header": "{flag} <b>{country}: джерела</b>",
-        "sources.rates": "<b>Ставки {year}</b>, діють з {since} · перевірено {checked}",
-        "sources.entity": "<b>Власна юрособа</b> (оцінки, якщо не позначено «офіційно»)",
-        "sources.official": "офіційно",
-        "sources.per_person": "/міс за особу",
-        "sources.notes": "<b>Примітки</b> (англійською)",
-        "sources.capital": "Статутний капітал {amount}: лишається у компанії, це не витрата",
-        "sources.eor": '<b>Ціна EOR</b>: {provider} від {fee} на місяць · <a href="{url}">прайс</a>, перевірено {checked}',
-        "sources.guide": '<b>Гайд Deel</b> · <a href="{url}">сторінка</a>, перевірено {checked}',
-        "sources.guide_ok": "✅ {label}: {value}",
-        "sources.guide_bad": "⚠️ {label}: у Deel {deel}, офіційно {official}",
-        "sources.fx": "Курси: довідкові курси ЄЦБ на {date}.",
-        "warn.year": "⚠️ Це ставки {year} року; у {current} цифри можуть відрізнятися.",
-        "warn.unchecked": "⚠️ Офіційні цифри востаннє перевірено {date}.",
-        "warn.mismatch": (
-            '⚠️ У гайді Deel {label}: {deel}; офіційно з {since}: {official} (<a href="{url}">джерело</a>).'
-        ),
-        "warn.fx_old": "⚠️ Курси валют станом на {date}.",
-        "btn.compare": "🔁 Порівняти з іншою країною",
-        "btn.plan": "👥 Порахувати на N осіб",
-        "btn.sources": "📚 Джерела",
-        "btn.months": "{n} міс.",
-        "pick.country": "З якою країною порівняти {country}?",
-        "pick.people": "Скільки людей?",
-        "err.empty": "Надішліть країну й річну зарплату, наприклад <code>Germany 80k</code>.",
-        "err.no_country": "Яка країна? {countries}",
-        "err.no_salary": "Потрібна ще річна зарплата брутто, наприклад <code>{example}</code>.",
-        "err.unknown_word": "Не знаю, що таке «{word}».",
-        "err.unknown_word_suggest": "Не знаю, що таке «{word}». Можливо, <b>{suggestion}</b>?",
-        "err.unknown_currency": "Для {currency} немає курсу ЄЦБ. Використайте EUR, USD, GBP, PLN чи іншу валюту ЄЦБ.",
-        "err.salary_too_low": "Замало для річної зарплати (мінімум {minimum}). Місячна? Додайте <code>/mo</code>.",
-        "err.salary_too_high": "Зарплата понад {maximum} — схоже на помилку.",
-        "err.people_range": "Розмір команди — від 1 до {maximum}.",
-        "err.months_range": "Горизонт — від 1 до {maximum} місяців.",
-        "err.need_two_countries": "Назвіть дві країни: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "Тут одна країна; щоб порівняти дві, є /compare.",
-        "err.same_country": "Це та сама країна — оберіть дві різні.",
-        "err.unexpected": "Не зрозумів «{word}».",
-        "err.twice": "«{word}» повторює вже сказане — залиште щось одне.",
-        "err.stale_button": "Ця кнопка зі старого повідомлення. Надішліть запит ще раз.",
-        "err.internal": "Щось зламалося на моєму боці. Спробуйте за хвилину.",
-        "usage.cost": "Приклад: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Приклад: <code>/plan Germany 80000 5 12</code> (країна, зарплата, люди, місяці)",
-        "usage.compare": "Приклад: <code>/compare Germany Poland 60000</code>",
-        "usage.sources": "Приклад: <code>/sources Spain</code>",
-        "usage.free": "Спробуйте <code>Germany 80k</code> або /help.",
-        "stats": "<b>Від запуску</b> ({since})\n{lines}",
-    },
-    "ru": {
-        "lang.prompt": "🌐 Choose your language · Оберіть мову · Выберите язык",
-        "lang.set": "Язык: русский. Сменить в любой момент: /lang.",
-        "start": (
-            "👋 <b>Hire-or-Entity Advisor</b> <i>(неофициальный)</i>\n\n"
-            "Напишите страну, годовую зарплату брутто и размер команды — покажу полную стоимость "
-            "для работодателя, EOR против своего юрлица и когда юрлицо начнёт окупаться.\n\n"
-            "Попробуйте: <code>Germany 80k 5 people</code>\n\n"
-            "{countries}\n/help — все команды"
-        ),
-        "help": (
-            "<b>Команды</b>\n"
-            "/cost <code>страна зарплата [валюта]</code> — стоимость работодателя с разбивкой\n"
-            "/plan <code>страна зарплата люди [месяцы]</code> — EOR против юрлица, точка безубыточности\n"
-            "/compare <code>страна1 страна2 зарплата</code> — две страны рядом\n"
-            "/sources <code>страна</code> — откуда каждая цифра\n"
-            "/lang — сменить язык\n\n"
-            "Или просто напишите: <code>Болгария 60000 EUR</code>, <code>Испания 50k 3 человека 24 месяца</code>, "
-            "<code>Германия vs Польша 70k</code>.\n"
-            "Зарплата — <b>годовая брутто</b>; для месячной добавьте <code>/mo</code>.\n\n"
-            "{countries}\n\n"
-            "<i>Неофициально, только оценки, не юридическая и не налоговая консультация.</i>"
-        ),
-        "countries": "Страны: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} брутто в год",
-        "cost.monthly_input": "{monthly} в месяц × 12",
-        "cost.converted": "≈ {amount} по курсу ЕЦБ на {date}",
-        "cost.total": "Стоимость для работодателя: <b>{annual}</b> в год · {monthly} в месяц",
-        "cost.burden": "Сверх зарплаты: +{amount} в год ({rate})",
-        "cost.capped": "потолок",
-        "cost.footer": (
-            "<i>Ставки {year} года, действуют с {since}. Строки расчётного листа округлены до "
-            "цента, показано в целых единицах.</i>"
-        ),
-        "cost.estimate_note": "<i>~ типичная ставка, зависит от работодателя.</i>",
-        "cost.cap_since": "<i>Потолок взносов — с {date}, применён к каждому месяцу.</i>",
-        "cost.below_min_wage": "⚠️ Это ниже минимальной зарплаты {year} года ({minimum} в год).",
-        "cost.monthly_hint": "Я жду <b>годовую</b> зарплату; для месячной напишите <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} в год · {months}",
-        "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "комиссия {fee} за человека в месяц",
-        "plan.eor_fx": "(прайс {price}, курс ЕЦБ на {date})",
-        "plan.entity": "<b>Своё юрлицо</b>: {total}",
-        "plan.entity_detail": "открытие {setup} + {fixed} в месяц + {per_employee} за человека в месяц",
-        "plan.same": "Зарплата + взносы, одинаково в обоих вариантах: {amount}",
-        "plan.eor_cheaper": "💡 Для {team} на {months} EOR дешевле на ~{diff}.",
-        "plan.entity_cheaper": "💡 Для {team} на {months} своё юрлицо дешевле на ~{diff}.",
-        "plan.even": "💡 Для {team} на {months} оба варианта стоят примерно одинаково.",
-        "plan.pays_off_people": "Юрлицо окупается с {team} (на {months}).",
-        "plan.pays_off_months": "Для {team} оно окупится через {months}.",
-        "plan.never_months": "Для {team} оно не окупится: фиксированные расходы съедают экономию.",
-        "plan.never_people": "При таких ценах юрлицо не окупается.",
-        "plan.note": (
-            "<i>Только прямые расходы, каждая с источником (/sources). Не учтены: недели на открытие юрлица, "
-            "время вашей команды и комплаенс-риск, который EOR берёт на себя.</i>"
-        ),
-        "compare.header": "<b>{a} vs {b}</b> · {salary} брутто в год",
-        "compare.row": "{flag} <b>{country}</b>: {total} в год · +{rate}",
+        "compare.header": "<b>{a} vs {b}</b> · {salary} бруто годишно",
+        "compare.row": "{flag} <b>{country}</b>: {total} годишно · +{rate}",
         "compare.row_local": "в {currency}: {total}",
-        "compare.row_eor": "EOR {fee} в месяц · юрлицо с {team} (12 мес.)",
-        "compare.row_never": "EOR {fee} в месяц · юрлицо не окупается",
-        "compare.cheaper": "💡 В стране {country} нанимать дешевле на ~{diff} в год (на {rate} меньше).",
-        "compare.fx": "<i>Пересчитано по курсам ЕЦБ на {date}.</i>",
-        "sources.header": "{flag} <b>{country}: источники</b>",
-        "sources.rates": "<b>Ставки {year}</b>, действуют с {since} · проверено {checked}",
-        "sources.entity": "<b>Своё юрлицо</b> (оценки, если не отмечено «официально»)",
-        "sources.official": "официально",
-        "sources.per_person": "/мес за человека",
-        "sources.notes": "<b>Примечания</b> (на английском)",
-        "sources.capital": "Уставный капитал {amount}: остаётся у компании, это не расход",
-        "sources.eor": '<b>Цена EOR</b>: {provider} от {fee} в месяц · <a href="{url}">прайс</a>, проверено {checked}',
-        "sources.guide": '<b>Гайд Deel</b> · <a href="{url}">страница</a>, проверено {checked}',
+        "compare.row_eor": "EOR {fee} месечно · дружество от {team} (12 мес.)",
+        "compare.row_never": "EOR {fee} месечно · дружеството не се изплаща",
+        "compare.cheaper": "💡 По-евтино: {country}, с ~{diff} годишно ({rate} по-малко).",
+        "compare.fx": "<i>Превърнато по курсовете на ЕЦБ от {date}.</i>",
+        "sources.header": "{flag} <b>{country}: източници</b>",
+        "sources.rates": "<b>Ставки {year}</b>, в сила от {since} · проверено {checked}",
+        "sources.entity": "<b>Собствено дружество</b> (оценки, освен отбелязаните като официални)",
+        "sources.official": "официално",
+        "sources.per_person": "/мес. на служител",
+        "sources.notes": "<b>Бележки</b> (на английски)",
+        "sources.capital": "Капитал {amount}: остава в дружеството, не е разход",
+        "sources.eor": '<b>Цена на EOR</b>: {provider} от {fee} месечно · <a href="{url}">цени</a>, проверено {checked}',
+        "sources.guide": '<b>Ръководство на Deel</b> · <a href="{url}">страница</a>, проверено {checked}',
         "sources.guide_ok": "✅ {label}: {value}",
-        "sources.guide_bad": "⚠️ {label}: у Deel {deel}, официально {official}",
-        "sources.fx": "Курсы: справочные курсы ЕЦБ на {date}.",
-        "warn.year": "⚠️ Это ставки {year} года; в {current} цифры могут отличаться.",
-        "warn.unchecked": "⚠️ Официальные цифры последний раз проверены {date}.",
+        "sources.guide_bad": "⚠️ {label}: Deel {deel}, официално {official}",
+        "sources.fx": "Валутни курсове: референтни курсове на ЕЦБ от {date}.",
+        "warn.year": "⚠️ Това са ставки за {year}; за {current} цифрите може да са други.",
+        "warn.unchecked": "⚠️ Официалните цифри са проверени последно на {date}.",
         "warn.mismatch": (
-            '⚠️ В гайде Deel {label}: {deel}; официально с {since}: {official} (<a href="{url}">источник</a>).'
+            '⚠️ В ръководството на Deel: {label} {deel}; официално от {since}: {official} (<a href="{url}">източник</a>).'
         ),
-        "warn.fx_old": "⚠️ Курсы валют на {date}.",
-        "btn.compare": "🔁 Сравнить с другой страной",
-        "btn.plan": "👥 Посчитать на N человек",
-        "btn.sources": "📚 Источники",
+        "warn.fx_old": "⚠️ Валутните курсове са от {date}.",
+        "btn.compare": "🔁 Сравни с друга държава",
+        "btn.plan": "👥 Изчисли за N служители",
+        "btn.sources": "📚 Източници",
         "btn.months": "{n} мес.",
-        "pick.country": "С какой страной сравнить {country}?",
-        "pick.people": "Сколько человек?",
-        "err.empty": "Пришлите страну и годовую зарплату, например <code>Germany 80k</code>.",
-        "err.no_country": "Какая страна? {countries}",
-        "err.no_salary": "Нужна ещё годовая зарплата брутто, например <code>{example}</code>.",
-        "err.unknown_word": "Не знаю, что такое «{word}».",
-        "err.unknown_word_suggest": "Не знаю, что такое «{word}». Может быть, <b>{suggestion}</b>?",
-        "err.unknown_currency": "Для {currency} нет курса ЕЦБ. Используйте EUR, USD, GBP, PLN или другую валюту ЕЦБ.",
-        "err.salary_too_low": "Маловато для годовой зарплаты (минимум {minimum}). Месячная? Добавьте <code>/mo</code>.",
-        "err.salary_too_high": "Зарплата больше {maximum} — похоже на опечатку.",
-        "err.people_range": "Размер команды — от 1 до {maximum}.",
-        "err.months_range": "Горизонт — от 1 до {maximum} месяцев.",
-        "err.need_two_countries": "Назовите две страны: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "Здесь одна страна; чтобы сравнить две, есть /compare.",
-        "err.same_country": "Это одна и та же страна — выберите две разные.",
-        "err.unexpected": "Не понял «{word}».",
-        "err.twice": "«{word}» повторяет уже сказанное — оставьте что-то одно.",
-        "err.stale_button": "Эта кнопка из старого сообщения. Пришлите запрос ещё раз.",
-        "err.internal": "Что-то сломалось на моей стороне. Попробуйте через минуту.",
+        "pick.country": "{country} — сравни с:",
+        "pick.people": "Колко служители?",
+        "err.empty": "Изпратете държава и годишна заплата, напр. <code>България 60k</code>.",
+        "err.no_country": "Коя държава? {countries}",
+        "err.no_salary": "Нужна е и годишна брутна заплата, напр. <code>{example}</code>.",
+        "err.unknown_word": "Не познавам „{word}“.",
+        "err.unknown_word_suggest": "Не познавам „{word}“. Може би <b>{suggestion}</b>?",
+        "err.unknown_currency": "Няма курс на ЕЦБ за {currency}. Използвайте EUR, USD, GBP, PLN или друга валута на ЕЦБ.",
+        "err.salary_too_low": "Твърде малко за годишна заплата (минимум {minimum}). Месечна ли е? Добавете <code>/mo</code>.",
+        "err.salary_too_high": "Заплатата е над {maximum} — вероятно грешка.",
+        "err.people_range": "Размерът на екипа трябва да е между 1 и {maximum}.",
+        "err.months_range": "Периодът трябва да е между 1 и {maximum} месеца.",
+        "err.need_two_countries": "Посочете две държави: <code>/compare Germany Poland 60000</code>.",
+        "err.too_many_countries": "Тук само една държава; за сравнение на две има /compare.",
+        "err.same_country": "Това е една и съща държава — изберете две различни.",
+        "err.unexpected": "Не разбрах „{word}“.",
+        "err.twice": "„{word}“ повтаря вече казаното — оставете едно.",
+        "err.stale_button": "Този бутон е от старо съобщение. Изпратете заявката отново.",
+        "err.internal": "Нещо се обърка при мен. Опитайте пак след минута.",
         "usage.cost": "Пример: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Пример: <code>/plan Germany 80000 5 12</code> (страна, зарплата, люди, месяцы)",
+        "usage.plan": "Пример: <code>/plan Germany 80000 5 12</code> (държава, заплата, хора, месеци)",
         "usage.compare": "Пример: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Пример: <code>/sources Spain</code>",
-        "usage.free": "Попробуйте <code>Germany 80k</code> или /help.",
-        "stats": "<b>С запуска</b> ({since})\n{lines}",
+        "usage.free": "Опитайте <code>България 60k</code> или /help.",
+        "stats": "<b>От старта</b> ({since})\n{lines}",
     },
 }
 
@@ -427,90 +690,165 @@ FIGURES: Final[dict[Lang, dict[str, str]]] = {
         "nic_threshold": "NIC threshold",
         "employer_total_rate": "total employer contributions",
     },
-    "uk": {
-        "minimum_wage": "мінімальна зарплата",
-        "pension_rate": "пенсійний внесок",
-        "unemployment_rate": "внесок на безробіття",
-        "health_rate": "внесок на медстрахування",
-        "care_rate": "внесок на догляд",
-        "insolvency_rate": "збір на випадок банкрутства",
-        "disability_rate": "внесок з інвалідності",
-        "labour_fund_rate": "внесок до Фонду праці",
-        "fgsp_rate": "внесок до фонду гарантованих виплат",
-        "upf_rate": "внесок до універсального пенсійного фонду",
-        "sickness_rate": "внесок з хвороби та материнства",
-        "common_contingencies_rate": "внесок на загальні ризики",
-        "mei_rate": "внесок MEI",
-        "training_rate": "внесок на профнавчання",
-        "fogasa_rate": "внесок FOGASA",
-        "workplace_pension_rate": "мінімальний пенсійний внесок",
-        "pension_cap": "стеля пенсійних внесків",
-        "health_cap": "стеля внесків на медстрахування",
-        "max_insurable_income": "максимальний страховий дохід",
-        "nic_rate": "ставка NIC роботодавця",
-        "nic_threshold": "поріг NIC",
-        "employer_total_rate": "загальні внески роботодавця",
+    "de": {
+        "minimum_wage": "Mindestlohn",
+        "pension_rate": "Rentenbeitrag",
+        "unemployment_rate": "Beitrag zur Arbeitslosenversicherung",
+        "health_rate": "Krankenversicherungsbeitrag",
+        "care_rate": "Pflegeversicherungsbeitrag",
+        "insolvency_rate": "Insolvenzgeldumlage",
+        "disability_rate": "Erwerbsunfähigkeitsbeitrag",
+        "labour_fund_rate": "Beitrag zum Arbeitsfonds",
+        "fgsp_rate": "Beitrag zum Garantiefonds",
+        "upf_rate": "Beitrag zum universellen Pensionsfonds",
+        "sickness_rate": "Beitrag für Krankheit und Mutterschaft",
+        "common_contingencies_rate": "Beitrag für allgemeine Risiken",
+        "mei_rate": "MEI-Beitrag",
+        "training_rate": "Berufsbildungsbeitrag",
+        "fogasa_rate": "FOGASA-Beitrag",
+        "workplace_pension_rate": "Mindestbeitrag zur Betriebsrente",
+        "pension_cap": "Beitragsbemessungsgrenze Rente",
+        "health_cap": "Beitragsbemessungsgrenze Krankenversicherung",
+        "max_insurable_income": "maximales versichertes Einkommen",
+        "nic_rate": "NIC-Satz des Arbeitgebers",
+        "nic_threshold": "NIC-Schwelle",
+        "employer_total_rate": "Arbeitgeberbeiträge gesamt",
     },
-    "ru": {
-        "minimum_wage": "минимальная зарплата",
-        "pension_rate": "пенсионный взнос",
-        "unemployment_rate": "взнос на безработицу",
-        "health_rate": "взнос на медстрахование",
-        "care_rate": "взнос на уход",
-        "insolvency_rate": "сбор на случай банкротства",
-        "disability_rate": "взнос по инвалидности",
-        "labour_fund_rate": "взнос в Фонд труда",
-        "fgsp_rate": "взнос в фонд гарантированных выплат",
-        "upf_rate": "взнос в универсальный пенсионный фонд",
-        "sickness_rate": "взнос по болезни и материнству",
-        "common_contingencies_rate": "взнос на общие риски",
-        "mei_rate": "взнос MEI",
-        "training_rate": "взнос на профобучение",
-        "fogasa_rate": "взнос FOGASA",
-        "workplace_pension_rate": "минимальный пенсионный взнос",
-        "pension_cap": "потолок пенсионных взносов",
-        "health_cap": "потолок взносов на медстрахование",
-        "max_insurable_income": "максимальный страховой доход",
-        "nic_rate": "ставка NIC работодателя",
-        "nic_threshold": "порог NIC",
-        "employer_total_rate": "общие взносы работодателя",
+    "es": {
+        "minimum_wage": "salario mínimo",
+        "pension_rate": "cotización por pensión",
+        "unemployment_rate": "cotización por desempleo",
+        "health_rate": "cotización sanitaria",
+        "care_rate": "cotización por dependencia",
+        "insolvency_rate": "cuota de insolvencia",
+        "disability_rate": "cotización por incapacidad",
+        "labour_fund_rate": "cotización al Fondo de Trabajo",
+        "fgsp_rate": "cotización al fondo de garantía",
+        "upf_rate": "cotización al fondo universal de pensiones",
+        "sickness_rate": "cotización por enfermedad y maternidad",
+        "common_contingencies_rate": "contingencias comunes",
+        "mei_rate": "cotización MEI",
+        "training_rate": "formación profesional",
+        "fogasa_rate": "FOGASA",
+        "workplace_pension_rate": "pensión de empresa mínima",
+        "pension_cap": "tope de cotización por pensión",
+        "health_cap": "tope de cotización sanitaria",
+        "max_insurable_income": "base máxima de cotización",
+        "nic_rate": "tipo de NIC del empleador",
+        "nic_threshold": "umbral de NIC",
+        "employer_total_rate": "cotizaciones totales de la empresa",
+    },
+    "pl": {
+        "minimum_wage": "płaca minimalna",
+        "pension_rate": "składka emerytalna",
+        "unemployment_rate": "składka na bezrobocie",
+        "health_rate": "składka zdrowotna",
+        "care_rate": "składka pielęgnacyjna",
+        "insolvency_rate": "składka na fundusz upadłościowy",
+        "disability_rate": "składka rentowa",
+        "labour_fund_rate": "składka na Fundusz Pracy",
+        "fgsp_rate": "składka na FGŚP",
+        "upf_rate": "składka do powszechnego funduszu emerytalnego",
+        "sickness_rate": "składka chorobowa i macierzyńska",
+        "common_contingencies_rate": "składka na ryzyka ogólne",
+        "mei_rate": "składka MEI",
+        "training_rate": "składka na kształcenie zawodowe",
+        "fogasa_rate": "składka FOGASA",
+        "workplace_pension_rate": "minimalna składka emerytalna pracodawcy",
+        "pension_cap": "limit składek emerytalnych",
+        "health_cap": "limit składki zdrowotnej",
+        "max_insurable_income": "maksymalna podstawa składek",
+        "nic_rate": "stawka NIC pracodawcy",
+        "nic_threshold": "próg NIC",
+        "employer_total_rate": "łączne składki pracodawcy",
+    },
+    "bg": {
+        "minimum_wage": "минимална заплата",
+        "pension_rate": "пенсионна вноска",
+        "unemployment_rate": "вноска за безработица",
+        "health_rate": "здравна вноска",
+        "care_rate": "вноска за дългосрочни грижи",
+        "insolvency_rate": "вноска при несъстоятелност",
+        "disability_rate": "вноска за инвалидност",
+        "labour_fund_rate": "вноска във Фонда на труда",
+        "fgsp_rate": "вноска във фонда за гарантирани вземания",
+        "upf_rate": "вноска в универсален пенсионен фонд",
+        "sickness_rate": "вноска за общо заболяване и майчинство",
+        "common_contingencies_rate": "вноска за общи рискове",
+        "mei_rate": "вноска MEI",
+        "training_rate": "вноска за професионално обучение",
+        "fogasa_rate": "вноска FOGASA",
+        "workplace_pension_rate": "минимална служебна пенсионна вноска",
+        "pension_cap": "таван на пенсионните вноски",
+        "health_cap": "таван на здравните вноски",
+        "max_insurable_income": "максимален осигурителен доход",
+        "nic_rate": "ставка на NIC за работодателя",
+        "nic_threshold": "праг на NIC",
+        "employer_total_rate": "общо вноски на работодателя",
     },
 }
 
 PERIODS: Final[dict[Lang, dict[str, str]]] = {
     "en": {"hour": "/h", "month": "/mo", "year": "/yr"},
-    "uk": {"hour": "/год", "month": "/міс", "year": "/рік"},
-    "ru": {"hour": "/ч", "month": "/мес", "year": "/год"},
+    "de": {"hour": "/Std.", "month": "/Mon.", "year": "/Jahr"},
+    "es": {"hour": "/h", "month": "/mes", "year": "/año"},
+    "pl": {"hour": "/godz.", "month": "/mies.", "year": "/rok"},
+    "bg": {"hour": "/ч", "month": "/мес.", "year": "/год."},
 }
 
 # Contribution names by the `id` in the country files. English falls back to the file's own
-# `name`; a test makes sure every bundled id has a Ukrainian and a Russian name.
+# `name`; a test makes sure every bundled id has a name in every other language.
 CONTRIBUTIONS: Final[dict[Lang, dict[str, str]]] = {
     "en": {},
-    "uk": {
-        "pension": "Пенсійне", "unemployment": "Безробіття", "health": "Медстрахування", "care": "Догляд (Pflege)",
-        "insolvency": "Збір на банкрутство", "u1": "Збір U1 (лікарняні)", "u2": "Збір U2 (материнство)",
-        "accident": "Нещасні випадки", "nic": "National Insurance", "workplace_pension": "Пенсія (мінімум)",
-        "common_contingencies": "Загальні ризики", "mei": "MEI", "training": "Профнавчання", "fogasa": "FOGASA",
-        "solidarity_1": "Солідарний, до +10%", "solidarity_2": "Солідарний, +10–50%",
-        "solidarity_3": "Солідарний, понад +50%", "disability": "Інвалідність", "labour_fund": "Фонд праці + FS",
-        "fgsp": "FGŚP", "upf": "Універсальний пенсійний фонд", "sickness": "Хвороба й материнство",
+    "de": {
+        "pension": "Rentenversicherung", "unemployment": "Arbeitslosenversicherung",
+        "health": "Krankenversicherung", "care": "Pflegeversicherung", "insolvency": "Insolvenzgeldumlage",
+        "u1": "Umlage U1 (Krankheit)", "u2": "Umlage U2 (Mutterschaft)", "accident": "Unfallversicherung",
+        "nic": "National Insurance", "workplace_pension": "Betriebsrente (Minimum)",
+        "common_contingencies": "Allgemeine Risiken", "mei": "MEI", "training": "Berufsbildung",
+        "fogasa": "FOGASA", "solidarity_1": "Solidarbeitrag bis +10 %", "solidarity_2": "Solidarbeitrag +10–50 %",
+        "solidarity_3": "Solidarbeitrag über +50 %", "disability": "Erwerbsunfähigkeit",
+        "labour_fund": "Arbeitsfonds + FS", "fgsp": "FGŚP", "upf": "Universeller Pensionsfonds",
+        "sickness": "Krankheit und Mutterschaft",
     },
-    "ru": {
-        "pension": "Пенсионное", "unemployment": "Безработица", "health": "Медстрахование", "care": "Уход (Pflege)",
-        "insolvency": "Сбор на банкротство", "u1": "Сбор U1 (больничные)", "u2": "Сбор U2 (материнство)",
-        "accident": "Несчастные случаи", "nic": "National Insurance", "workplace_pension": "Пенсия (минимум)",
-        "common_contingencies": "Общие риски", "mei": "MEI", "training": "Профобучение", "fogasa": "FOGASA",
-        "solidarity_1": "Солидарный, до +10%", "solidarity_2": "Солидарный, +10–50%",
-        "solidarity_3": "Солидарный, свыше +50%", "disability": "Инвалидность", "labour_fund": "Фонд труда + FS",
-        "fgsp": "FGŚP", "upf": "Универсальный пенсионный фонд", "sickness": "Болезнь и материнство",
+    "es": {
+        "pension": "Pensión", "unemployment": "Desempleo", "health": "Seguro médico", "care": "Dependencia",
+        "insolvency": "Fondo de insolvencia", "u1": "Cuota U1 (bajas)", "u2": "Cuota U2 (maternidad)",
+        "accident": "Accidentes de trabajo", "nic": "National Insurance", "workplace_pension": "Pensión de empresa (mínimo)",
+        "common_contingencies": "Contingencias comunes", "mei": "MEI", "training": "Formación profesional",
+        "fogasa": "FOGASA", "solidarity_1": "Solidaridad, hasta +10 %", "solidarity_2": "Solidaridad, +10–50 %",
+        "solidarity_3": "Solidaridad, más de +50 %", "disability": "Incapacidad",
+        "labour_fund": "Fondo de Trabajo + FS", "fgsp": "FGŚP", "upf": "Fondo universal de pensiones",
+        "sickness": "Enfermedad y maternidad",
+    },
+    "pl": {
+        "pension": "Emerytalna", "unemployment": "Bezrobocie", "health": "Zdrowotna", "care": "Pielęgnacyjna",
+        "insolvency": "Fundusz upadłościowy", "u1": "Składka U1 (choroba)", "u2": "Składka U2 (macierzyństwo)",
+        "accident": "Wypadkowa", "nic": "National Insurance", "workplace_pension": "Emerytura pracownicza (minimum)",
+        "common_contingencies": "Ryzyka ogólne", "mei": "MEI", "training": "Kształcenie zawodowe",
+        "fogasa": "FOGASA", "solidarity_1": "Solidarnościowa, do +10%", "solidarity_2": "Solidarnościowa, +10–50%",
+        "solidarity_3": "Solidarnościowa, ponad +50%", "disability": "Rentowa",
+        "labour_fund": "Fundusz Pracy + FS", "fgsp": "FGŚP", "upf": "Powszechny fundusz emerytalny",
+        "sickness": "Chorobowa i macierzyńska",
+    },
+    "bg": {
+        "pension": "Пенсия", "unemployment": "Безработица", "health": "Здравно осигуряване",
+        "care": "Дългосрочни грижи", "insolvency": "Фонд при несъстоятелност", "u1": "Вноска U1 (болнични)",
+        "u2": "Вноска U2 (майчинство)", "accident": "Трудова злополука", "nic": "National Insurance",
+        "workplace_pension": "Служебна пенсия (минимум)", "common_contingencies": "Общи рискове", "mei": "MEI",
+        "training": "Професионално обучение", "fogasa": "FOGASA", "solidarity_1": "Солидарна, до +10%",
+        "solidarity_2": "Солидарна, +10–50%", "solidarity_3": "Солидарна, над +50%",
+        "disability": "Инвалидност", "labour_fund": "Фонд на труда + FS", "fgsp": "FGŚP",
+        "upf": "Универсален пенсионен фонд", "sickness": "Общо заболяване и майчинство",
     },
 }  # fmt: skip
 
 COUNTRY_NAMES: Final[dict[Lang, dict[str, str]]] = {
     "en": {},
-    "uk": {"DE": "Німеччина", "GB": "Велика Британія", "ES": "Іспанія", "PL": "Польща", "BG": "Болгарія"},
-    "ru": {"DE": "Германия", "GB": "Великобритания", "ES": "Испания", "PL": "Польша", "BG": "Болгария"},
+    "de": {"DE": "Deutschland", "GB": "Vereinigtes Königreich", "ES": "Spanien", "PL": "Polen", "BG": "Bulgarien"},
+    "es": {"DE": "Alemania", "GB": "Reino Unido", "ES": "España", "PL": "Polonia", "BG": "Bulgaria"},
+    "pl": {"DE": "Niemcy", "GB": "Wielka Brytania", "ES": "Hiszpania", "PL": "Polska", "BG": "Bułgaria"},
+    "bg": {"DE": "Германия", "GB": "Великобритания", "ES": "Испания", "PL": "Полша", "BG": "България"},
 }
 
 

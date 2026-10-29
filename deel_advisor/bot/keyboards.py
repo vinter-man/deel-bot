@@ -67,6 +67,7 @@ def languages() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for lang in LANGS:
         builder.button(text=LANG_NAMES[lang], callback_data=LangCb(lang=lang))
+    builder.adjust(3, 2)
     return builder.as_markup()
 
 

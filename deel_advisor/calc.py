@@ -16,23 +16,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-from deel_advisor.models import Contribution, Country, Period
+from deel_advisor.models import Contribution, Country
 from deel_advisor.money import ZERO, cents
 
 MONTHS_PER_YEAR = 12
 
 
-def _per_month(amount: Decimal, period: Period) -> Decimal:
-    return amount if period == "month" else amount / MONTHS_PER_YEAR
-
-
 def contribution_base(contribution: Contribution, monthly_salary: Decimal) -> Decimal:
     """The slice of the monthly salary a contribution is charged on: `min(salary, cap) - floor`."""
     base = monthly_salary
-    if contribution.cap is not None and contribution.cap_period is not None:
-        base = min(base, _per_month(contribution.cap, contribution.cap_period))
-    if contribution.floor is not None and contribution.floor_period is not None:
-        base = max(ZERO, base - _per_month(contribution.floor, contribution.floor_period))
+    if (cap := contribution.monthly_cap) is not None:
+        base = min(base, cap)
+    if (floor := contribution.monthly_floor) is not None:
+        base = max(ZERO, base - floor)
     return base
 
 
@@ -89,11 +85,8 @@ def employer_cost(country: Country, annual_salary: Decimal) -> EmployerCost:
     lines = []
     for contribution in country.contributions:
         base = contribution_base(contribution, monthly)
-        capped = (
-            contribution.cap is not None
-            and contribution.cap_period is not None
-            and monthly > _per_month(contribution.cap, contribution.cap_period)
-        )
+        cap = contribution.monthly_cap
+        capped = cap is not None and monthly > cap
         lines.append(Line(contribution, cents(base * contribution.rate), capped))
     return EmployerCost(country, monthly, tuple(lines))
 

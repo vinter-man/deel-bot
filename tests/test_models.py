@@ -98,3 +98,25 @@ def test_figure_shape() -> None:
         Figure.model_validate({"value": "about 9%", "kind": "rate"})
     with pytest.raises(ValidationError, match="currency is required"):
         Figure.model_validate({"value": "100", "kind": "money"})
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "message"),
+    [(["contributions", 0, "source"], "http://example.gov", "sources must be https"),
+     (["contributions", 0, "rate"], 0.1, 'write money and rates as JSON strings ("0.093"), not decimal numbers')],
+)  # fmt: skip
+def test_error_messages_say_what_to_fix(path: list[str | int], value: Any, message: str) -> None:
+    # The person editing a data file reads these; they must say what is wrong, verbatim.
+    with pytest.raises(ValidationError) as caught:
+        Country.model_validate(_with(path, value))
+    assert message in str(caught.value)
+
+
+def test_thresholds_per_payslip() -> None:
+    from deel_advisor.models import Contribution
+
+    c = Contribution.model_validate({"id": "x", "name": "Test", "rate": "0.1", "source": SRC, "cap": "1200",
+                                     "capPeriod": "year", "floor": "300", "floorPeriod": "month"})  # fmt: skip
+    assert (c.monthly_cap, c.monthly_floor) == (100, 300)
+    plain = Contribution.model_validate({"id": "x", "name": "Test", "rate": "0.1", "source": SRC})
+    assert (plain.monthly_cap, plain.monthly_floor) == (None, None)

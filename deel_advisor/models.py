@@ -49,6 +49,11 @@ def _https(url: HttpUrl) -> HttpUrl:
 Source = Annotated[HttpUrl, AfterValidator(_https)]
 
 
+def _per_month(amount: Decimal, period: Period | None) -> Decimal:
+    # An annual threshold applies to each of the 12 payslips as one twelfth, unrounded.
+    return amount if period == "month" else amount / 12
+
+
 class _Model(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid", frozen=True)
 
@@ -80,6 +85,14 @@ class Contribution(_Model):
         if (self.floor is None) != (self.floor_period is None):
             raise ValueError("floor and floorPeriod go together")
         return self
+
+    @property
+    def monthly_cap(self) -> Decimal | None:
+        return None if self.cap is None else _per_month(self.cap, self.cap_period)
+
+    @property
+    def monthly_floor(self) -> Decimal | None:
+        return None if self.floor is None else _per_month(self.floor, self.floor_period)
 
 
 class MinimumWage(_Model):

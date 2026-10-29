@@ -70,9 +70,9 @@ def build() -> dict[str, Any]:
             {"out": "Spain 50k 0 people"},
             {"in": _reply(ctx, lang, "Spain 50k 0 people")},
         ],
-        "ru": [
-            {"out": "Испания 50k 3 человека 24 месяца"},
-            {"in": _reply(ctx, "ru", "Испания 50k 3 человека 24 месяца")},
+        "de": [
+            {"out": "Spanien 50k 3 Personen 24 Monate"},
+            {"in": _reply(ctx, "de", "Spanien 50k 3 Personen 24 Monate")},
         ],
     }
 

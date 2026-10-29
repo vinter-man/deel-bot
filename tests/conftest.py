@@ -25,7 +25,7 @@ def country_data(**overrides: Any) -> dict[str, Any]:
         "country": "Testland",
         "code": "TL",
         "flag": "🏳️",
-        "aliases": ["testland", "тестландия"],
+        "aliases": ["testland", "testlandia"],
         "currency": "EUR",
         "year": 2026,
         "effectiveFrom": "2026-01-01",

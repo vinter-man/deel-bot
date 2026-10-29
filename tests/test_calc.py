@@ -6,6 +6,7 @@ import pytest
 
 from deel_advisor import calc
 from deel_advisor.models import Contribution, Country
+from tests.conftest import country_data
 
 D = Decimal
 SRC = "https://example.gov/rates"
@@ -103,3 +104,62 @@ def test_plan_breakeven_properties(testland: Country) -> None:
 def test_plan_rejects_empty_team(testland: Country) -> None:
     with pytest.raises(ValueError, match="at least 1"):
         calc.plan(testland, D(48_000), D(550), people=0, months=12)
+
+
+# --- boundaries the first version of these tests let through (found by mutation testing) ------
+
+
+def test_salary_exactly_at_the_cap_is_not_capped(testland: Country) -> None:
+    cost = calc.employer_cost(testland, D(60_000))  # 5,000 a month = the pension cap
+    pension = next(line for line in cost.lines if line.contribution.id == "pension")
+    assert pension.monthly == D(500)
+    assert not pension.capped
+
+
+def test_monthly_cap_is_not_divided_by_twelve(testland: Country) -> None:
+    # Health is capped at 3,000 *a month*: a 2,000 salary is under it and must not be flagged.
+    cost = calc.employer_cost(testland, D(24_000))
+    health = next(line for line in cost.lines if line.contribution.id == "health")
+    assert (health.monthly, health.capped) == (D(100), False)
+
+
+def test_result_keeps_its_country(testland: Country) -> None:
+    assert calc.employer_cost(testland, D(48_000)).country is testland
+
+
+def test_tiny_salaries_still_compute(testland: Country) -> None:
+    # The parser refuses them; the calculation itself has no business doing so.
+    assert calc.employer_cost(testland, D("0.5")).monthly_salary == D("0.04")
+    with pytest.raises(ValueError, match=r"^salary must be positive$"):
+        calc.employer_cost(testland, D("-1"))
+
+
+def test_entity_sums_stay_decimal_when_a_side_is_empty() -> None:
+    data = country_data()
+    data["entity"]["monthlyFixed"] = [data["entity"]["monthlyFixed"][0]]  # no per-employee line
+    entity = calc.entity_cost(Country.model_validate(data))
+    assert entity.per_employee_monthly == 0
+    assert isinstance(entity.per_employee_monthly, Decimal)
+
+
+def test_one_month_horizon(testland: Country) -> None:
+    plan = calc.plan(testland, D(48_000), eor_fee=D(550), people=10, months=1)
+    assert plan.months == 1
+    # 10 × 500 saved in one month against 2,400 setup + 300 fixed: the entity already wins.
+    assert plan.entity_saving == D(10 * 500 - 2400 - 300)
+    assert calc.breakeven_people(calc.entity_cost(testland), D(550), months=1) == 6  # 2,700 // 500 + 1
+    with pytest.raises(ValueError, match=r"^people and months must be at least 1$"):
+        calc.plan(testland, D(48_000), D(550), people=1, months=0)
+
+
+def test_breakeven_with_a_saving_of_exactly_zero_and_just_above(testland: Country) -> None:
+    entity = calc.entity_cost(testland)
+    assert calc.breakeven_months(entity, D(350), people=1) is None  # 350 − 50 − 300 = 0 a month
+    assert calc.breakeven_months(entity, D("350.50"), people=1) == 4801  # 2,400 // 0.50 + 1
+    assert calc.breakeven_people(entity, D("50.50"), months=12) == 1001  # 6,000 // (0.50 × 12) + 1
+
+
+def test_breakeven_people_floors_rather_than_rounds(testland: Country) -> None:
+    entity = calc.entity_cost(testland)
+    # overhead 6,000 / (margin 499 × 12) = 1.002: the smallest strictly cheaper team is 2.
+    assert calc.breakeven_people(entity, D(549), months=12) == 2

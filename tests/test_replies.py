@@ -106,10 +106,14 @@ def test_plan_never_for_this_team(testland: Country, fixed_rates: Rates) -> None
     assert "With 1 person it never pays off" in text
 
 
-def test_plan_russian_grammar(testland: Country, ctx: replies.Context) -> None:
-    text = replies.plan("ru", build_query("plan", (testland,), Decimal(48_000), people=1, months=6), ctx)
-    assert "Для 1 человека на 6 месяцев EOR дешевле" in text
-    assert "Юрлицо окупается с 2 человек (на 6 месяцев)." in text
+def test_plan_grammar_in_polish_and_german(testland: Country, ctx: replies.Context) -> None:
+    text = replies.plan("pl", build_query("plan", (testland,), Decimal(48_000), people=1, months=6), ctx)
+    assert "Dla 1 osoby przez 6 miesięcy EOR jest tańszy" in text
+    assert "Spółka opłaca się od 2 osób (przez 6 miesięcy)." in text
+    assert "Dla 1 osoby zwraca się po 13 miesiącach." in text
+    german = replies.plan("de", build_query("plan", (testland,), Decimal(48_000), people=1, months=6), ctx)
+    assert "Mit 1 Person rechnet sie sich nach 13 Monaten." in german
+    assert "Für 1 Person über 6 Monate ist EOR" in german
 
 
 def test_compare(testland: Country, fixed_rates: Rates) -> None:
@@ -121,7 +125,7 @@ def test_compare(testland: Country, fixed_rates: Rates) -> None:
     text = replies.compare("en", build_query("compare", (testland, pricey), Decimal(48_000)), ctx)
     assert "<b>Testland vs Pricey</b> · €48,000 gross a year" in text
     assert "in PLN:" in text
-    assert "is cheaper to employ in" in text
+    assert "💡 Cheaper: " in text
     assert "Converted at ECB rates of 29.10.2026" in text
 
 
@@ -142,7 +146,7 @@ def test_sources(testland: Country, ctx: replies.Context) -> None:
     assert "✅ Pension contribution ceiling: €60,000/yr" in text
 
 
-@pytest.mark.parametrize("lang", ["en", "uk", "ru"])
+@pytest.mark.parametrize("lang", ["en", "de", "es", "pl", "bg"])
 @pytest.mark.parametrize("text", ["Germany 80k", "Bulgaria 60k 3 people", "UK vs Spain 70000 EUR", "Poland 9000/mo"])
 def test_real_data_renders_in_every_language(real_catalog: Catalog, fixed_rates: Rates, lang: str, text: str) -> None:
     ctx = replies.Context(real_catalog, fixed_rates, TODAY)
@@ -158,7 +162,7 @@ def test_real_data_renders_in_every_language(real_catalog: Catalog, fixed_rates:
 def test_real_sources_split_into_valid_messages(real_catalog: Catalog, fixed_rates: Rates, code: str) -> None:
     country = real_catalog.by_code(code)
     assert country is not None
-    text = replies.sources("ru", country, replies.Context(real_catalog, fixed_rates, TODAY))
+    text = replies.sources("bg", country, replies.Context(real_catalog, fixed_rates, TODAY))
     parts = split_message(text)
     assert "\n\n".join(parts) == text
     for part in parts:
@@ -205,7 +209,7 @@ def test_compare_percentage_is_share_of_the_dearer_total(testland: Country, fixe
     ctx = replies.Context(_catalog(testland, pricey), fixed_rates, TODAY)
     text = replies.compare("en", build_query("compare", (testland, pricey), Decimal(48_000)), ctx)
     # Testland €55,080 vs Pricey €72,000: €16,920 is 23.5% of €72,000.
-    assert "Testland is cheaper to employ in by ~€16,920 a year (23.5% less)" in text
+    assert "Cheaper: Testland, by ~€16,920 a year (23.5% less)" in text
 
 
 def test_uk_rates_hold_until_april(real_catalog: Catalog, fixed_rates: Rates) -> None:

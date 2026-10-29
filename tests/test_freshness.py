@@ -34,3 +34,17 @@ def test_figure_on_one_side_only_is_not_compared() -> None:
     data = country_data()
     del data["official"]["figures"]["minimum_wage"]
     assert freshness.mismatches(Country.model_validate(data)) == ()
+
+
+def test_boundaries_are_exclusive(testland: Country) -> None:
+    last_day = date(2026, 12, 31)
+    assert not freshness.check(testland, last_day).outdated_year  # still valid on its last day
+    assert freshness.check(testland, date(2027, 1, 1)).outdated_year
+    checked = testland.official.checked_at
+    exactly = date.fromordinal(checked.toordinal() + freshness.STALE_AFTER_DAYS)
+    assert freshness.check(testland, exactly).unchecked_days is None  # 180 days is still fine
+    assert freshness.check(testland, date.fromordinal(exactly.toordinal() + 1)).unchecked_days == 181
+
+
+def test_result_names_its_country(testland: Country) -> None:
+    assert freshness.check(testland, date(2026, 10, 29)).country is testland

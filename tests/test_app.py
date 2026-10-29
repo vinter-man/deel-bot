@@ -97,7 +97,7 @@ async def test_set_commands_per_language() -> None:
     bot = AsyncMock()
     await app.set_commands(bot)
     langs = [call.kwargs["language_code"] for call in bot.set_my_commands.await_args_list]
-    assert langs == [None, "uk", "ru"]
+    assert langs == [None, "de", "es", "pl", "bg"]
 
 
 async def test_failed_owner_message_is_retried_next_time(tmp_path: Path, real_catalog: Catalog) -> None:

@@ -19,9 +19,18 @@ SYMBOLS: dict[str, str] = {"EUR": "€", "GBP": "£", "USD": "$", "PLN": "zł", 
 PREFIX_IN_EN = {"EUR", "GBP", "USD"}
 
 NBSP = " "
-# Russian and Ukrainian group thousands with a space; a narrow no-break space keeps
-# "80 000 €" on one line in Telegram.
 NNBSP = " "
+
+# How each language writes 80000.5 and 9.3%: (thousands separator, decimal mark, before "%").
+# German and Spanish group with a dot and put a space before the percent sign; Polish and
+# Bulgarian group with a (narrow, no-break) space, so "80 000 €" never wraps in Telegram.
+_STYLE: dict[str, tuple[str, str, str]] = {
+    "en": (",", ".", ""),
+    "de": (".", ",", NBSP),
+    "es": (".", ",", NBSP),
+    "pl": (NNBSP, ",", ""),
+    "bg": (NNBSP, ",", ""),
+}
 
 
 def cents(value: Decimal) -> Decimal:
@@ -42,17 +51,18 @@ def from_minor(value: int) -> Decimal:
 
 
 def _number(value: Decimal, lang: str, with_cents: bool) -> str:
-    """Absolute value, grouped: `80,000` / `80 000`, and `13.90` / `13,90` with cents."""
+    """Absolute value, grouped: `80,000` / `80.000` / `80 000`, and `13.90` / `13,90` with cents."""
+    group, decimal, _ = _STYLE[lang]
     rounded = abs(cents(value) if with_cents else whole(value))
     integer, _, fraction = f"{rounded:f}".partition(".")
-    grouped = f"{int(integer):,}".replace(",", "," if lang == "en" else NNBSP)
+    grouped = f"{int(integer):,}".replace(",", group)
     if not with_cents:
         return grouped
-    return f"{grouped}{'.' if lang == 'en' else ','}{fraction or '00'}"
+    return f"{grouped}{decimal}{fraction}"  # cents() always leaves exactly two places
 
 
 def format_money(value: Decimal, currency: str, lang: str, *, with_cents: bool = False) -> str:
-    """Rounded half-up to whole units unless `with_cents`: `€80,000` in English, `80 000 €` otherwise."""
+    """Rounded half-up to whole units unless `with_cents`: `€80,000` in English, `80.000 €` in German."""
     number = _number(value, lang, with_cents)
     sign = "-" if (cents(value) if with_cents else whole(value)) < 0 else ""
     symbol = SYMBOLS.get(currency, currency)
@@ -62,11 +72,8 @@ def format_money(value: Decimal, currency: str, lang: str, *, with_cents: bool =
 
 
 def format_rate(rate: Decimal, lang: str) -> str:
-    """0.0935 -> `9.35%` (or `9,35%`): as many decimals as the rate has, no trailing zeros."""
-    percent = (rate * 100).normalize()
-    text = f"{percent:f}"
-    if "." in text:
-        text = text.rstrip("0").rstrip(".")
-    if lang != "en":
-        text = text.replace(".", ",")
-    return f"{text}%"
+    """0.0935 -> `9.35%`, `9,35 %`, `9,35%`: as many decimals as the rate has, no trailing zeros."""
+    _, decimal, space = _STYLE[lang]
+    # normalize() drops trailing zeros (9.30 -> 9.3, 20.0 -> 2E+1); ":f" undoes the exponent.
+    text = f"{(rate * 100).normalize():f}"
+    return f"{text.replace('.', decimal)}{space}%"

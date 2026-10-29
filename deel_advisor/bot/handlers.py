@@ -32,7 +32,6 @@ from deel_advisor.prefs import LanguageStore
 from deel_advisor.stats import Stats
 
 log = logging.getLogger(__name__)
-router = Router(name="advisor")
 
 
 def _today() -> date:
@@ -147,43 +146,36 @@ def _in_eur(services: Services) -> Callable[[Decimal, str], Decimal]:
 # --- commands -----------------------------------------------------------------------------
 
 
-@router.message(CommandStart())
 async def start(message: Message, services: Services) -> None:
     services.stats.hit("start")
     await message.answer(t("en", "lang.prompt"), reply_markup=kb.languages())
 
 
-@router.message(Command("lang"))
 async def lang_cmd(message: Message, services: Services) -> None:
     services.stats.hit("lang")
     await message.answer(t("en", "lang.prompt"), reply_markup=kb.languages())
 
 
-@router.message(Command("help"))
 async def help_cmd(message: Message, services: Services, lang: Lang) -> None:
     services.stats.hit("help")
     await message.answer(t(lang, "help", countries=replies.countries_list(lang, services.catalog)))
 
 
-@router.message(Command("cost"))
 async def cost_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
     services.stats.hit("cost")
     await _answer_text(message, command.args, "cost", services, lang)
 
 
-@router.message(Command("plan"))
 async def plan_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
     services.stats.hit("plan")
     await _answer_text(message, command.args, "plan", services, lang)
 
 
-@router.message(Command("compare"))
 async def compare_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
     services.stats.hit("compare")
     await _answer_text(message, command.args, "compare", services, lang)
 
 
-@router.message(Command("sources"))
 async def sources_cmd(message: Message, command: CommandObject, services: Services, lang: Lang) -> None:
     services.stats.hit("sources")
     if not command.args:
@@ -198,7 +190,6 @@ async def sources_cmd(message: Message, command: CommandObject, services: Servic
         await message.answer(part)
 
 
-@router.message(Command("stats"))
 async def stats_cmd(message: Message, services: Services, lang: Lang) -> None:
     if message.from_user is None or message.from_user.id != services.owner_id:
         return  # not a public command: stay silent rather than confirm it exists
@@ -206,13 +197,17 @@ async def stats_cmd(message: Message, services: Services, lang: Lang) -> None:
     await message.answer(t(lang, "stats", since=since, lines="\n".join(services.stats.lines()) or "—"))
 
 
-@router.message(F.text.startswith("/"))
 async def unknown_command(message: Message, services: Services, lang: Lang) -> None:
     services.stats.hit("unknown_command")
     await message.answer(t(lang, "usage.free"))
 
 
-@router.message(F.text)
+async def not_text(message: Message, services: Services, lang: Lang) -> None:
+    # A sticker, a photo, a voice note: answer with what the bot does understand, not silence.
+    services.stats.hit("not_text")
+    await message.answer(t(lang, "usage.free"))
+
+
 async def free_text(message: Message, services: Services, lang: Lang) -> None:
     services.stats.hit("free_text")
     await _answer_text(message, message.text, None, services, lang)
@@ -266,7 +261,6 @@ async def _button_error(callback: CallbackQuery, lang: Lang, error: ParseError) 
     await callback.answer(t(lang, "err.stale_button"), show_alert=True)
 
 
-@router.callback_query(kb.LangCb.filter())
 async def on_lang(callback: CallbackQuery, callback_data: kb.LangCb, services: Services) -> None:
     lang = next((code for code in LANGS if code == callback_data.lang), None)
     if lang is None:
@@ -279,7 +273,6 @@ async def on_lang(callback: CallbackQuery, callback_data: kb.LangCb, services: S
     await _send_or_edit(callback, t(lang, "start", countries=countries), kb.start_examples(lang), edit=True)
 
 
-@router.callback_query(kb.CostCb.filter())
 async def on_cost(callback: CallbackQuery, callback_data: kb.CostCb, services: Services, lang: Lang) -> None:
     services.stats.hit("button.cost")
     try:
@@ -291,7 +284,6 @@ async def on_cost(callback: CallbackQuery, callback_data: kb.CostCb, services: S
     await _send_or_edit(callback, *render(query, lang, services.context()), edit=False)
 
 
-@router.callback_query(kb.PickCompareCb.filter())
 async def on_pick_compare(
     callback: CallbackQuery, callback_data: kb.PickCompareCb, services: Services, lang: Lang
 ) -> None:
@@ -308,7 +300,6 @@ async def on_pick_compare(
     await _send_or_edit(callback, text, markup, edit=False)
 
 
-@router.callback_query(kb.CompareCb.filter())
 async def on_compare(callback: CallbackQuery, callback_data: kb.CompareCb, services: Services, lang: Lang) -> None:
     services.stats.hit("button.compare")
     codes = (callback_data.a, callback_data.b)
@@ -321,7 +312,6 @@ async def on_compare(callback: CallbackQuery, callback_data: kb.CompareCb, servi
     await _send_or_edit(callback, *render(query, lang, services.context()), edit=True)
 
 
-@router.callback_query(kb.PickPeopleCb.filter())
 async def on_pick_people(
     callback: CallbackQuery, callback_data: kb.PickPeopleCb, services: Services, lang: Lang
 ) -> None:
@@ -340,7 +330,6 @@ async def on_pick_people(
     await _send_or_edit(callback, t(lang, "pick.people"), markup, edit=False)
 
 
-@router.callback_query(kb.PlanCb.filter())
 async def on_plan(callback: CallbackQuery, callback_data: kb.PlanCb, services: Services, lang: Lang) -> None:
     services.stats.hit("button.plan")
     cb = callback_data
@@ -353,7 +342,6 @@ async def on_plan(callback: CallbackQuery, callback_data: kb.PlanCb, services: S
     await _send_or_edit(callback, *render(query, lang, services.context()), edit=True)
 
 
-@router.callback_query(kb.SourcesCb.filter())
 async def on_sources(callback: CallbackQuery, callback_data: kb.SourcesCb, services: Services, lang: Lang) -> None:
     services.stats.hit("button.sources")
     try:
@@ -367,12 +355,10 @@ async def on_sources(callback: CallbackQuery, callback_data: kb.SourcesCb, servi
             await callback.message.answer(part)
 
 
-@router.callback_query()
 async def on_unknown_button(callback: CallbackQuery, lang: Lang) -> None:
     await callback.answer(t(lang, "err.stale_button"), show_alert=True)
 
 
-@router.errors()
 async def on_error(event: ErrorEvent, **data: Any) -> bool:
     # The update id, never its content: message text is exactly what must not reach the log.
     log.error(
@@ -401,3 +387,31 @@ async def on_error(event: ErrorEvent, **data: Any) -> bool:
         elif event.update.message is not None:
             await event.update.message.answer(t(lang, "err.internal"))
     return True
+
+
+def create_router() -> Router:
+    """A fresh router with every handler on it, in matching order: specific filters first,
+    the catch-alls (any /command, any text, any button) last. A new one per dispatcher, so
+    tests and tools can build as many dispatchers as they like in one process."""
+    router = Router(name="advisor")
+    router.message.register(start, CommandStart())
+    router.message.register(lang_cmd, Command("lang"))
+    router.message.register(help_cmd, Command("help"))
+    router.message.register(cost_cmd, Command("cost"))
+    router.message.register(plan_cmd, Command("plan"))
+    router.message.register(compare_cmd, Command("compare"))
+    router.message.register(sources_cmd, Command("sources"))
+    router.message.register(stats_cmd, Command("stats"))
+    router.message.register(unknown_command, F.text.startswith("/"))
+    router.message.register(free_text, F.text)
+    router.message.register(not_text)
+    router.callback_query.register(on_lang, kb.LangCb.filter())
+    router.callback_query.register(on_cost, kb.CostCb.filter())
+    router.callback_query.register(on_pick_compare, kb.PickCompareCb.filter())
+    router.callback_query.register(on_compare, kb.CompareCb.filter())
+    router.callback_query.register(on_pick_people, kb.PickPeopleCb.filter())
+    router.callback_query.register(on_plan, kb.PlanCb.filter())
+    router.callback_query.register(on_sources, kb.SourcesCb.filter())
+    router.callback_query.register(on_unknown_button)
+    router.errors.register(on_error)
+    return router

@@ -18,7 +18,7 @@ import pytest
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.base import BaseSession
-from aiogram.methods import AnswerCallbackQuery, EditMessageText, SendMessage, TelegramMethod
+from aiogram.methods import AnswerCallbackQuery, EditMessageText, GetMe, SendMessage, TelegramMethod
 from aiogram.types import CallbackQuery, Chat, Message, Update, User
 
 from deel_advisor.bot import keyboards as kb
@@ -38,9 +38,15 @@ class FakeSession(BaseSession):
         super().__init__()
         self.calls: list[TelegramMethod[Any]] = []
         self._ids = itertools.count(1000)
+        # Set to make the next call of that method type fail, as Telegram sometimes does.
+        self.fail_with: dict[type, Exception] = {}
 
     async def make_request(self, bot: Bot, method: TelegramMethod[Any], timeout: int | None = None) -> Any:  # noqa: ASYNC109 - aiogram's signature
         self.calls.append(method)
+        if (error := self.fail_with.pop(type(method), None)) is not None:
+            raise error
+        if isinstance(method, GetMe):  # "/cost@botname" makes aiogram check its own username
+            return User(id=42, is_bot=True, first_name="Advisor", username="deel_hea_unofficial_bot")
         if isinstance(method, SendMessage | EditMessageText):
             chat_id = method.chat_id if isinstance(method.chat_id, int) else USER_ID
             return Message(
@@ -102,12 +108,12 @@ def _message(text: str, user: User = USER) -> Update:
     )
 
 
-def _callback(data: str, user: User = USER) -> Update:
+def _callback(data: str, user: User = USER, *, with_message: bool = True) -> Update:
     origin = Message(message_id=77, date=datetime.now(UTC), chat=Chat(id=user.id, type="private"), text="…")
     return Update(
         update_id=next(_update_ids),
         callback_query=CallbackQuery(id=str(next(_update_ids)), from_user=user, chat_instance="c", data=data,
-                                     message=origin),
+                                     message=origin if with_message else None),
     )  # fmt: skip
 
 
@@ -121,15 +127,15 @@ async def test_start_asks_for_language_then_greets(dispatcher: Dispatcher, env: 
     first = session.sent()[-1]
     assert "Choose your language" in first.text
     buttons = [b.callback_data for row in first.reply_markup.inline_keyboard for b in row]
-    assert buttons == ["lang:en", "lang:uk", "lang:ru"]
+    assert buttons == ["lang:en", "lang:de", "lang:es", "lang:pl", "lang:bg"]
 
-    await send(dispatcher, bot, _callback("lang:uk"))
+    await send(dispatcher, bot, _callback("lang:pl"))
     assert isinstance(session.sent()[-1], EditMessageText)
-    assert "Напишіть країну" in session.last_text()
-    assert await services.prefs.get(USER_ID) == "uk"
-    # And the next reply is in Ukrainian although the Telegram client says English.
+    assert "Podaj kraj" in session.last_text()
+    assert await services.prefs.get(USER_ID) == "pl"
+    # And the next reply is in Polish although the Telegram client says English.
     await send(dispatcher, bot, _message("/help"))
-    assert "Команди" in session.last_text()
+    assert "Polecenia" in session.last_text()
 
 
 async def test_free_text_plan(dispatcher: Dispatcher, env: Any) -> None:
@@ -236,9 +242,12 @@ async def test_stats_only_for_owner(dispatcher: Dispatcher, env: Any) -> None:
 
 async def test_language_from_telegram_client(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
-    russian = User(id=999, is_bot=False, first_name="R", language_code="ru")
-    await send(dispatcher, bot, _message("Германия 80k", russian))
-    assert "Стоимость для работодателя" in session.last_text()
+    german = User(id=999, is_bot=False, first_name="G", language_code="de-AT")
+    await send(dispatcher, bot, _message("Deutschland 80k", german))
+    assert "Arbeitgeberkosten" in session.last_text()
+    french = User(id=998, is_bot=False, first_name="F", language_code="fr")
+    await send(dispatcher, bot, _message("Germany 80k", french))
+    assert "Employer cost" in session.last_text()  # a language we do not speak falls back to English
 
 
 async def test_start_examples_work(dispatcher: Dispatcher, env: Any) -> None:
@@ -273,6 +282,91 @@ async def test_crash_message_is_in_the_users_language(
         raise RuntimeError("bug")
 
     monkeypatch.setattr("deel_advisor.bot.handlers.render", boom)
-    russian = User(id=4242, is_bot=False, first_name="R", language_code="ru")
-    await send(dispatcher, bot, _message("Германия 80k", russian))
-    assert "Что-то сломалось" in session.last_text()
+    bulgarian = User(id=4242, is_bot=False, first_name="B", language_code="bg")
+    await send(dispatcher, bot, _message("Германия 80k", bulgarian))
+    assert "Нещо се обърка" in session.last_text()
+
+
+# --- what Telegram and users throw at a bot besides well-formed text ----------------------------
+
+
+async def test_sticker_or_photo_gets_a_hint_not_silence(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    sticker = Update(
+        update_id=next(_update_ids),
+        message=Message(message_id=5, date=datetime.now(UTC), chat=Chat(id=USER_ID, type="private"),
+                        from_user=USER, caption="Germany 80k"),
+    )  # fmt: skip
+    await send(dispatcher, bot, sticker)
+    assert "Try <code>Germany 80k</code>" in session.last_text()
+
+
+async def test_button_on_a_message_telegram_no_longer_shows(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _callback("cost:DE:EUR:8000000", with_message=False))
+    assert isinstance(session.calls[-1], AnswerCallbackQuery)  # acknowledged, nothing to edit
+    assert not session.sent()
+
+
+async def test_tapping_the_selected_horizon_again(dispatcher: Dispatcher, env: Any) -> None:
+    from aiogram.exceptions import TelegramBadRequest
+
+    bot, session, _ = env
+    session.fail_with[EditMessageText] = TelegramBadRequest(
+        method=EditMessageText(text="x"), message="Bad Request: message is not modified"
+    )
+    await send(dispatcher, bot, _callback(kb.PlanCb(code="DE", cur="EUR", minor=8_000_000, people=5, months=12).pack()))
+    # The no-op edit is swallowed: no error alert, no extra message.
+    assert not any(isinstance(c, AnswerCallbackQuery) and c.show_alert for c in session.calls)
+
+
+async def test_other_edit_failures_reach_the_error_handler(dispatcher: Dispatcher, env: Any) -> None:
+    from aiogram.exceptions import TelegramBadRequest
+
+    bot, session, _ = env
+    session.fail_with[EditMessageText] = TelegramBadRequest(
+        method=EditMessageText(text="x"), message="Bad Request: message to edit not found"
+    )
+    await send(dispatcher, bot, _callback(kb.PlanCb(code="DE", cur="EUR", minor=8_000_000, people=5, months=12).pack()))
+    alerts = [c for c in session.calls if isinstance(c, AnswerCallbackQuery) and c.show_alert]
+    assert alerts
+    assert alerts[-1].text is not None
+    assert "Something went wrong" in alerts[-1].text
+
+
+async def test_telegram_down_while_answering_is_contained(dispatcher: Dispatcher, env: Any) -> None:
+    from aiogram.exceptions import TelegramNetworkError
+
+    bot, session, _ = env
+    session.fail_with[SendMessage] = TelegramNetworkError(method=SendMessage(chat_id=1, text="x"), message="down")
+    await send(dispatcher, bot, _message("Germany 80k"))  # must not raise out of the dispatcher
+    assert isinstance(session.calls[-1], SendMessage)  # the apology was attempted after the failure
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["/cost@deel_hea_unofficial_bot Germany 80000", "/COST Germany 80000", "/cost   Germany    80000  "],
+)
+async def test_command_variants(dispatcher: Dispatcher, env: Any, text: str) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _message(text))
+    assert "Employer cost" in session.last_text() or "Try" in session.last_text()
+
+
+async def test_html_in_user_input_never_reaches_telegram_unescaped(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    for text in ['<a href="x">Germany</a> 80k', "Germany 80k <b>", "&amp; 80k", "/sources <i>Spain</i>"]:
+        await send(dispatcher, bot, _message(text))
+        reply = session.last_text()
+        assert '<a href="x">' not in reply
+        assert "<i>Spain</i>" not in reply
+
+
+async def test_every_language_answers_every_flow(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    for lang in ("en", "de", "es", "pl", "bg"):
+        await send(dispatcher, bot, _callback(f"lang:{lang}"))
+        for data in ("cost:DE:EUR:8000000", "cmp:GB:PL:GBP:5000000", "src:BG",
+                     kb.PlanCb(code="ES", cur="EUR", minor=5_000_000, people=3, months=24).pack()):  # fmt: skip
+            await send(dispatcher, bot, _callback(data))
+            assert "{" not in session.last_text(), (lang, data)  # no unfilled placeholder

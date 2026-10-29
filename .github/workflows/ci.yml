@@ -51,6 +51,30 @@ jobs:
           print("ok:", ", ".join(c.code for c in data.countries))
           '
 
+  mutation:
+    # Coverage says a line ran; this says a test would notice it being wrong. Not a deploy gate:
+    # it takes a few minutes, and a new equivalent mutant should not block a release.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Mutation testing
+        run: uv run mutmut run --max-children 4
+      - name: At least 95% of mutants caught
+        run: |
+          uv run mutmut export-cicd-stats
+          python3 - <<'PY'
+          import json
+          stats = json.load(open("mutants/mutmut-cicd-stats.json"))
+          caught = stats["killed"] + stats["timeout"]
+          score = caught / stats["total"]
+          print(f"{caught}/{stats['total']} mutants caught ({score:.1%}); survived {stats['survived']}")
+          raise SystemExit(0 if score >= 0.95 else 1)
+          PY
+
   deploy:
     # Only after both jobs are green, only from main, never from a pull request.
     needs: [check, image]

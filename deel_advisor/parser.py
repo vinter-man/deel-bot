@@ -27,40 +27,68 @@ MAX_MONTHS = 120
 DEFAULT_MONTHS = 12
 
 _SYMBOLS = {"€": "EUR", "$": "USD", "£": "GBP", "zł": "PLN"}
+# The vocabulary is English plus the four languages of the countries the bot covers: German,
+# Spanish, Polish and Bulgarian. Words are matched lower-cased and whole.
 _CURRENCY_WORDS = {
-    **dict.fromkeys(("euro", "euros", "евро", "євро", "eur"), "EUR"),
-    **dict.fromkeys(("usd", "dollar", "dollars", "доллар", "долларов", "доларів", "долар"), "USD"),
-    **dict.fromkeys(("gbp", "pound", "pounds", "фунт", "фунтов", "фунтів"), "GBP"),
-    **dict.fromkeys(("pln", "zloty", "zł", "злотых", "злотих", "злотый"), "PLN"),
+    **dict.fromkeys(("euro", "euros", "eur", "евро"), "EUR"),
+    **dict.fromkeys(
+        ("usd", "dollar", "dollars", "dólar", "dólares", "dolar", "dolary", "dolarów", "долар", "долара"), "USD"
+    ),
+    **dict.fromkeys(
+        ("gbp", "pound", "pounds", "pfund", "libra", "libras", "funt", "funty", "funtów", "паунд", "паунда"), "GBP"
+    ),
+    **dict.fromkeys(("pln", "zloty", "zł", "złoty", "złote", "złotych", "злоти"), "PLN"),
     # Not an ECB currency any more (Bulgaria uses the euro since 2026), but people still type it.
-    **dict.fromkeys(("bgn", "лв", "лева", "leva"), "BGN"),
-}
+    **dict.fromkeys(("bgn", "лв", "лв.", "лева", "leva", "lewa"), "BGN"),
+}  # fmt: skip
 _PEOPLE_WORDS = {
     "people", "person", "persons", "ppl", "employee", "employees", "hire", "hires", "heads", "head",
-    "чел", "человек", "человека", "людей", "люди", "сотрудник", "сотрудника", "сотрудников",
-    "осіб", "особи", "особа", "працівників", "працівники", "співробітників", "співробітники",
+    "personen", "leute", "mitarbeiter", "mitarbeitende",
+    "persona", "personas", "empleado", "empleados", "empleada", "empleadas", "trabajadores",
+    "osoba", "osoby", "osób", "osob", "pracownik", "pracownicy", "pracowników", "ludzi",
+    "служител", "служители", "души", "човек", "човека", "хора",
 }  # fmt: skip
 _MONTH_WORDS = {
-    "month", "months", "mo", "mos", "мес", "месяц", "месяца", "месяцев", "міс", "місяць", "місяці",
-    "місяців",
+    "month", "months", "mo", "mos", "monat", "monate", "monaten", "mon", "mon.", "mes", "meses",
+    "miesiąc", "miesiące", "miesięcy", "miesiącach", "mies", "mies.", "месец", "месеца", "месеци", "мес", "мес.",
 }  # fmt: skip
-_YEAR_WORDS = {"year", "years", "yr", "yrs", "год", "года", "лет", "рік", "роки", "років"}
+_YEAR_WORDS = {
+    "year", "years", "yr", "yrs", "jahr", "jahre", "jahren", "año", "años", "ano", "anos",
+    "rok", "lata", "lat", "година", "години", "год", "год.",
+}  # fmt: skip
 # Marks the salary as monthly ("5000 per month", "5k/mo"); the horizon uses _MONTH_WORDS instead.
-_MONTHLY_SALARY = {"monthly", "/mo", "/month", "ежемесячно", "щомісяця"}
-_PER_WORDS = {"per", "a", "в", "на"}
+_MONTHLY_SALARY = {"monthly", "/mo", "/month", "monatlich", "mensual", "mensuales", "miesięcznie", "месечно"}
+_PER_WORDS = {"per", "a", "pro", "al", "por", "na", "на"}
 _FILLER = {
-    "vs", "versus", "and", "or", "with", "for", "in", "of", "gross", "salary", "annual", "yearly",
+    "vs", "vs.", "versus", "and", "or", "with", "for", "in", "of", "gross", "salary", "annual", "yearly",
     "pa", "p.a.", "/yr", "/year", "brutto", "to", "compare", "plan", "cost", "people:", "x",
-    "и", "или", "с", "со", "для", "по", "против", "зарплата", "зп", "брутто", "в", "на", "за",
-    "і", "й", "та", "або", "з", "із", "проти", "у",
+    "und", "oder", "mit", "für", "gegen", "im", "jährlich", "gehalt",
+    "y", "o", "con", "para", "contra", "bruto", "brutos", "salario", "anual", "en", "al",
+    "i", "lub", "z", "dla", "przez", "pensja", "rocznie", "w",
+    "и", "или", "с", "за", "срещу", "бруто", "заплата", "годишно", "в",
 }  # fmt: skip
 
-_AMOUNT = re.compile(r"^(?P<pre>[€$£])?(?P<num>\d+(?:[.,]\d+)*)(?P<mult>k|к|тыс|тис|m|м|млн)?(?P<post>[€$£]|zł)?$")
+_AMOUNT = re.compile(
+    r"^(?P<pre>[€$£])?(?P<num>\d+(?:[.,]\d+)*)(?P<mult>k|tys|tsd|хил|mln|mio|млн|mil|m)?(?P<post>[€$£]|zł)?$"
+)
 _TIMES = re.compile(r"^[x×](?P<n>\d+)$")
 _ATTACHED_UNIT = re.compile(r"^(?P<n>\d+)(?P<unit>[^\d.,]+)$")
 _MULTIPLIERS = {
-    "k": 1_000, "к": 1_000, "тыс": 1_000, "тис": 1_000, "m": 1_000_000, "м": 1_000_000, "млн": 1_000_000,
-}  # fmt: skip
+    "k": 1_000,
+    "tys": 1_000,
+    "tys.": 1_000,
+    "tsd": 1_000,
+    "tsd.": 1_000,
+    "mil": 1_000,
+    "хил": 1_000,
+    "хил.": 1_000,
+    "m": 1_000_000,
+    "mln": 1_000_000,
+    "mio": 1_000_000,
+    "mio.": 1_000_000,
+    "млн": 1_000_000,
+    "млн.": 1_000_000,
+}
 
 
 class ParseError(Exception):
@@ -145,7 +173,7 @@ def _number(text: str) -> Decimal | None:
 
 
 def _tokens(text: str) -> list[str]:
-    raw = text.lower().replace(" ", " ").replace(" ", " ")
+    raw = text.lower()  # str.split() below also splits on no-break spaces ("80\u202f000")
     # Split a glued symbol or slash off a word ("80k€" stays, "80k/mo" -> "80k /mo").
     raw = re.sub(r"(?<=\S)(/(?:mo|month|yr|year))\b", r" \1", raw)
     words = [w.strip(",;:!?()\"'") for w in raw.split()]
@@ -202,7 +230,7 @@ def _currency(token: str, currencies: Collection[str]) -> str | None:
 def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found:
     tokens = _tokens(text)
     found = _Found()
-    salary_at = -1
+    salary_at: int | None = None
     i = 0
     while i < len(tokens):
         token = tokens[i]
@@ -237,7 +265,7 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
         elif token in _PER_WORDS and nxt in _YEAR_WORDS:
             i += 1  # "per year": the default, nothing to do
         elif token in _MULTIPLIERS and found.salary is not None and salary_at == i - 1:
-            found.salary *= _MULTIPLIERS[token]  # "80 тыс", "1.2 млн"
+            found.salary *= _MULTIPLIERS[token]  # "80 tys.", "1,2 Mio."
         elif (code := _currency(token, currencies)) is not None:
             found.currency = code
         elif (amount := _amount(token, currencies)) is not None:
@@ -294,15 +322,9 @@ def parse(
             raise ParseError("unexpected", word=str(number))
 
     if kind is None:
-        if len(found.countries) >= 2:
-            kind = "compare"
-        elif found.people is not None or found.months is not None:
-            kind = "plan"
-        else:
-            kind = "cost"
-
+        kind = "compare" if len(found.countries) >= 2 else "cost"
     if kind == "cost" and (found.people is not None or found.months is not None):
-        kind = "plan"  # "/cost Germany 80k 5 people" asks a planning question
+        kind = "plan"  # "Germany 80k 5 people", or "/cost Germany 80k 5 people", asks a planning question
     return build_query(
         kind,
         tuple(found.countries),

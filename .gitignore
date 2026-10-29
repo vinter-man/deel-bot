@@ -19,3 +19,4 @@ docs/remotion/out/
 .DS_Store
 .claude/
 .deploy.lock
+mutants/

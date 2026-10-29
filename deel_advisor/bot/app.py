@@ -21,7 +21,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import BotCommand
 
 from deel_advisor import catalog, freshness
-from deel_advisor.bot.handlers import LangMiddleware, Services, router
+from deel_advisor.bot.handlers import LangMiddleware, Services, create_router
 from deel_advisor.config import Settings
 from deel_advisor.fx import FxCache
 from deel_advisor.i18n import LANGS, Lang
@@ -38,12 +38,18 @@ COMMANDS: dict[Lang, list[tuple[str, str]]] = {
     "en": [("cost", "Employer cost with a breakdown"), ("plan", "EOR vs own entity, break-even"),
            ("compare", "Two countries side by side"), ("sources", "Where the figures come from"),
            ("help", "How to use the bot"), ("lang", "Change language")],
-    "uk": [("cost", "Вартість роботодавця з розбивкою"), ("plan", "EOR проти юрособи, беззбитковість"),
-           ("compare", "Дві країни поруч"), ("sources", "Звідки цифри"),
-           ("help", "Як користуватися"), ("lang", "Змінити мову")],
-    "ru": [("cost", "Стоимость работодателя с разбивкой"), ("plan", "EOR против юрлица, безубыточность"),
-           ("compare", "Две страны рядом"), ("sources", "Откуда цифры"),
-           ("help", "Как пользоваться"), ("lang", "Сменить язык")],
+    "de": [("cost", "Arbeitgeberkosten mit Aufschlüsselung"), ("plan", "EOR oder eigene Gesellschaft, Break-even"),
+           ("compare", "Zwei Länder nebeneinander"), ("sources", "Woher die Zahlen stammen"),
+           ("help", "So funktioniert der Bot"), ("lang", "Sprache ändern")],
+    "es": [("cost", "Coste para la empresa, desglosado"), ("plan", "EOR o sociedad propia, punto de equilibrio"),
+           ("compare", "Dos países lado a lado"), ("sources", "De dónde salen las cifras"),
+           ("help", "Cómo usar el bot"), ("lang", "Cambiar idioma")],
+    "pl": [("cost", "Koszt pracodawcy z rozbiciem"), ("plan", "EOR czy własna spółka, próg opłacalności"),
+           ("compare", "Dwa kraje obok siebie"), ("sources", "Skąd pochodzą liczby"),
+           ("help", "Jak korzystać z bota"), ("lang", "Zmiana języka")],
+    "bg": [("cost", "Разход на работодателя с разбивка"), ("plan", "EOR или собствено дружество, изплащане"),
+           ("compare", "Две държави една до друга"), ("sources", "Откъде са цифрите"),
+           ("help", "Как се използва ботът"), ("lang", "Смяна на езика")],
 }  # fmt: skip
 
 
@@ -60,7 +66,7 @@ def build_dispatcher(services: Services) -> Dispatcher:
     dp["services"] = services
     dp.message.outer_middleware(LangMiddleware())
     dp.callback_query.outer_middleware(LangMiddleware())
-    dp.include_router(router)
+    dp.include_router(create_router())
     return dp
 
 

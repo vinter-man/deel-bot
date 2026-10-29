@@ -9,11 +9,11 @@ from deel_advisor.stats import Stats
 async def test_language_round_trip_and_persistence(tmp_path: Path) -> None:
     store = LanguageStore(tmp_path)
     assert await store.get(42) is None
-    await store.set(42, "uk")
-    await store.set(42, "ru")
-    assert await store.get(42) == "ru"
+    await store.set(42, "de")
+    await store.set(42, "bg")
+    assert await store.get(42) == "bg"
     # A new process reads the same key file and the same table.
-    assert await LanguageStore(tmp_path).get(42) == "ru"
+    assert await LanguageStore(tmp_path).get(42) == "bg"
 
 
 async def test_telegram_id_is_not_stored(tmp_path: Path) -> None:
@@ -25,7 +25,7 @@ async def test_telegram_id_is_not_stored(tmp_path: Path) -> None:
 
 
 async def test_different_key_means_unlinkable(tmp_path: Path) -> None:
-    await LanguageStore(tmp_path / "a").set(7, "uk")
+    await LanguageStore(tmp_path / "a").set(7, "es")
     assert await LanguageStore(tmp_path / "b").get(7) is None
 
 
@@ -50,7 +50,7 @@ def test_stats_counts_without_identities() -> None:
 async def test_malformed_key_is_replaced(tmp_path: Path) -> None:
     (tmp_path / "prefs.key").write_text("")  # what a crash mid-write used to leave
     store = LanguageStore(tmp_path)
-    await store.set(1, "uk")
+    await store.set(1, "pl")
     assert len(bytes.fromhex((tmp_path / "prefs.key").read_text())) == 32
     (tmp_path / "prefs.key").write_text("zz")
     assert await LanguageStore(tmp_path).get(1) is None  # new key: old rows are unreachable

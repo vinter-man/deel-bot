@@ -117,7 +117,7 @@ async def test_main_strict_exit_code(capsys: pytest.CaptureFixture[str]) -> None
 
 def test_export_shots_uses_real_replies() -> None:
     shots = export_shots.build()
-    assert set(shots) == {"start", "plan", "plan24", "cost", "compare", "sources", "errors", "ru"}
+    assert set(shots) == {"start", "plan", "plan24", "cost", "compare", "sources", "errors", "de"}
     plan_reply = shots["plan"][1]["in"]
     assert "EOR (Deel)" in plan_reply["html"]
     assert plan_reply["keyboard"][0][1] == "• 12 mo"

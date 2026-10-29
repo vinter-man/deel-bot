@@ -27,8 +27,9 @@ And a fourth one I did not plan for: when **Deel's own public country guide** st
 differently from the official source, the reply says so — *"Deel's guide says 0.06%; officially
 from 01.01.2026: 0.15% (source)"*. Six of those turned up in five countries.
 
-Try it: [@deel_hea_unofficial_bot](https://t.me/deel_hea_unofficial_bot). It speaks English,
-Ukrainian and Russian and asks which on the first `/start`.
+Try it: [@deel_hea_unofficial_bot](https://t.me/deel_hea_unofficial_bot). It speaks the
+languages of the countries it covers — English, German, Spanish, Polish and Bulgarian — and asks
+which on the first `/start`.
 
 ![demo](docs/assets/demo.gif)
 
@@ -91,7 +92,7 @@ industry, German U1/U2 by health insurer) and carry a typical rate.
 > 0.09299999999999999. Rounding is explicit and half-up, at the payslip line, the way payroll
 > does it; the reply shows whole units and says it. `calc.py`, `money.py`.
 
-Write `5000/mo` (or `в месяц`, `на місяць`) for a monthly salary. If the annual figure is below
+Write `5000/mo` (or `pro Monat`, `al mes`, `miesięcznie`, `на месец`) for a monthly salary. If the annual figure is below
 the country's minimum wage, the reply suggests you probably meant a monthly one.
 
 ### <a name="plan"></a> EOR or your own entity
@@ -101,10 +102,11 @@ the country's minimum wage, the reply suggests you probably meant a monthly one.
 ![plan](docs/assets/plan.png)
 
 The buttons switch the horizon (6 / 12 / 24 / 36 months) in place, change the team size, or
-compare with another country. The same in Russian, with the plurals right — *для 3 человек*,
-*с 9 человек*, *через 2 месяца*:
+compare with another country. The same in German, with the grammar right — *für 3 Personen*,
+*nach 2 Monaten* — and in Polish, where a count changes the noun's case: *dla 3 osób*, *po 2
+miesiącach*, *przez 24 miesiące*. Numbers follow the language too: `80.000 €`, `9,3 %`.
 
-![ru](docs/assets/ru.png)
+![de](docs/assets/de.png)
 
 > :hurtrealbad: Salary and contributions are identical either way — an EOR invoices them
 > through — so they are shown once and cancel out. What is compared is the EOR fee against the
@@ -165,9 +167,11 @@ older than four days end up as a warning in the reply and a message to the owner
 
 ### <a name="errors"></a> When you type something odd
 
-The free-text parser is a tokenizer, not an LLM: country names in three languages and their
-codes, `80k`, `80 000`, `80.000`, `1.2m`, `€60k`, `60000 zł`, `5 people`, `x5`, `5 человек`,
-`24 months`, `2 роки`, `vs`. Whatever it does not recognise is named back to you.
+The free-text parser is a tokenizer, not an LLM: country names in all five languages and their
+codes (`Deutschland`, `Hiszpania`, `България`, `UK`), `80k`, `80 000`, `80.000`, `1,2 Mio.`,
+`80 tys.`, `€60k`, `60000 zł`, `5 people`, `x5`, `5 Personen`, `3 osoby`, `24 months`, `2 años`,
+`vs`. Whatever it does not recognise is named back to you, and a contradiction (`5 people 6
+people`, `80k 90k`) is an error rather than a guess.
 
 ![errors](docs/assets/errors.png)
 
@@ -271,7 +275,7 @@ new version does not come up.
 
 ```
 text ─→ parser ─→ fx (ECB) ─→ calc ─→ freshness ─→ replies ─→ Telegram HTML
-        tokens     daily cache   Decimal   Deel vs official   en / uk / ru
+        tokens     daily cache   Decimal   Deel vs official   en de es pl bg
 ```
 
 | Module | What is in it |
@@ -282,7 +286,7 @@ text ─→ parser ─→ fx (ECB) ─→ calc ─→ freshness ─→ replies �
 | `fx.py` | ECB reference rates: daily fetch, cache on disk, bundled snapshot as a fallback |
 | `freshness.py` | outdated year, unchecked figures, Deel guide vs official |
 | `replies.py` | Telegram HTML; everything the user typed is escaped |
-| `i18n.py` | the copy in three languages, with real plural rules |
+| `i18n.py` | the copy in five languages, with CLDR plural categories and case-aware counts |
 | `bot/` | aiogram handlers, keyboards and callback data, the daily job and the heartbeat |
 | `scripts/` | the Deel guide checker and the screenshot exporter |
 
@@ -291,18 +295,33 @@ nobody has to escape a full stop in `€1,221.00`.
 
 ```bash
 uv sync
-uv run pytest -q --cov        # 300+ tests, no network, no Telegram
+uv run pytest -q --cov        # 600+ tests, no network, no Telegram
 uv run ruff check . && uv run ruff format --check .
 uv run mypy
 ```
 
 The integration tests drive the real aiogram dispatcher with a fake Bot API session: updates go
 in, API calls come out, and the whole path — middleware, filters, callback data, parser,
-calculation, rendering — runs as it does in production.
+calculation, rendering — runs as it does in production. The fake can also fail on demand, so the
+suite covers what Telegram really does to a bot: a network error mid-reply, "message is not
+modified" on a repeated tap, a button whose message is gone, a sticker instead of text.
+
+> :godmode: Coverage says a line ran; it does not say a test would notice the line being wrong.
+> So the logic modules (`calc`, `money`, `parser`, `freshness`, `fx`, `models`) are also
+> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,080 small deliberate bugs,
+> each run against the suite. The first run caught **84%**. The survivors were real holes — a
+> salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
+> wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
+> **96.9%** are caught, and the 34 left alive are equivalent mutants (`//` vs `/` on positive
+> numbers, a temp file's name, the wording of a log line).
+>
+> ```bash
+> uv run mutmut run && uv run mutmut results
+> ```
 
 The screenshots in this README are not screenshots. `scripts/export_shots.py` runs the bot's own
 reply functions and writes them to JSON, and [Remotion](https://www.remotion.dev) draws them in a
-Telegram window (`docs/remotion`), together with the banner and the demo GIF. A wording change
+Telegram window (`docs/remotion`), together with the demo GIF. A wording change
 in the bot is a re-render, not a retake:
 
 ```bash

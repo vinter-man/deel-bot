@@ -1,6 +1,5 @@
 import React from 'react';
 import {Composition, Still} from 'remotion';
-import {Banner} from './Banner';
 import {Demo, FPS, H, TOTAL, W} from './Demo';
 import {Shot, type ShotName} from './shots';
 
@@ -12,13 +11,12 @@ export const SHOTS: Partial<Record<ShotName, number>> = {
   compare: 640,
   sources: 1060,
   errors: 600,
-  ru: 820,
+  de: 820,
 };
 const SHOT_W = 1000;
 
 export const Root: React.FC = () => (
   <>
-    <Still id="banner" component={Banner} width={1280} height={640} />
     <Composition
       id="demo"
       component={Demo}

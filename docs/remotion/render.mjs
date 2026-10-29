@@ -1,5 +1,6 @@
 /**
- * Builds every image the README uses, into ../assets.
+ * Builds the README's screenshots and demo GIF into ../assets. The banner is drawn by hand
+ * (docs/assets/banner.png) and not rendered here.
  *
  * Run `uv run python scripts/export_shots.py` first: the shots and the demo are drawn from the
  * bot's real replies in src/shots.json, so a wording change in the bot is a re-render here, not
@@ -10,14 +11,13 @@ import {mkdirSync} from 'node:fs';
 
 const OUT = '../assets';
 const TMP = 'out';
-const SHOTS = ['start', 'plan', 'cost', 'compare', 'sources', 'errors', 'ru'];
+const SHOTS = ['start', 'plan', 'cost', 'compare', 'sources', 'errors', 'de'];
 
 const run = (cmd, args) => execFileSync(cmd, args, {stdio: 'inherit'});
 
 mkdirSync(OUT, {recursive: true});
 mkdirSync(TMP, {recursive: true});
 
-run('npx', ['remotion', 'still', 'banner', `${OUT}/banner.png`, '--log=error']);
 for (const shot of SHOTS) {
   run('npx', ['remotion', 'still', `shot-${shot}`, `${OUT}/${shot}.png`, '--log=error']);
 }

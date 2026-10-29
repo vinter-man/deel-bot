@@ -20,6 +20,7 @@ dev = [
     "respx>=0.23",
     "ruff>=0.17",
     "mypy>=2.4",
+    "mutmut>=3.8.1",
 ]
 
 [build-system]
@@ -57,7 +58,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF", "PT", "DTZ", "S"
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "PT011"]
+"tests/**" = ["S101", "S105", "S106", "PT011", "ASYNC240"]
 # User-facing copy reads better as one string per message than wrapped at an arbitrary column.
 "deel_advisor/i18n.py" = ["E501"]
 
@@ -66,3 +67,17 @@ strict = true
 python_version = "3.12"
 files = ["deel_advisor", "scripts"]
 plugins = ["pydantic.mypy"]
+
+[tool.mutmut]
+# The pure logic, where a surviving mutant means a wrong number reaches a user. Telegram glue
+# (bot/) and the startup wiring are exercised end to end in tests/test_bot.py instead.
+source_paths = [
+    "deel_advisor/calc.py",
+    "deel_advisor/money.py",
+    "deel_advisor/parser.py",
+    "deel_advisor/freshness.py",
+    "deel_advisor/fx.py",
+    "deel_advisor/models.py",
+]
+also_copy = ["deel_advisor/", "tests/", "scripts/"]
+pytest_add_cli_args = ["-q", "-x", "-p", "no:cacheprovider"]
