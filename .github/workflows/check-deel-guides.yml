@@ -1,0 +1,22 @@
+name: Check Deel guides
+
+# By hand only: it reads deel.com, and a person decides what a changed page means.
+on:
+  workflow_dispatch:
+    inputs:
+      countries:
+        description: 'Country codes, space-separated (empty = all)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run python scripts/check_deel_guides.py --strict ${{ inputs.countries }}

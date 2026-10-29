@@ -1,0 +1,19 @@
+# Secrets and runtime state never leave the machine they were made on.
+.env
+data/
+*.db
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+
+node_modules/
+docs/remotion/out/
+.DS_Store

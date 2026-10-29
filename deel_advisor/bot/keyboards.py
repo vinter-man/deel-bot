@@ -1,0 +1,150 @@
+"""Inline keyboards and the callback data behind them.
+
+Callback data comes back from the client and Telegram does not check it against the message
+that carried the button, so every field is re-validated before use (`handlers._from_button`).
+The salary travels in minor units of the currency it was typed in: an integer survives the
+round trip through a 64-byte string exactly, a Decimal's repr would not be guaranteed to.
+"""
+
+from __future__ import annotations
+
+from aiogram.filters.callback_data import CallbackData
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from deel_advisor.i18n import COUNTRY_NAMES, LANG_NAMES, LANGS, Lang, t
+from deel_advisor.models import Country
+from deel_advisor.replies import country_name
+
+PEOPLE_CHOICES = (2, 3, 5, 10, 25, 50)
+MONTH_CHOICES = (6, 12, 24, 36)
+
+
+class LangCb(CallbackData, prefix="lang"):
+    lang: str
+
+
+class CostCb(CallbackData, prefix="cost"):
+    code: str
+    cur: str
+    minor: int
+
+
+class PickCompareCb(CallbackData, prefix="pc"):
+    code: str
+    cur: str
+    minor: int
+
+
+class CompareCb(CallbackData, prefix="cmp"):
+    a: str
+    b: str
+    cur: str
+    minor: int
+
+
+class PickPeopleCb(CallbackData, prefix="pp"):
+    code: str
+    cur: str
+    minor: int
+
+
+class PlanCb(CallbackData, prefix="pln"):
+    code: str
+    cur: str
+    minor: int
+    people: int
+    months: int
+
+
+class SourcesCb(CallbackData, prefix="src"):
+    code: str
+
+
+def languages() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for lang in LANGS:
+        builder.button(text=LANG_NAMES[lang], callback_data=LangCb(lang=lang))
+    return builder.as_markup()
+
+
+def start_examples(lang: Lang) -> InlineKeyboardMarkup:
+    """Two taps to a real answer, for whoever opens the bot from a README link."""
+    names = COUNTRY_NAMES[lang]
+    de, bg = names.get("DE", "Germany"), names.get("BG", "Bulgaria")
+    gb, pl = names.get("GB", "United Kingdom"), names.get("PL", "Poland")
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=f"🇩🇪 {de} · €80k · 👥 5",
+                                  callback_data=PlanCb(code="DE", cur="EUR", minor=8_000_000, people=5,
+                                                       months=12).pack())],
+            [InlineKeyboardButton(text=f"🇧🇬 {bg} · €60k",
+                                  callback_data=CostCb(code="BG", cur="EUR", minor=6_000_000).pack())],
+            [InlineKeyboardButton(text=f"🇬🇧 {gb} vs 🇵🇱 {pl} · £50k",
+                                  callback_data=CompareCb(a="GB", b="PL", cur="GBP", minor=5_000_000).pack())],
+        ]
+    )  # fmt: skip
+
+
+def after_cost(lang: Lang, code: str, cur: str, minor: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t(lang, "btn.compare"),
+                                  callback_data=PickCompareCb(code=code, cur=cur, minor=minor).pack())],
+            [InlineKeyboardButton(text=t(lang, "btn.plan"),
+                                  callback_data=PickPeopleCb(code=code, cur=cur, minor=minor).pack())],
+            [InlineKeyboardButton(text=t(lang, "btn.sources"), callback_data=SourcesCb(code=code).pack())],
+        ]
+    )  # fmt: skip
+
+
+def pick_country(lang: Lang, others: list[Country], code: str, cur: str, minor: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for other in others:
+        builder.button(
+            text=f"{other.flag} {country_name(lang, other)}",
+            callback_data=CompareCb(a=code, b=other.code, cur=cur, minor=minor),
+        )
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def pick_people(code: str, cur: str, minor: int, months: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for n in PEOPLE_CHOICES:
+        builder.button(text=str(n), callback_data=PlanCb(code=code, cur=cur, minor=minor, people=n, months=months))
+    builder.adjust(3)
+    return builder.as_markup()
+
+
+def after_plan(lang: Lang, cb: PlanCb) -> InlineKeyboardMarkup:
+    months = [
+        InlineKeyboardButton(
+            text=("• " if n == cb.months else "") + t(lang, "btn.months", n=n),
+            callback_data=PlanCb(code=cb.code, cur=cb.cur, minor=cb.minor, people=cb.people, months=n).pack(),
+        )
+        for n in MONTH_CHOICES
+    ]
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            months,
+            [InlineKeyboardButton(text=t(lang, "btn.plan"),
+                                  callback_data=PickPeopleCb(code=cb.code, cur=cb.cur, minor=cb.minor).pack())],
+            [InlineKeyboardButton(text=t(lang, "btn.compare"),
+                                  callback_data=PickCompareCb(code=cb.code, cur=cb.cur, minor=cb.minor).pack())],
+            [InlineKeyboardButton(text=t(lang, "btn.sources"), callback_data=SourcesCb(code=cb.code).pack())],
+        ]
+    )  # fmt: skip
+
+
+def after_compare(lang: Lang, first: Country, second: Country) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=f"{t(lang, 'btn.sources')} {first.flag}",
+                                     callback_data=SourcesCb(code=first.code).pack()),
+                InlineKeyboardButton(text=f"{t(lang, 'btn.sources')} {second.flag}",
+                                     callback_data=SourcesCb(code=second.code).pack()),
+            ]
+        ]
+    )  # fmt: skip

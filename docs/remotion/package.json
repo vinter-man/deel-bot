@@ -1,0 +1,22 @@
+{
+  "name": "deel-advisor-media",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Renders the README banner, the demo GIF and the bot screenshots from the bot's real replies.",
+  "scripts": {
+    "studio": "remotion studio",
+    "build": "node render.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/google-fonts": "4.0.539",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.539",
+    "simple-icons": "16.36.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
