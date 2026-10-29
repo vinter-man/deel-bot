@@ -18,7 +18,7 @@ from deel_advisor.fx import Rates
 from deel_advisor.i18n import Lang, t
 from deel_advisor.models import Contribution, Country, Figure
 from deel_advisor.money import format_money, format_rate, whole
-from deel_advisor.parser import MAX_MONTHS, Query
+from deel_advisor.parser import MAX_MONTHS, Member, Query, Team
 
 # Weekends and ECB holidays leave the last set up to four days old; older than that is news.
 FX_STALE_DAYS = 4
@@ -323,30 +323,117 @@ def compare(lang: Lang, query: Query, ctx: Context) -> str:
     return "\n".join(out)
 
 
-def team(lang: Lang, query: Query, ctx: Context) -> str:
+# A team spans currencies; its totals are in euros.
+TEAM_CURRENCY = "EUR"
+
+
+@dataclass(frozen=True, slots=True)
+class TeamRow:
+    """One country of a team, with its EOR fees and own-entity costs converted to euros."""
+
+    member: Member
+    plan: calc.Plan
+    eor: Decimal
+    entity: Decimal
+    employment: Decimal
+
+    @property
+    def eor_wins(self) -> bool:
+        return self.eor <= self.entity  # a tie stays on the EOR: nothing to set up
+
+
+def team_rows(team: Team, ctx: Context) -> list[TeamRow]:
+    """The same calculation /plan runs, once per country, in the team's currency."""
+    rows = []
+    for member in team.members:
+        country = member.country
+        local = ctx.rates.convert(member.salary, member.currency, country.currency)
+        result = calc.plan(country, local, eor_fee(country, ctx), member.count, team.months, payroll_fee(country, ctx))
+        rows.append(
+            TeamRow(
+                member,
+                result,
+                ctx.rates.convert(result.eor_fees, country.currency, TEAM_CURRENCY),
+                ctx.rates.convert(result.entity_overhead, country.currency, TEAM_CURRENCY),
+                ctx.rates.convert(result.employment, country.currency, TEAM_CURRENCY),
+            )
+        )
+    return rows
+
+
+def team_breakdown(lang: Lang, rows: list[TeamRow]) -> list[str]:
+    """Per-country detail as text, for when the chart is not sent."""
+    out = []
+    for row in rows:
+        member = row.member
+        salary = _money(lang, member.salary, member.currency)
+        out += [
+            t(lang, "team.country", flag=member.country.flag, country=country_name(lang, member.country),
+              team=i18n.people(lang, member.count), salary=salary),
+            "   " + t(lang, "team.eor_line", amount=_money(lang, row.eor, TEAM_CURRENCY))
+            + (" ✅" if row.eor_wins else ""),
+            "   " + t(lang, "team.entity_line", amount=_money(lang, row.entity, TEAM_CURRENCY))
+            + ("" if row.eor_wins else " ✅"),
+        ]  # fmt: skip
+    return out
+
+
+def team(lang: Lang, team: Team, ctx: Context, *, breakdown: bool = True) -> str:
     """A team spread over several countries: EOR fees against one entity per country.
 
-    Salary and contributions are the same either way, so only the overhead is compared, in the
-    currency the salary was typed in (EUR by default).
+    Salary and contributions are the same either way, so only the fees and the entity costs are
+    compared. With `breakdown=False` the per-country detail is left to the chart the bot sends
+    along, and the text stays short enough for a photo caption.
     """
-    common = query.currency or "EUR"
+    rows = team_rows(team, ctx)
+    cur = TEAM_CURRENCY
+    months = i18n.months(lang, team.months)
+    entities = len(rows)
+    total_eor = sum((r.eor for r in rows), Decimal(0))
+    total_entity = sum((r.entity for r in rows), Decimal(0))
+    out = [
+        t(lang, "team.header", countries=entities, team=i18n.people(lang, team.people), months=months),
+        "",
+    ]
+    if breakdown:
+        out += [*team_breakdown(lang, rows), ""]
+    if breakdown:  # otherwise the chart carries the totals
+        out.append(t(lang, "team.total", eor=_money(lang, total_eor, cur), entities=entities,
+                     entity=_money(lang, total_entity, cur)))  # fmt: skip
+    diff = whole(abs(total_entity - total_eor))
+    if diff == 0:
+        out.append(t(lang, "plan.even", team=i18n.people_for(lang, team.people), months=months))
+    elif total_eor < total_entity:
+        out.append(t(lang, "team.eor_saves", months=months, diff=_money(lang, diff, cur), entities=entities))
+    else:
+        out.append(t(lang, "team.entities_win", months=months, diff=_money(lang, diff, cur)))
+    on_eor = [r.member.country.flag for r in rows if r.eor_wins]
+    on_entity = [r.member.country.flag for r in rows if not r.eor_wins]
+    if on_eor and on_entity:
+        # Each country on its own cheaper side beats both all-EOR and all-entities.
+        best = sum((min(r.eor, r.entity) for r in rows), Decimal(0))
+        out.append(t(lang, "team.mix", eor=" ".join(on_eor), entity=" ".join(on_entity), total=_money(lang, best, cur)))
+    sizes = [f"{r.member.country.flag} {r.plan.breakeven_people or '—'}" for r in rows]
+    employment = sum((r.employment for r in rows), Decimal(0))
+    out += [
+        t(lang, "team.breakeven", list=" · ".join(sizes), months=months),
+        "",
+        t(lang, "team.note", amount=_money(lang, employment, cur), date=_date(ctx.rates.day, lang)),
+    ]
+    notes = _team_notes(lang, rows, ctx)
+    if notes:
+        out += ["", *notes]
+    return "\n".join(out)
+
+
+def _team_notes(lang: Lang, rows: list[TeamRow], ctx: Context) -> list[str]:
     notes: list[str] = []
     # One line for the guides, not one per figure: the per-figure detail is in /plan and /sources.
     outdated_guides: list[str] = []
-    out = [
-        t(lang, "team.header", countries=len(query.countries), team=i18n.people(lang, query.people),
-          salary=_money(lang, query.salary, common), months=i18n.months(lang, query.months)),
-        "",
-    ]  # fmt: skip
-    total_eor = total_entity = employment = best = Decimal(0)
-    breakevens: list[str] = []
-    on_eor: list[str] = []
-    on_entity: list[str] = []
-    for country, count in zip(query.countries, query.counts, strict=True):
-        local = ctx.rates.convert(query.salary, common, country.currency)
-        result = calc.plan(country, local, eor_fee(country, ctx), count, query.months, payroll_fee(country, ctx))
+    for row in rows:
+        country = row.member.country
         minimum = country.minimum_wage
-        if minimum is not None and local < minimum.annual:
+        if minimum is not None and row.plan.cost.annual_salary < minimum.annual:
             notes.append(f"{country.flag} " + t(lang, "cost.below_min_wage", year=country.year,
                                                   minimum=_money(lang, minimum.annual, country.currency)))  # fmt: skip
         state = freshness.check(country, ctx.today)
@@ -356,55 +443,9 @@ def team(lang: Lang, query: Query, ctx: Context) -> str:
             notes.append(f"{country.flag} " + t(lang, "warn.year", year=country.year, current=ctx.today.year))
         if state.unchecked_days:
             notes.append(f"{country.flag} " + t(lang, "warn.unchecked", date=_date(country.official.checked_at, lang)))
-        eor = ctx.rates.convert(result.eor_fees, country.currency, common)
-        entity = ctx.rates.convert(result.entity_overhead, country.currency, common)
-        total_eor += eor
-        total_entity += entity
-        employment += ctx.rates.convert(result.employment, country.currency, common)
-        best += min(eor, entity)
-        (on_eor if eor <= entity else on_entity).append(country.flag)
-        key = "team.row_eor" if eor <= entity else "team.row_entity"
-        out.append(
-            t(lang, key, flag=country.flag, country=country_name(lang, country), count=count,
-              eor=_money(lang, eor, common), entity=_money(lang, entity, common))
-        )  # fmt: skip
-        team_size = result.breakeven_people
-        breakevens.append(f"{country.flag} {team_size}" if team_size is not None else f"{country.flag} —")
-
-    entities = len(query.countries)
-    out += [
-        "",
-        t(lang, "team.total", eor=_money(lang, total_eor, common), entities=entities,
-          entity=_money(lang, total_entity, common)),
-    ]  # fmt: skip
-    diff = whole(abs(total_entity - total_eor))
-    if diff == 0:
-        out.append(t(lang, "plan.even", team=i18n.people_for(lang, query.people),
-                     months=i18n.months(lang, query.months)))  # fmt: skip
-    elif total_eor < total_entity:
-        out.append(t(lang, "team.eor_saves", months=i18n.months(lang, query.months),
-                     diff=_money(lang, diff, common), entities=entities))  # fmt: skip
-    else:
-        out.append(t(lang, "team.entities_win", months=i18n.months(lang, query.months),
-                     diff=_money(lang, diff, common)))  # fmt: skip
-    if on_eor and on_entity:
-        # Each country on its own cheaper side beats both all-EOR and all-entities.
-        out.append(t(lang, "team.mix", eor=" ".join(on_eor), entity=" ".join(on_entity),
-                     total=_money(lang, best, common)))  # fmt: skip
-    out += [
-        t(lang, "team.breakeven", list=" · ".join(breakevens), months=i18n.months(lang, query.months)),
-        t(lang, "team.same", amount=_money(lang, employment, common)),
-        "",
-        t(lang, "plan.note"),
-    ]
-    # The EOR fee is a USD list price, so a conversion is always involved.
-    out.append(t(lang, "compare.fx", date=_date(ctx.rates.day, lang)))
     if outdated_guides:
         notes.append(t(lang, "team.guides", flags=" ".join(outdated_guides)))
-    notes += _fx_warning(lang, ctx)
-    if notes:
-        out += ["", *notes]
-    return "\n".join(out)
+    return notes + _fx_warning(lang, ctx)
 
 
 def _link(url: object, text: str) -> str:

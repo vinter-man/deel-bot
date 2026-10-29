@@ -6,6 +6,7 @@
  * what looks wrong instead of on what the bot said.
  */
 import React from 'react';
+import {Img, staticFile} from 'remotion';
 import {loadFont as loadInter} from '@remotion/google-fonts/Inter';
 import {loadFont as loadMono} from '@remotion/google-fonts/JetBrainsMono';
 
@@ -165,13 +166,15 @@ export const Out: React.FC<{children: React.ReactNode; time: string}> = ({childr
 
 export type Key = {label: string; wide?: boolean};
 
-/** A message the bot sent, with its inline keyboard hanging underneath. */
+/** A message the bot sent, with its inline keyboard hanging underneath; with `photo` (a file in
+ * public/), a picture on top and the text as its caption, as Telegram draws a captioned photo. */
 export const In: React.FC<{
   children: React.ReactNode;
   time: string;
   keyboard?: Key[][];
   width?: number | string;
-}> = ({children, time, keyboard, width = '78%'}) => (
+  photo?: string;
+}> = ({children, time, keyboard, width = '78%', photo}) => (
   <div
     style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: width}}
   >
@@ -185,8 +188,15 @@ export const In: React.FC<{
         color: TG.text,
         width: '100%',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
+      {photo ? (
+        <Img
+          src={staticFile(photo)}
+          style={{display: 'block', width: 'calc(100% + 26px)', margin: '-9px -13px 8px'}}
+        />
+      ) : null}
       {children}
       <div style={{textAlign: 'right', fontSize: 12.5, color: TG.meta, marginTop: 2}}>{time}</div>
     </div>

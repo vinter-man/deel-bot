@@ -13,7 +13,9 @@
 ## Short description
 
 Two engineers in Berlin, one in London, one in Madrid, one in Warsaw. Open four companies, or
-hire them through an Employer of Record? Type `Germany 2 UK 1 Spain 1 Poland 1 70k`:
+hire them through an Employer of Record? Type the team as you would say it — head count and
+salary per country, each in its own currency:
+`Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł`
 
 ![team](docs/assets/team.png)
 
@@ -84,22 +86,28 @@ Germany, United Kingdom, Spain, Poland and Bulgaria, with 2026 rates.
 
 ### <a name="team"></a> A team across countries
 
-`/team Germany 2 UK 1 Spain 1 Poland 1 70k` — a head count after each country, one salary for
-everyone, and optionally a horizon: `… 24 months`. A team spans currencies, so a bare salary is
-in euros; add a currency for another one (`… 60000 GBP`). The free-text form works
-too, as above.
+`/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k` — each country, its head count and its
+salary, which is in that country's currency unless you write another (`UK 1 × $90k`). Commas,
+new lines or nothing between countries; `2 × 80k`, `2 80k` and `80k 2 people` all read the same.
+If everybody earns the same, say it once, set off with a dash, comma or colon:
+`Germany 2, Spain 1 — 70k` (in euros). A horizon goes at the end: `… 24 months`.
 
-Each country gets the same comparison as `/plan`: EOR fees against what an own entity costs
-there — setup, running costs, the weeks before its first payroll, closing it. Then the totals,
-the team size from which an entity would start to pay off in each country, and buttons to
-change the horizon. If the countries disagree — EOR cheaper in some, an entity in others —
-the reply names the cheapest mix, with the entities run on Deel Payroll.
+The answer is the chart above with a short caption: per country, EOR fees against what an own
+entity costs there — setup, running costs, the weeks before its first payroll, closing it — then
+the totals, the team size from which an entity would pay off in each country, and buttons that
+redraw it for 6, 12, 24 or 36 months. If the countries disagree — EOR cheaper in some, an entity
+in others — the caption names the cheapest mix, with the entities run on Deel Payroll.
 
 > :suspect: A number right after a country is its head count (`Germany 2`), unless the next
 > word makes it an amount (`80 tys.`, `900 /mo`, `500 EUR`). With a single country it simply
 > means "that many people"; a bare `Testland 500` is still read as a (too small) salary rather
-> than five hundred hires. Buttons carry the whole team in their callback data (`DE2.GB1.ES1.PL1`)
-> and go through the same validation as typed text.
+> than five hundred hires. A country without a salary (`Germany 2 × 80k, Spain 1`, or
+> `Germany 2, Poland 1 × 200k` — that 200k is Poland's, in złoty) is an error that names the
+> country, not a guess.
+>
+> The chart is matplotlib on the Agg backend, drawn in a worker thread with a font shipped in the
+> package, so it looks the same on the server as here. If drawing fails, or the caption would pass
+> Telegram's 1,024 characters, the bot sends the whole breakdown as text instead. `charts.py`.
 
 ### <a name="cost"></a> What it costs to employ someone
 
@@ -134,17 +142,7 @@ the country's minimum wage, the reply suggests you probably meant a monthly one.
 
 ![plan](docs/assets/plan.png)
 
-Two people in Germany: the EOR is cheaper, and a GmbH starts to pay off at three. Ten people,
-and the answer turns — with the next step spelled out:
-
-![scale](docs/assets/scale.png)
-
-The buttons switch the horizon (6 / 12 / 24 / 36 months) in place, change the team size, or
-compare with another country. The same in German, with the grammar right — *für 3 Personen*,
-*nach 2 Monaten* — and in Polish, where a count changes the noun's case: *dla 3 osób*, *po 2
-miesiącach*, *przez 24 miesiące*. Numbers follow the language too: `80.000 €`, `9,3 %`.
-
-![de](docs/assets/de.png)
+Two people in Germany: the EOR is cheaper, and a GmbH starts to pay off at three.
 
 > :hurtrealbad: Salary and contributions are identical either way — an EOR invoices them
 > through — so they are shown once and cancel out. What is compared is everything else:
@@ -237,9 +235,12 @@ people`, `80k 90k`) is an error rather than a guess.
 ![errors](docs/assets/errors.png)
 
 > :suspect: Buttons carry their query in the callback data (country codes, currency, salary in
-> minor units, team, months), and Telegram does not check that data against the message it came
+> minor units, people, months), and Telegram does not check that data against the message it came
 > from. So a button goes through the same validation as typed text, and a forged or stale one
-> gets a polite alert instead of a traceback. `handlers.py`, `parser.build_query`.
+> gets a polite alert instead of a traceback. A team with a salary per country does not fit in
+> Telegram's 64 bytes, so its buttons carry a short key into an in-memory store of recent teams —
+> numbers only, nothing about who asked — and an evicted key is just a stale button.
+> `handlers.py`, `parser.build_query`, `parser.check_team`.
 
 ---
 ---
@@ -250,14 +251,14 @@ people`, `80k 90k`) is an error rather than a guess.
 |---|---|
 | `/cost <country> <salary> [currency]` | employer cost with the breakdown by contribution |
 | `/plan <country> <salary> <people> [months]` | EOR vs own entity, break-even team and month |
-| `/team <country> <count> … <salary> [months]` | a team across countries: EOR vs one entity each, and the cheapest mix |
+| `/team <country> <count> × <salary>, … [months]` | a team across countries, as a chart: EOR vs one entity each, and the cheapest mix |
 | `/compare <country1> <country2> <salary>` | two countries, totals in one currency |
 | `/sources <country>` | every source, check dates, where Deel's guide differs |
 | `/lang` | change language |
 | `/help` | all of the above, in your language |
 
 Anything else you type is parsed as free text: `Germany 80k`, `Spain 50k 3 people 24 months`,
-`Германия vs Польша 70k`, `Germany 2 Spain 1 Poland 1 70k`.
+`Германия срещу Полша 70k`, `Germany 2 × 80k, Spain 1 × 50k`.
 
 ---
 ---
@@ -344,10 +345,11 @@ text ─→ parser ─→ fx (ECB) ─→ calc ─→ freshness ─→ replies �
 |---|---|
 | `calc.py` | every calculation and nothing else: payslip lines, entity cost, plan, break-even |
 | `models.py` | the schema of the country files |
-| `parser.py` | commands and free text → a validated `Query`, errors with names |
+| `parser.py` | commands and free text → a validated `Query` or `Team`, errors with names |
 | `fx.py` | ECB reference rates: daily fetch, cache on disk, bundled snapshot as a fallback |
 | `freshness.py` | outdated year, unchecked figures, Deel guide vs official |
 | `replies.py` | Telegram HTML; everything the user typed is escaped |
+| `charts.py` | the team chart: matplotlib, ink on paper, the same hand as the banner |
 | `i18n.py` | the copy in five languages, with CLDR plural categories and case-aware counts |
 | `bot/` | aiogram handlers, keyboards and callback data, the daily job and the heartbeat |
 | `scripts/` | the Deel guide checker and the screenshot exporter |
@@ -357,7 +359,7 @@ nobody has to escape a full stop in `€1,221.00`.
 
 ```bash
 uv sync
-uv run pytest -q --cov        # 600+ tests, no network, no Telegram
+uv run pytest -q --cov        # 700+ tests, no network, no Telegram
 uv run ruff check . && uv run ruff format --check .
 uv run mypy
 ```
@@ -370,12 +372,13 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 
 > :godmode: Coverage says a line ran; it does not say a test would notice the line being wrong.
 > So the logic modules (`calc`, `money`, `parser`, `freshness`, `fx`, `models`) are also
-> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,257 small deliberate bugs,
+> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,519 small deliberate bugs,
 > each run against the suite. The first run caught **84%**. The survivors were real holes — a
 > salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
 > wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
-> **96.9%** are caught, and the 39 left alive are equivalent mutants (`//` vs `/` on positive
-> numbers, a temp file's name, the wording of a log line).
+> **96.6%** are caught, and the 52 left alive are equivalent mutants (`//` vs `/` on positive
+> numbers, `zip(strict=…)` on lists equal by construction, a temp file's name, the wording of a
+> log line).
 >
 > ```bash
 > uv run mutmut run && uv run mutmut results
@@ -384,16 +387,6 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 > The `mutation` job in CI recomputes the score on Linux on every push to `main` and fails below
 > 95%. On macOS, mutmut 3.8 reports some killed mutants as "segfault"; the figures above count
 > those after re-running each one directly with pytest.
-
-The screenshots in this README are not screenshots. `scripts/export_shots.py` runs the bot's own
-reply functions and writes them to JSON, and [Remotion](https://www.remotion.dev) draws them in a
-Telegram window (`docs/remotion`), together with the demo GIF and the banner — whose chart is
-the bot's own calculation for Germany, three people, two years. A wording change
-in the bot is a re-render, not a retake:
-
-```bash
-uv run python scripts/export_shots.py && (cd docs/remotion && npm install && npm run build)
-```
 
 ---
 ---

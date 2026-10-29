@@ -30,7 +30,8 @@ RUN useradd --system --uid 10001 --no-create-home advisor \
     && chown advisor /app/data
 USER advisor
 
-ENV DATA_DIR=/app/data
+ENV DATA_DIR=/app/data \
+    MPLCONFIGDIR=/tmp/matplotlib
 # Healthy while the heartbeat task keeps reaching Telegram (it writes every 60 s).
 HEALTHCHECK --interval=60s --timeout=5s --start-period=60s --retries=3 \
     CMD ["python", "-c", "import os,sys,time; sys.exit(time.time() - os.path.getmtime('/tmp/deel-advisor.heartbeat') > 180)"]

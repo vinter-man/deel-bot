@@ -21,8 +21,8 @@ services:
     security_opt: ['no-new-privileges:true']
     cap_drop: [ALL]
     pids_limit: 64
-    # aiogram's pydantic models alone take ~170 MB.
-    mem_limit: 320m
+    # aiogram's pydantic models alone take ~170 MB; matplotlib and a chart in flight ~60 MB more.
+    mem_limit: 384m
     cpus: 0.5
     logging:
       driver: json-file

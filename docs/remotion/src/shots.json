@@ -21,16 +21,16 @@
     },
     {
       "in": {
-        "html": "👋 <b>Hire-or-Entity Advisor</b> <i>(unofficial)</i>\n\nTell me a country, an annual gross salary and a team size — I'll show the full employer cost, EOR versus your own entity, and when an entity starts to pay off.\n\nTry: <code>Germany 80k 5 people</code>\n\nCountries: 🇧🇬 Bulgaria, 🇩🇪 Germany, 🇪🇸 Spain, 🇬🇧 United Kingdom, 🇵🇱 Poland\n/help — all commands",
+        "html": "👋 <b>Hire-or-Entity Advisor</b> <i>(unofficial)</i>\n\nTell me a country, an annual gross salary and a team size — I'll show the full employer cost, EOR versus your own entity, and when an entity starts to pay off.\n\nTry: <code>Germany 80k 2 people</code>\nor a team: <code>Germany 2 × 80k, Spain 1 × 50k</code>\n\nCountries: 🇧🇬 Bulgaria, 🇩🇪 Germany, 🇪🇸 Spain, 🇬🇧 United Kingdom, 🇵🇱 Poland\n/help — all commands",
         "keyboard": [
           [
-            "🌍 🇩🇪 2 · 🇬🇧 1 · 🇪🇸 1 · 🇵🇱 1 · €70k"
+            "🌍 🇩🇪 2 · 🇬🇧 1 · 🇪🇸 1 · 🇵🇱 1"
           ],
           [
             "🇩🇪 Germany · €80k · 👥 2"
           ],
           [
-            "🇧🇬 Bulgaria · €60k"
+            "🇬🇧 United Kingdom · £60k · 👥 1"
           ]
         ]
       }
@@ -38,11 +38,11 @@
   ],
   "team": [
     {
-      "out": "Germany 2 UK 1 Spain 1 Poland 1 70k"
+      "out": "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
     },
     {
       "in": {
-        "html": "🌍 <b>Team in 4 countries</b> · 5 people × €70,000 a year · 12 months\n\n🇩🇪 <b>Germany</b> × 2: EOR fees €12,913 · own-entity costs €18,000 ✅ EOR\n🇬🇧 <b>United Kingdom</b> × 1: EOR fees €6,456 · own-entity costs €17,987 ✅ EOR\n🇪🇸 <b>Spain</b> × 1: EOR fees €6,456 · own-entity costs €10,499 ✅ EOR\n🇵🇱 <b>Poland</b> × 1: EOR fees €6,456 · own-entity costs €9,581 ✅ EOR\n\n<b>Total</b>: EOR (Deel) €32,282 · 4 own entities €56,067\n💡 Over 12 months EOR saves ~€23,785 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 3 · 🇬🇧 4 · 🇪🇸 3 · 🇵🇱 2 people (over 12 months).\nSalary + contributions, identical either way: €429,021\n\n<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>\n<i>Converted at ECB rates of 28 Oct 2026.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
+        "html": "🌍 <b>Team in 4 countries</b> · 5 people · 12 months\n\n💡 Over 12 months EOR saves ~€23,785 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 3 · 🇬🇧 4 · 🇪🇸 3 · 🇵🇱 2 people (over 12 months).\n\n<i>EOR fees against own-entity costs; salary + contributions (€401,527) are the same either way. Totals in EUR at ECB rates of 28 Oct 2026. Every figure: /sources.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
         "keyboard": [
           [
             "6 mo",
@@ -50,17 +50,18 @@
             "24 mo",
             "36 mo"
           ]
-        ]
+        ],
+        "photo": "team.png"
       }
     }
   ],
   "team24": [
     {
-      "out": "Germany 2 UK 1 Spain 1 Poland 1 70k"
+      "out": "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
     },
     {
       "in": {
-        "html": "🌍 <b>Team in 4 countries</b> · 5 people × €70,000 a year · 24 months\n\n🇩🇪 <b>Germany</b> × 2: EOR fees €25,826 · own-entity costs €27,228 ✅ EOR\n🇬🇧 <b>United Kingdom</b> × 1: EOR fees €12,913 · own-entity costs €32,743 ✅ EOR\n🇪🇸 <b>Spain</b> × 1: EOR fees €12,913 · own-entity costs €14,855 ✅ EOR\n🇵🇱 <b>Poland</b> × 1: EOR fees €12,913 · own-entity costs €15,016 ✅ EOR\n\n<b>Total</b>: EOR (Deel) €64,565 · 4 own entities €89,842\n💡 Over 24 months EOR saves ~€25,277 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 3 · 🇬🇧 3 · 🇪🇸 2 · 🇵🇱 2 people (over 24 months).\nSalary + contributions, identical either way: €858,043\n\n<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>\n<i>Converted at ECB rates of 28 Oct 2026.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
+        "html": "🌍 <b>Team in 4 countries</b> · 5 people · 24 months\n\n💡 Over 24 months EOR saves ~€25,277 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 3 · 🇬🇧 3 · 🇪🇸 2 · 🇵🇱 2 people (over 24 months).\n\n<i>EOR fees against own-entity costs; salary + contributions (€803,054) are the same either way. Totals in EUR at ECB rates of 28 Oct 2026. Every figure: /sources.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
         "keyboard": [
           [
             "6 mo",
@@ -68,7 +69,8 @@
             "• 24 mo",
             "36 mo"
           ]
-        ]
+        ],
+        "photo": "team24.png"
       }
     }
   ],
@@ -79,33 +81,6 @@
     {
       "in": {
         "html": "🇩🇪 <b>Germany</b> · 2 people × €80,000 a year · 12 months\n\n<b>EOR (Deel)</b>: €210,622\n   fee €538 per person a month ($599 list price, ECB rate of 28 Oct 2026)\n<b>Own entity on Deel Payroll</b>: €215,710\n   setup €2,475 + closing €4,250 · €717 a month + €26 per person a month\n   7 weeks to set up, on EOR meanwhile: €2,152\nSalary + contributions, identical either way: €197,709\n\n💡 For 2 people over 12 months EOR is cheaper by ~€5,087.\nAn entity pays off from 3 people (over 12 months).\nWith 2 people it pays off after 29 months.\n\n<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>\n\n📝 Deel's guide still shows long-term care rate: 1.7%; the official figure since 1 Jan 2026 is 1.8% (<a href=\"https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung\">source</a>).\n📝 Deel's guide still shows insolvency levy: 0.06%; the official figure since 1 Jan 2026 is 0.15% (<a href=\"https://www.gesetze-im-internet.de/sgb_3/__360.html\">source</a>).",
-        "keyboard": [
-          [
-            "6 mo",
-            "• 12 mo",
-            "24 mo",
-            "36 mo"
-          ],
-          [
-            "👥 Plan for N people"
-          ],
-          [
-            "🔁 Compare with another country"
-          ],
-          [
-            "📚 Sources"
-          ]
-        ]
-      }
-    }
-  ],
-  "scale": [
-    {
-      "out": "Germany 80k 10 people"
-    },
-    {
-      "in": {
-        "html": "🇩🇪 <b>Germany</b> · 10 people × €80,000 a year · 12 months\n\n<b>EOR (Deel)</b>: €1,053,112\n   fee €538 per person a month ($599 list price, ECB rate of 28 Oct 2026)\n<b>Own entity on Deel Payroll</b>: €1,017,240\n   setup €2,475 + closing €4,250 · €717 a month + €26 per person a month\n   7 weeks to set up, on EOR meanwhile: €10,761\nSalary + contributions, identical either way: €988,547\n\n💡 For 10 people over 12 months your own entity is cheaper by ~€35,872.\nWith 10 people it pays off after 4 months.\n💡 Time to move to your own entity: Deel Payroll can run its payroll for €26 per person a month (included above).\n\n<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>\n\n📝 Deel's guide still shows long-term care rate: 1.7%; the official figure since 1 Jan 2026 is 1.8% (<a href=\"https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung\">source</a>).\n📝 Deel's guide still shows insolvency levy: 0.06%; the official figure since 1 Jan 2026 is 0.15% (<a href=\"https://www.gesetze-im-internet.de/sgb_3/__360.html\">source</a>).",
         "keyboard": [
           [
             "6 mo",
@@ -200,33 +175,6 @@
       "in": {
         "html": "Team size must be between 1 and 10000.\nTry <code>Germany 80k</code> or /help.",
         "keyboard": []
-      }
-    }
-  ],
-  "de": [
-    {
-      "out": "Spanien 50k 3 Personen 24 Monate"
-    },
-    {
-      "in": {
-        "html": "🇪🇸 <b>Spanien</b> · 3 Personen × 50.000 € im Jahr · 24 Monate\n\n<b>EOR (Deel)</b>: 435.189 €\n   Gebühr 538 € pro Person und Monat (Listenpreis 599 $, EZB-Kurs vom 28.10.2026)\n<b>Eigene Gesellschaft mit Deel Payroll</b>: 417.149 €\n   Gründung 2.020 € + Schließung 2.125 € · 325 € im Monat + 38 € pro Person und Monat\n   16 Wochen bis zur Gründung, solange über EOR: 6.456 €\nGehalt + Beiträge, in beiden Fällen gleich: 396.450 €\n\n💡 Für 3 Personen über 24 Monate ist die eigene Gesellschaft um ~18.040 € günstiger.\nMit 3 Personen rechnet sie sich nach 9 Monaten.\n💡 Zeit für die eigene Gesellschaft: Deel Payroll kann ihre Lohnabrechnung für 26 € pro Person und Monat übernehmen (oben enthalten).\n\n<i>Jede Zeile hat eine Quelle (/sources). Nicht eingepreist, und alles zugunsten des EOR: die Zeit deines Teams für die Gesellschaft, die Monate einer Liquidation und das Risiko von Scheinselbstständigkeit und Betriebsstätte, das ein EOR für dich trägt.</i>\n\n📝 Im Deel-Leitfaden steht noch Mindestlohn 1.262,28 €/Mon.; amtlich seit 01.01.2026: 1.221 €/Mon. (<a href=\"https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-3815\">Quelle</a>).",
-        "keyboard": [
-          [
-            "6 Mon.",
-            "12 Mon.",
-            "• 24 Mon.",
-            "36 Mon."
-          ],
-          [
-            "👥 Für N Personen rechnen"
-          ],
-          [
-            "🔁 Mit anderem Land vergleichen"
-          ],
-          [
-            "📚 Quellen"
-          ]
-        ]
       }
     }
   ]

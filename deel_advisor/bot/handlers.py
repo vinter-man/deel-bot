@@ -6,10 +6,13 @@ Each handler receives `services` and `lang` through aiogram's dependency injecti
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import hashlib
 import html
 import logging
 import re
+from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -19,16 +22,36 @@ from typing import Any
 from aiogram import BaseMiddleware, F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject, CommandStart
-from aiogram.types import CallbackQuery, ErrorEvent, InlineKeyboardMarkup, Message, TelegramObject, User
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    ErrorEvent,
+    InlineKeyboardMarkup,
+    InputMediaPhoto,
+    Message,
+    TelegramObject,
+    User,
+)
 
-from deel_advisor import replies
+from deel_advisor import charts, replies
 from deel_advisor.bot import keyboards as kb
 from deel_advisor.catalog import Catalog
 from deel_advisor.fx import FxCache
 from deel_advisor.i18n import LANGS, Lang, pick_lang, t
 from deel_advisor.models import Country
 from deel_advisor.money import from_minor, to_minor
-from deel_advisor.parser import MAX_MONTHS, Kind, ParseError, Query, build_query, find_country, parse
+from deel_advisor.parser import (
+    MAX_MONTHS,
+    Kind,
+    ParseError,
+    Query,
+    Team,
+    build_query,
+    check_team,
+    find_country,
+    parse,
+    parse_team,
+)
 from deel_advisor.prefs import LanguageStore
 from deel_advisor.stats import Stats
 
@@ -39,6 +62,41 @@ def _today() -> date:
     return datetime.now(UTC).date()
 
 
+class TeamStore:
+    """Teams behind the horizon buttons, by a short key derived from the team itself.
+
+    A team's salaries and currencies do not fit in 64 bytes of callback data. The store holds
+    numbers only (countries, head counts, salaries) — nothing about who asked — and the most
+    recent `limit` of them; a button whose team has been evicted, or that predates a restart,
+    gets the usual "old message" answer.
+    """
+
+    def __init__(self, limit: int = 2000) -> None:
+        self._teams: OrderedDict[str, Team] = OrderedDict()
+        self._limit = limit
+        # Teams behind buttons the bot ships with (the /start example): never evicted.
+        self._fixed: dict[str, Team] = {}
+
+    def fix(self, key: str, team: Team) -> None:
+        self._fixed[key] = team
+
+    @staticmethod
+    def key_of(team: Team) -> str:
+        spec = ";".join(f"{m.country.code}{m.count}@{m.salary}{m.currency}" for m in team.members)
+        return hashlib.sha256(spec.encode()).hexdigest()[:12]
+
+    def put(self, team: Team, key: str | None = None) -> str:
+        key = key or self.key_of(team)
+        self._teams[key] = team
+        self._teams.move_to_end(key)
+        while len(self._teams) > self._limit:
+            self._teams.popitem(last=False)
+        return key
+
+    def get(self, key: str) -> Team | None:
+        return self._fixed.get(key) or self._teams.get(key)
+
+
 @dataclass
 class Services:
     catalog: Catalog
@@ -47,6 +105,11 @@ class Services:
     stats: Stats = field(default_factory=Stats)
     owner_id: int | None = None
     clock: Callable[[], date] = _today
+    teams: TeamStore = field(default_factory=TeamStore)
+
+    def __post_init__(self) -> None:
+        example = parse_team(kb.EXAMPLE_TEAM_TEXT, self.catalog.index, _currencies(self))
+        self.teams.fix(kb.EXAMPLE_TEAM_CB.key, example)
 
     def context(self) -> replies.Context:
         return replies.Context(self.catalog, self.fx.rates, self.clock())
@@ -83,6 +146,8 @@ def error_text(lang: Lang, error: ParseError, catalog: Catalog, usage: str | Non
         params.pop("suggestion", None)
     if error.code == "no_country":
         params["countries"] = replies.countries_list(lang, catalog)
+    if error.code == "team_salary" and (country := catalog.by_code(error.params["country"])) is not None:
+        params["country"] = replies.country_name(lang, country)
     text = t(lang, key, **params)
     # These already carry their own example or a list of what is valid.
     if usage and error.code not in ("unknown_word", "unknown_currency", "no_salary", "no_country"):
@@ -90,6 +155,41 @@ def error_text(lang: Lang, error: ParseError, catalog: Catalog, usage: str | Non
     elif error.code == "unknown_word":
         text += "\n" + replies.countries_list(lang, catalog)
     return text
+
+
+@dataclass(frozen=True, slots=True)
+class Answer:
+    text: str
+    markup: InlineKeyboardMarkup
+    # A picture to send with the text as its caption (team answers).
+    photo: bytes | None = None
+
+
+async def render_team(team: Team, lang: Lang, services: Services) -> Answer:
+    """The team chart with a short caption; the full text if the chart cannot be drawn."""
+    ctx = services.context()
+    key = services.teams.put(team)
+    markup = kb.after_team(lang, kb.TeamCb(key=key, months=team.months))
+    try:
+        rows = replies.team_rows(team, ctx)
+        photo = await asyncio.to_thread(charts.team_chart, lang, rows, team.months)
+    except Exception:  # a picture is a nicety: never lose the answer over it
+        log.exception("team chart failed")
+        return Answer(replies.team(lang, team, ctx), markup)
+    caption = replies.team(lang, team, ctx, breakdown=False)
+    if _visible_length(caption) > CAPTION_LIMIT:  # a pile of warnings: the text alone, in full
+        return Answer(replies.team(lang, team, ctx), markup)
+    return Answer(caption, markup, photo)
+
+
+# Telegram's limit on a photo caption, counted on the text as shown, without the HTML tags, and
+# in UTF-16 code units: every flag and most emoji count twice.
+CAPTION_LIMIT = 1024
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _visible_length(text: str) -> int:
+    return len(html.unescape(_TAG.sub("", text)).encode("utf-16-le")) // 2
 
 
 def render(query: Query, lang: Lang, ctx: replies.Context) -> tuple[str, InlineKeyboardMarkup]:
@@ -101,10 +201,6 @@ def render(query: Query, lang: Lang, ctx: replies.Context) -> tuple[str, InlineK
     if query.kind == "plan":
         cb = kb.PlanCb(code=first.code, cur=cur, minor=minor, people=query.people, months=query.months)
         return replies.plan(lang, query, ctx), kb.after_plan(lang, cb)
-    if query.kind == "team":
-        spec = kb.team_spec([c.code for c in query.countries], query.counts)
-        team_cb = kb.TeamCb(team=spec, cur=query.currency or "EUR", minor=minor, months=query.months)
-        return replies.team(lang, query, ctx), kb.after_team(lang, team_cb)
     return replies.compare(lang, query, ctx), kb.after_compare(lang, *query.countries)
 
 
@@ -131,12 +227,23 @@ async def _answer_text(message: Message, text: str | None, kind: Kind | None, se
         return
     try:
         query = parse(text, services.catalog.index, _currencies(services), kind, in_eur=_in_eur(services))
-        body, markup = render(query, lang, services.context())
+        if isinstance(query, Team):
+            answer = await render_team(query, lang, services)
+        else:
+            answer = Answer(*render(query, lang, services.context()))
     except ParseError as error:
         services.stats.hit(f"error.{error.code}")
         await message.answer(error_text(lang, error, services.catalog, usage))
         return
-    await message.answer(body, reply_markup=markup)
+    await _deliver(message, answer)
+
+
+async def _deliver(message: Message, answer: Answer) -> None:
+    if answer.photo is None:
+        await message.answer(answer.text, reply_markup=answer.markup)
+        return
+    photo = BufferedInputFile(answer.photo, filename="team.png")
+    await message.answer_photo(photo, caption=answer.text, reply_markup=answer.markup)
 
 
 def _currencies(services: Services) -> set[str]:
@@ -352,28 +459,35 @@ async def on_plan(callback: CallbackQuery, callback_data: kb.PlanCb, services: S
     await _send_or_edit(callback, *render(query, lang, services.context()), edit=True)
 
 
-TEAM_SPEC = re.compile(r"^([A-Z]{2})(\d{1,4})$")
-
-
 async def on_team(callback: CallbackQuery, callback_data: kb.TeamCb, services: Services, lang: Lang) -> None:
     services.stats.hit("button.team")
-    cb = callback_data
+    team = services.teams.get(callback_data.key)
+    if team is None:
+        await _button_error(callback, lang, ParseError("stale_button"))
+        return
     try:
-        parts = [TEAM_SPEC.match(part) for part in cb.team.split(".")]
-        if not all(parts):
-            raise ParseError("stale_button")
-        codes = tuple(m.group(1) for m in parts if m)
-        counts = tuple(int(m.group(2)) for m in parts if m)
-        if cb.cur not in _currencies(services):
-            raise ParseError("stale_button")
-        countries = tuple(_country(services, code) for code in codes)
-        query = build_query("team", countries, from_minor(cb.minor), currency=cb.cur, months=cb.months,
-                            counts=counts, in_eur=_in_eur(services))  # fmt: skip
+        team = check_team(Team(team.members, callback_data.months))
     except ParseError as error:
         await _button_error(callback, lang, error)
         return
     await callback.answer()
-    await _send_or_edit(callback, *render(query, lang, services.context()), edit=True)
+    answer = await render_team(team, lang, services)
+    message = callback.message
+    if not isinstance(message, Message):
+        return
+    try:
+        if answer.photo is not None and message.photo:
+            media = InputMediaPhoto(media=BufferedInputFile(answer.photo, filename="team.png"), caption=answer.text)
+            await message.edit_media(media, reply_markup=answer.markup)
+        elif answer.photo is None and not message.photo:
+            await message.edit_text(answer.text, reply_markup=answer.markup)
+        else:
+            # A chart under the /start example's text, or the full text under a chart that could
+            # not be redrawn (too long for a caption): a new message rather than a broken edit.
+            await _deliver(message, answer)
+    except TelegramBadRequest as error:
+        if "message is not modified" not in str(error):
+            raise
 
 
 async def on_sources(callback: CallbackQuery, callback_data: kb.SourcesCb, services: Services, lang: Lang) -> None:

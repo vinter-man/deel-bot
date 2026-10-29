@@ -18,8 +18,16 @@ import pytest
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.base import BaseSession
-from aiogram.methods import AnswerCallbackQuery, EditMessageText, GetMe, SendMessage, TelegramMethod
-from aiogram.types import CallbackQuery, Chat, Message, Update, User
+from aiogram.methods import (
+    AnswerCallbackQuery,
+    EditMessageMedia,
+    EditMessageText,
+    GetMe,
+    SendMessage,
+    SendPhoto,
+    TelegramMethod,
+)
+from aiogram.types import BufferedInputFile, CallbackQuery, Chat, InlineKeyboardMarkup, Message, PhotoSize, Update, User
 
 from deel_advisor.bot import keyboards as kb
 from deel_advisor.bot.app import build_dispatcher
@@ -55,6 +63,8 @@ class FakeSession(BaseSession):
                 chat=Chat(id=chat_id or USER_ID, type="private"),
                 text=method.text,
             )
+        if isinstance(method, SendPhoto | EditMessageMedia):
+            return _photo_message(next(self._ids), "…")
         return True
 
     async def close(self) -> None:
@@ -64,11 +74,32 @@ class FakeSession(BaseSession):
         raise NotImplementedError
         yield b""
 
-    def sent(self) -> list[SendMessage | EditMessageText]:
-        return [c for c in self.calls if isinstance(c, SendMessage | EditMessageText)]
+    def sent(self) -> list[SendMessage | EditMessageText | SendPhoto | EditMessageMedia]:
+        return [c for c in self.calls if isinstance(c, SendMessage | EditMessageText | SendPhoto | EditMessageMedia)]
 
     def last_text(self) -> str:
-        return self.sent()[-1].text
+        """The text of the last message sent or edited, or a photo's caption."""
+        last = self.sent()[-1]
+        if isinstance(last, SendPhoto):
+            return last.caption or ""
+        if isinstance(last, EditMessageMedia):
+            return last.media.caption or ""
+        return last.text
+
+
+PNG = b"\x89PNG\r\n\x1a\n"
+
+
+def _photo_bytes(call: SendPhoto | EditMessageMedia) -> bytes:
+    photo = call.photo if isinstance(call, SendPhoto) else call.media.media
+    assert isinstance(photo, BufferedInputFile)
+    return photo.data
+
+
+def _photo_message(message_id: int, caption: str) -> Message:
+    photo = [PhotoSize(file_id="f", file_unique_id="u", width=1600, height=1136)]
+    return Message(message_id=message_id, date=datetime.now(UTC), chat=Chat(id=USER_ID, type="private"),
+                   photo=photo, caption=caption)  # fmt: skip
 
 
 @pytest.fixture(scope="module")
@@ -108,8 +139,10 @@ def _message(text: str, user: User = USER) -> Update:
     )
 
 
-def _callback(data: str, user: User = USER, *, with_message: bool = True) -> Update:
+def _callback(data: str, user: User = USER, *, with_message: bool = True, on_photo: bool = False) -> Update:
     origin = Message(message_id=77, date=datetime.now(UTC), chat=Chat(id=user.id, type="private"), text="…")
+    if on_photo:
+        origin = _photo_message(77, "…")
     return Update(
         update_id=next(_update_ids),
         callback_query=CallbackQuery(id=str(next(_update_ids)), from_user=user, chat_instance="c", data=data,
@@ -375,24 +408,149 @@ async def test_every_language_answers_every_flow(dispatcher: Dispatcher, env: An
             assert "{" not in session.last_text(), (lang, data)  # no unfilled placeholder
 
 
+TEAM = "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
+
+
+def _team_buttons(call: SendPhoto | EditMessageMedia | SendMessage | EditMessageText) -> list[str]:
+    markup = call.reply_markup
+    assert isinstance(markup, InlineKeyboardMarkup)
+    return [b.callback_data or "" for row in markup.inline_keyboard for b in row]
+
+
 async def test_team_flow(dispatcher: Dispatcher, env: Any) -> None:
-    bot, session, _ = env
-    await send(dispatcher, bot, _message("/team Germany 2 UK 1 Spain 1 Poland 1 70k"))
+    bot, session, services = env
+    await send(dispatcher, bot, _message(f"/team {TEAM}"))
     reply = session.sent()[-1]
-    assert "Team in 4 countries" in reply.text
-    data = [b.callback_data for row in reply.reply_markup.inline_keyboard for b in row]
-    assert data == [f"tm:DE2.GB1.ES1.PL1:EUR:7000000:{n}" for n in (6, 12, 24, 36)]
-    await send(dispatcher, bot, _callback("tm:DE2.GB1.ES1.PL1:EUR:7000000:24"))
-    assert isinstance(session.sent()[-1], EditMessageText)
+    # A chart with a short caption: the per-country detail is in the picture.
+    assert isinstance(reply, SendPhoto)
+    assert _photo_bytes(reply).startswith(PNG)
+    assert reply.caption is not None
+    assert reply.caption.startswith("🌍 <b>Team in 4 countries</b> · 5 people · 12 months")
+    assert "Own entity:" not in reply.caption
+    data = _team_buttons(reply)
+    key = data[0].split(":")[1]
+    assert data == [f"tm:{key}:{n}" for n in (6, 12, 24, 36)]
+    assert all(len(d.encode()) <= 64 for d in data)  # Telegram's limit on callback data
+    assert services.teams.get(key) is not None
+
+    await send(dispatcher, bot, _callback(f"tm:{key}:24", on_photo=True))
+    edit = session.sent()[-1]
+    assert isinstance(edit, EditMessageMedia)  # the chart is redrawn in place
+    assert _photo_bytes(edit).startswith(PNG)
     assert "24 months" in session.last_text()
+    assert _team_buttons(edit)[2] == f"tm:{key}:24"
+
+
+async def test_free_text_team_is_a_team(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _message("Germany 2 80k Spain 1 50k"))
+    assert isinstance(session.sent()[-1], SendPhoto)
+    assert "Team in 2 countries" in session.last_text()
+
+
+async def test_same_team_gets_the_same_key(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _message(TEAM))
+    await send(dispatcher, bot, _message(f"{TEAM} 36 months"))
+    first, second = (_team_buttons(call)[0].split(":")[1] for call in session.sent()[-2:])
+    assert first == second  # the horizon is in the button, not in the key
+
+
+async def test_team_chart_failure_falls_back_to_the_full_text(
+    dispatcher: Dispatcher, env: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from deel_advisor import charts
+
+    def broken(*args: Any) -> bytes:
+        raise RuntimeError("no fonts today")
+
+    monkeypatch.setattr(charts, "team_chart", broken)
+    bot, session, _ = env
+    await send(dispatcher, bot, _message(TEAM))
+    reply = session.sent()[-1]
+    assert isinstance(reply, SendMessage)
+    assert "Own entity:" in reply.text  # the breakdown the chart would have shown
+    key = _team_buttons(reply)[0].split(":")[1]
+    await send(dispatcher, bot, _callback(f"tm:{key}:24"))
+    assert isinstance(session.sent()[-1], EditMessageText)
+    # Under a chart, the long text cannot become a caption: it comes as a new message instead.
+    await send(dispatcher, bot, _callback(f"tm:{key}:6", on_photo=True))
+    assert isinstance(session.sent()[-1], SendMessage)
+    assert "6 months" in session.last_text()
+
+
+async def test_caption_too_long_falls_back_to_the_full_text(
+    dispatcher: Dispatcher, env: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from deel_advisor.bot import handlers
+
+    monkeypatch.setattr(handlers, "CAPTION_LIMIT", 50)
+    bot, session, _ = env
+    await send(dispatcher, bot, _message(TEAM))
+    reply = session.sent()[-1]
+    assert isinstance(reply, SendMessage)
+    assert "Own entity:" in reply.text
+
+
+async def test_team_button_edge_cases(dispatcher: Dispatcher, env: Any) -> None:
+    from aiogram.exceptions import TelegramBadRequest
+
+    bot, session, _ = env
+    data = kb.EXAMPLE_TEAM_CB.pack()
+    await send(dispatcher, bot, _callback(data, with_message=False))  # too old for Telegram to show
+    assert isinstance(session.calls[-1], AnswerCallbackQuery)
+    assert not session.sent()
+    session.fail_with[EditMessageMedia] = TelegramBadRequest(
+        method=EditMessageText(text="x"), message="Bad Request: message is not modified"
+    )
+    await send(dispatcher, bot, _callback(data, on_photo=True))  # the horizon already shown
+    assert not any(isinstance(c, AnswerCallbackQuery) and c.show_alert for c in session.calls)
+    session.fail_with[EditMessageMedia] = TelegramBadRequest(
+        method=EditMessageText(text="x"), message="Bad Request: message to edit not found"
+    )
+    await send(dispatcher, bot, _callback(data, on_photo=True))
+    alerts = [c for c in session.calls if isinstance(c, AnswerCallbackQuery) and c.show_alert]
+    assert alerts  # other failures reach the error handler
+
+
+def test_caption_limit_counts_what_telegram_counts() -> None:
+    from deel_advisor.bot.handlers import _visible_length
+
+    assert _visible_length("<b>Total</b> &amp; <i>more</i>") == len("Total & more")
+    assert _visible_length("🇩🇪 💡 €") == 2 * 2 + 1 + 2 + 1 + 1  # a flag is two code points, four units
+
+
+async def test_example_team_button_answers_with_a_chart(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    await send(dispatcher, bot, _callback(kb.EXAMPLE_TEAM_CB.pack()))  # sits under the /start text
+    assert isinstance(session.sent()[-1], SendPhoto)
+    assert "Team in 4 countries" in session.last_text()
+
+
+def test_team_store_forgets_the_oldest(real_catalog: Catalog) -> None:
+    from deel_advisor.bot.handlers import TeamStore
+    from deel_advisor.parser import parse_team
+
+    store = TeamStore(limit=2)
+    teams = [parse_team(f"Germany {n} × 80k, Spain 1 × 50k", real_catalog.index, {"EUR"}) for n in (1, 2, 3)]
+    keys = [store.put(team) for team in teams]
+    assert len(set(keys)) == 3
+    assert store.get(keys[0]) is None
+    assert store.get(keys[2]) == teams[2]
+    store.put(teams[1])  # used again: now the newest
+    store.put(teams[0])
+    assert (store.get(keys[1]), store.get(keys[2])) == (teams[1], None)
+    store.fix("example", teams[2])
+    for n in range(5):
+        store.put(parse_team(f"Germany {n + 10} × 80k, Spain 1 × 50k", real_catalog.index, {"EUR"}))
+    assert store.get("example") == teams[2]  # the /start button's team is never evicted
 
 
 @pytest.mark.parametrize(
-    "data", ["tm:DE2.XX1:EUR:7000000:12", "tm:DE2:EUR:7000000:12", "tm:DE2.GB0:EUR:7000000:12",
-             "tm:DE2.GB1:XYZ:7000000:12", "tm:de2.gb1:EUR:7000000:12", "tm:DE2.DE1:EUR:7000000:12",
-             "tm:DE2.GB1:EUR:7000000:999", "tm:DE2..GB1:EUR:7000000:12"],
-)  # fmt: skip
-async def test_forged_team_buttons_are_refused(dispatcher: Dispatcher, env: Any, data: str) -> None:
+    "data",
+    ["tm:000000000000:12", "tm:example:999", "tm:example:0", "tm:example:x", "tm::12", "tm:example"],
+)
+async def test_forged_or_stale_team_buttons_are_refused(dispatcher: Dispatcher, env: Any, data: str) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _callback(data))
     assert isinstance(session.calls[-1], AnswerCallbackQuery)

@@ -10,17 +10,17 @@ import {DayDivider, In, Out, Window} from './telegram';
 
 export const FPS = 30;
 export const W = 1000;
-export const H = 720;
+export const H = 1060;
 export const TOTAL = 11 * FPS;
 
-const QUESTION = 'Germany 2 UK 1 Spain 1 Poland 1 70k';
+const QUESTION = data.team[0]!.out as string;
 const TYPE_END = Math.round(2.2 * FPS);
 const SENT = TYPE_END + 6;
 const ANSWER = SENT + Math.round(0.7 * FPS);
 const TAP = Math.round(5.6 * FPS);
 const EDITED = TAP + 8;
 
-type Reply = {html: string; keyboard: string[][]};
+type Reply = {html: string; keyboard: string[][]; photo: string};
 const plan12 = (data.team[1] as {in: Reply}).in;
 const plan24 = (data.team24[1] as {in: Reply}).in;
 
@@ -52,7 +52,7 @@ export const Demo: React.FC = () => {
         {frame >= SENT ? <Out time="10:14">{QUESTION}</Out> : null}
         {frame >= ANSWER ? (
           <div style={{opacity: answerIn, transform: `translateY(${(1 - answerIn) * 24}px)`}}>
-            <In time="10:14" width="88%" keyboard={keyboard}>
+            <In time="10:14" width="74%" keyboard={keyboard} photo={reply.photo}>
               <TgHtml html={reply.html} />
             </In>
           </div>

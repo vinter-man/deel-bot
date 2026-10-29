@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import pytest
 import respx
@@ -115,19 +117,16 @@ async def test_main_strict_exit_code(capsys: pytest.CaptureFixture[str]) -> None
     assert "PL  CHECK" in capsys.readouterr().out
 
 
-def test_banner_is_the_real_calculation() -> None:
-    data = export_shots.banner()
-    assert len(data["eor"]) == len(data["entity"]) == data["months"] + 1
-    assert data["eor"][0] == 0  # no EOR fee before anyone is hired
-    assert data["entity"][0] > 0  # the entities cost money before their first payroll
-    assert all(e < n for e, n in zip(data["eor"], data["entity"], strict=True))  # "cheaper every month"
-    assert abs(data["entity"][-1] - data["eor"][-1] - data["saving"]) <= 1
-    assert (data["people"], data["entities"]) == (5, 4)
-
-
-def test_export_shots_uses_real_replies() -> None:
+def test_export_shots_uses_real_replies(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(export_shots, "PUBLIC", tmp_path)  # the charts, not into the repo
     shots = export_shots.build()
-    assert set(shots) == {"start", "team", "team24", "plan", "scale", "cost", "compare", "sources", "errors", "de"}
+    assert set(shots) == {"start", "team", "team24", "plan", "cost", "compare", "sources", "errors"}
+    # Team answers are a chart and its caption, as the bot sends them.
+    team = shots["team"][1]["in"]
+    assert team["photo"] == "team.png"
+    assert (tmp_path / "team.png").read_bytes().startswith(b"\x89PNG")
+    assert (tmp_path / "team24.png").read_bytes() != (tmp_path / "team.png").read_bytes()
+    assert shots["team"][0]["out"] == "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
     plan_reply = shots["plan"][1]["in"]
     assert "EOR (Deel)" in plan_reply["html"]
     assert plan_reply["keyboard"][0][1] == "• 12 mo"

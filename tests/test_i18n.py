@@ -38,7 +38,15 @@ def test_translations_are_not_english_copies(lang: str) -> None:
     same = {k for k, v in MESSAGES[lang].items() if v == MESSAGES["en"][k]}  # type: ignore[index]
     # Strings that are the same in every language (a brand, a symbol, a shared prompt) or
     # happen to be spelled the same in German ("in EUR: …").
-    allowed = {"lang.prompt", "plan.eor", "sources.guide_ok", "compare.row_local"}
+    allowed = {
+        "lang.prompt",
+        "plan.eor",
+        "sources.guide_ok",
+        "compare.row_local",
+        "chart.eor",
+        "team.country",
+        "team.eor_line",
+    }
     assert same <= allowed, same - allowed
 
 

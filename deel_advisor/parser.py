@@ -114,8 +114,26 @@ class Query:
     people: int = 1
     months: int = DEFAULT_MONTHS
     salary_was_monthly: bool = False
-    # For a team: how many people in each of `countries`, in the same order.
-    counts: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Member:
+    """One country of a team: how many people, at what annual salary, in which currency."""
+
+    country: Country
+    count: int
+    salary: Decimal
+    currency: str
+
+
+@dataclass(frozen=True, slots=True)
+class Team:
+    members: tuple[Member, ...]
+    months: int = DEFAULT_MONTHS
+
+    @property
+    def people(self) -> int:
+        return sum(m.count for m in self.members)
 
 
 @dataclass(slots=True)
@@ -252,7 +270,7 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
             after = tokens[i + 1] if i + 1 < len(tokens) else ""
             # Not a count when the next word makes it an amount: "80 tys.", "900 /mo", "500 EUR".
             amount_follows = after in _AMOUNT_WORDS or _currency(after, currencies) is not None
-            if count.isdigit() and 1 <= int(count) < MIN_SALARY and not amount_follows:
+            if count.isdecimal() and 1 <= int(count) < MIN_SALARY and not amount_follows:
                 found.counts.append(int(count))  # a following "people" is skipped as filler
                 i += 1
             else:
@@ -268,16 +286,16 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
         elif attached and attached["unit"] in _MONTH_WORDS | _YEAR_WORDS and found.salary is not None:
             factor = 12 if attached["unit"] in _YEAR_WORDS else 1
             found.set_months(int(attached["n"]) * factor, token)
-        elif token.isdigit() and found.salary is not None and nxt in _PEOPLE_WORDS:
+        elif token.isdecimal() and found.salary is not None and nxt in _PEOPLE_WORDS:
             found.set_people(int(token), f"{token} {nxt}")
             i += 1
-        elif token.isdigit() and found.salary is not None and nxt in _MONTH_WORDS | _YEAR_WORDS:
+        elif token.isdecimal() and found.salary is not None and nxt in _MONTH_WORDS | _YEAR_WORDS:
             found.set_months(int(token) * (12 if nxt in _YEAR_WORDS else 1), f"{token} {nxt}")
             i += 1
         elif token in _MONTHLY_SALARY:
             found.monthly = True
         elif token in _PER_WORDS and nxt in _MONTH_WORDS:
-            found.monthly = True  # "per month", "в месяц"
+            found.monthly = True  # "per month", "на месец"
             i += 1
         elif token in _PER_WORDS and nxt in _YEAR_WORDS:
             i += 1  # "per year": the default, nothing to do
@@ -291,7 +309,7 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
                 found.salary = value
                 found.currency = currency or found.currency
                 salary_at = i
-            elif token.isdigit():
+            elif token.isdecimal():
                 found.bare.append(int(value))
             else:
                 # "80k 90k", "5.5": a second amount is not a team size or a horizon.
@@ -315,13 +333,15 @@ def parse(
     currencies: Collection[str],
     kind: Kind | None = None,
     in_eur: InEur | None = None,
-) -> Query:
+) -> Query | Team:
     """`kind` is fixed by a command; free text (`kind=None`) infers it from what was typed.
 
     `in_eur` converts the salary for the sanity bounds, so "80k JPY" is judged as ~€450.
     """
     if not text.strip():
         raise ParseError("empty")
+    if kind == "team" or (kind is None and _looks_like_team(text, countries, currencies)):
+        return parse_team(text, countries, currencies, in_eur)  # "Germany 2 × 80k, Spain 1 × 50k"
     found = _scan(text, countries, currencies)
 
     if not found.countries:
@@ -346,30 +366,15 @@ def parse(
 
     counted = any(c is not None for c in found.counts)
     single = found.counts[0] if len(found.counts) == 1 else None
-    if single is not None and kind != "team":
+    if single is not None:
         found.set_people(single, str(single))  # "Germany 2 80k" is "Germany 80k 2 people"
-    elif counted and kind is None:
-        kind = "team"
-    elif counted and kind == "compare":
+    elif counted:
+        # Head counts with /compare (or /cost, /plan): a team question asked of the wrong command.
         raise ParseError("unexpected", word=str(next(c for c in found.counts if c is not None)))
     if kind is None:
         kind = "compare" if len(found.countries) >= 2 else "cost"
     if kind == "cost" and (found.people is not None or found.months is not None):
         kind = "plan"  # "Germany 80k 5 people", or "/cost Germany 80k 5 people", asks a planning question
-    if kind == "team":
-        if found.people is not None:
-            raise ParseError("team_counts")  # a team has a head count per country, not one in total
-        return build_query(
-            kind,
-            tuple(found.countries),
-            found.salary * 12 if found.monthly else found.salary,
-            # A team spans currencies, so a bare salary is in euros, for checking and computing alike.
-            currency=found.currency or "EUR",
-            months=found.months if found.months is not None else DEFAULT_MONTHS,
-            salary_was_monthly=found.monthly,
-            counts=tuple(c if c is not None else 1 for c in found.counts),
-            in_eur=in_eur,
-        )
     return build_query(
         kind,
         tuple(found.countries),
@@ -391,37 +396,161 @@ def build_query(
     people: int = 1,
     months: int = DEFAULT_MONTHS,
     salary_was_monthly: bool = False,
-    counts: tuple[int, ...] = (),
     in_eur: InEur | None = None,
 ) -> Query:
     """The checks every query passes, whether it was typed or came back from a button."""
-    if kind == "team":
-        if len(countries) < 2:
-            raise ParseError("team_needs_two")
-        if len({c.code for c in countries}) != len(countries):
-            raise ParseError("same_country")
-        if len(counts) != len(countries) or min(counts, default=0) < 1:
-            raise ParseError("people_range", maximum=str(MAX_PEOPLE))
-        people = sum(counts)  # the team's total is held to MAX_PEOPLE below
-    else:
-        expected = 2 if kind == "compare" else 1
-        if len(countries) < expected:
-            raise ParseError("need_two_countries")
-        if len(countries) > expected:
-            raise ParseError("too_many_countries")
-        counts = ()
+    expected = 2 if kind == "compare" else 1
+    if len(countries) < expected:
+        raise ParseError("need_two_countries")
+    if len(countries) > expected:
+        raise ParseError("too_many_countries")
     if kind == "compare" and countries[0].code == countries[1].code:
         raise ParseError("same_country")
-    comparable = in_eur(salary, currency or countries[0].currency) if in_eur else salary
-    if comparable < MIN_SALARY:
-        raise ParseError("salary_too_low", minimum=f"{MIN_SALARY:,} EUR")
-    if comparable > MAX_SALARY:
-        raise ParseError("salary_too_high", maximum=f"{MAX_SALARY:,} EUR")
+    _check_salary(salary, currency or countries[0].currency, in_eur)
     if not 1 <= people <= MAX_PEOPLE:
         raise ParseError("people_range", maximum=str(MAX_PEOPLE))
     if not 1 <= months <= MAX_MONTHS:
         raise ParseError("months_range", maximum=str(MAX_MONTHS))
-    return Query(kind, countries, salary, currency, people, months, salary_was_monthly, counts)
+    return Query(kind, countries, salary, currency, people, months, salary_was_monthly)
+
+
+def _check_salary(salary: Decimal, currency: str, in_eur: InEur | None) -> None:
+    comparable = in_eur(salary, currency) if in_eur else salary
+    if comparable < MIN_SALARY:
+        raise ParseError("salary_too_low", minimum=f"{MIN_SALARY:,} EUR")
+    if comparable > MAX_SALARY:
+        raise ParseError("salary_too_high", maximum=f"{MAX_SALARY:,} EUR")
+
+
+# "2×80k", "2 x 80k", "2 @ 80k": the head count and the salary of one country.
+_BY = re.compile(r"(?<=\d)\s*[×x*@]\s*(?=[€$£]?\d)")
+# "Spain 1 — 70k", "Spain, 70k": a salary set off from the last country is everybody's.
+# Marked with a token of its own before the punctuation is lost in tokenizing.
+_APART = re.compile(r"(?<=\w)(?:\s*[,;:]\s+|\s+-\s*|\s*[—–]\s*)(?=[€$£]?\d)")
+_APART_MARK = "\ue000"  # a private-use character: nothing a user types
+
+
+def parse_team(text: str, countries: CountryIndex, currencies: Collection[str], in_eur: InEur | None = None) -> Team:
+    """A team across countries, one segment per country:
+
+        Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k        (each its own salary and currency)
+        Germany 2, Spain 1, Poland 1 — 70k                  (one salary for all: in EUR)
+
+        70k: Germany 2, Spain 1                             (the shared salary may lead)
+
+    A salary glued to a head count (`Poland 1 × 200k`, `UK 2 £60k`) is that country's alone,
+    even on the last country: the others then need one too.
+
+    A segment runs from a country to the next one; inside it, a leading number is the head count
+    and an amount is the salary, in the country's own currency unless one is given. A horizon
+    (`24 months`) after a salary, usually at the end, applies to the whole team.
+    """
+    tokens, starts = _segments(text, countries)
+    if len(starts) < 2:
+        raise ParseError("team_needs_two")
+    if len({country.code for _, _, country in starts}) != len(starts):
+        raise ParseError("same_country")
+    lead = _scan(" ".join(tokens[: starts[0][0]]), countries, currencies) if starts[0][0] else _Found()
+    if lead.bare or lead.people is not None:
+        raise ParseError("unexpected", word=tokens[0])  # head counts belong after their country
+    months: int | None = lead.months
+
+    parts: list[tuple[Country, int, _Found]] = []
+    for n, (_, end, country) in enumerate(starts):
+        segment = tokens[end : starts[n + 1][0] if n + 1 < len(starts) else len(tokens)]
+        count = _leading_count(segment, currencies)
+        if count is not None:
+            segment = segment[1:]
+        apart = bool(segment) and segment[0] == _APART_MARK
+        segment = [token for token in segment if token != _APART_MARK]
+        found = _scan(" ".join(segment), countries, currencies) if segment else _Found()
+        if found.bare:
+            raise ParseError("unexpected", word=str(found.bare[0]))
+        if found.people is not None:
+            if count is not None:
+                raise ParseError("twice", word=f"{count} … {found.people}")
+            count = found.people
+        if found.months is not None:
+            if months is not None and months != found.months:
+                raise ParseError("twice", word=str(found.months))
+            months = found.months
+        parts.append((country, 1 if count is None else count, found))
+
+    salaried = [found for _, _, found in parts if found.salary is not None]
+    if lead.salary is not None:
+        if salaried:
+            raise ParseError("unexpected", word=tokens[0])  # "70k Germany 2 × 80k": whose salary?
+        salaried = [lead]
+    if not salaried:
+        raise ParseError("no_salary", example="Germany 2 × 80k, Spain 1 × 50k")
+    # One salary, up front or set off after the last country (`apart` is still the last
+    # segment's), is everybody's.
+    shared = len(salaried) == 1 and (salaried[0] is lead or (salaried[0] is parts[-1][2] and apart))
+    members = []
+    for country, count, found in parts:
+        source = salaried[0] if shared else found
+        if source.salary is None:
+            raise ParseError("team_salary", country=country.code)  # named in the reader's language
+        # One salary for everybody is in euros unless it says otherwise; a salary of its own is
+        # in the country's currency, as in /plan.
+        currency = source.currency or ("EUR" if shared else country.currency)
+        salary = source.salary * 12 if source.monthly else source.salary
+        _check_salary(salary, currency, in_eur)
+        members.append(Member(country, count, salary, currency))
+    team = Team(tuple(members), months if months is not None else DEFAULT_MONTHS)
+    return check_team(team)
+
+
+def _segments(text: str, countries: CountryIndex) -> tuple[list[str], list[tuple[int, int, Country]]]:
+    """Tokens, and where each country starts and ends among them."""
+    tokens = _tokens(_APART.sub(f" {_APART_MARK} ", _BY.sub(" ", text)))
+    starts: list[tuple[int, int, Country]] = []
+    i = 0
+    while i < len(tokens):
+        hit = countries.match(tokens, i)
+        if hit is None:
+            i += 1
+            continue
+        starts.append((i, i + hit[1], hit[0]))
+        i += hit[1]
+    return tokens, starts
+
+
+def _leading_count(segment: list[str], currencies: Collection[str]) -> int | None:
+    """A head count at the start of a segment: a small number not followed by an amount word.
+
+    Zero is a head count too, so that "Germany 0 × 80k" is told the range rather than puzzled over.
+    """
+    if not segment or not segment[0].isdecimal() or int(segment[0]) >= MIN_SALARY:
+        return None
+    after = segment[1] if len(segment) > 1 else ""
+    if after in _AMOUNT_WORDS or _currency(after, currencies) is not None:
+        return None
+    return int(segment[0])
+
+
+def _looks_like_team(text: str, countries: CountryIndex, currencies: Collection[str]) -> bool:
+    """Two or more countries, and either a head count right after one of them or a salary after
+    two of them ("Germany 80k, Spain 50k"): a comparison has one salary for both."""
+    tokens, starts = _segments(text, countries)
+    if len(starts) < 2:
+        return False
+    bounds = [*(start for start, _, _ in starts[1:]), len(tokens)]
+    segments = [tokens[end:stop] for (_, end, _), stop in zip(starts, bounds, strict=True)]
+    if any(_leading_count(segment, currencies) is not None for segment in segments):
+        return True
+    return sum(any(_amount(token, currencies) for token in segment) for segment in segments) >= 2
+
+
+def check_team(team: Team) -> Team:
+    """The bounds a team must meet, typed or rebuilt from a button."""
+    if len(team.members) < 2:
+        raise ParseError("team_needs_two")
+    if min(m.count for m in team.members) < 1 or team.people > MAX_PEOPLE:
+        raise ParseError("people_range", maximum=str(MAX_PEOPLE))
+    if not 1 <= team.months <= MAX_MONTHS:
+        raise ParseError("months_range", maximum=str(MAX_MONTHS))
+    return team
 
 
 def find_country(text: str, countries: CountryIndex) -> Country:

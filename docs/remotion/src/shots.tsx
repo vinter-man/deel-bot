@@ -8,7 +8,7 @@ import data from './shots.json';
 import {TgHtml} from './html';
 import {DayDivider, In, Out, Window} from './telegram';
 
-type Reply = {html: string; keyboard: string[][]};
+type Reply = {html: string; keyboard: string[][]; photo?: string};
 type Item = {out: string} | {in: Reply};
 export type ShotName = keyof typeof data;
 
@@ -28,6 +28,7 @@ export const Conversation: React.FC<{items: Item[]; width?: string}> = ({items, 
             key={i}
             time={time(i)}
             width={width}
+            photo={item.in.photo}
             keyboard={
               item.in.keyboard.length
                 ? item.in.keyboard.map((row) => row.map((label) => ({label})))
