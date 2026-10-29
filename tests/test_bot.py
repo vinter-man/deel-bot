@@ -149,7 +149,7 @@ async def test_cost_command_has_breakdown_and_buttons(dispatcher: Dispatcher, en
     assert "Employer cost" in reply.text
     assert reply.text.count("• ") >= 5
     data = [b.callback_data for row in reply.reply_markup.inline_keyboard for b in row]
-    assert data == ["pc:BG:EUR:6000000", "pp:BG:EUR:6000000", "src:BG"]
+    assert data == ["pc:BG:EUR:6000000", "pp:BG:EUR:6000000:12", "src:BG"]
 
 
 async def test_compare_flow_through_buttons(dispatcher: Dispatcher, env: Any) -> None:
@@ -168,7 +168,7 @@ async def test_compare_flow_through_buttons(dispatcher: Dispatcher, env: Any) ->
 
 async def test_plan_flow_through_buttons(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
-    await send(dispatcher, bot, _callback("pp:DE:EUR:8000000"))
+    await send(dispatcher, bot, _callback("pp:DE:EUR:8000000:24"))
     assert "How many people" in session.last_text()
     await send(
         dispatcher, bot, _callback(kb.PlanCb(code="DE", cur="EUR", minor=8_000_000, people=10, months=24).pack())
@@ -212,7 +212,8 @@ async def test_errors_are_explained(dispatcher: Dispatcher, env: Any, text: str,
 @pytest.mark.parametrize(
     "data",
     ["cost:XX:EUR:6000000", "cost:DE:XYZ:6000000", "cost:DE:EUR:1", "pln:DE:EUR:8000000:0:12",
-     "cmp:DE:DE:EUR:8000000", "src:ZZ", "pc:ZZ:EUR:1", "pp:ZZ:EUR:1", "totally-unknown"],
+     "cmp:DE:DE:EUR:8000000", "src:ZZ", "pc:ZZ:EUR:1", "pp:ZZ:EUR:1:12", "pp:DE:EUR:8000000:999",
+     "cost:PL:PLN:300000", "totally-unknown"],
 )  # fmt: skip
 async def test_forged_or_stale_buttons_are_refused(dispatcher: Dispatcher, env: Any, data: str) -> None:
     bot, session, _ = env
@@ -245,3 +246,19 @@ async def test_start_examples_work(dispatcher: Dispatcher, env: Any) -> None:
     for row in kb.start_examples("en").inline_keyboard:
         await send(dispatcher, bot, _callback(row[0].callback_data or ""))
         assert "Employer cost" in session.last_text() or "EOR" in session.last_text()
+
+
+async def test_crash_is_reported_to_the_user(dispatcher: Dispatcher, env: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    bot, session, _ = env
+
+    def boom(*_: Any) -> Any:
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr("deel_advisor.bot.handlers.render", boom)
+    await send(dispatcher, bot, _message("Germany 80k"))
+    assert "Something went wrong" in session.last_text()
+    await send(dispatcher, bot, _callback("cost:DE:EUR:8000000"))
+    answer = session.calls[-1]
+    assert isinstance(answer, AnswerCallbackQuery)
+    assert answer.text
+    assert "Something went wrong" in answer.text

@@ -83,7 +83,8 @@ industry, German U1/U2 by health insurer) and carry a typical rate.
 > (UK employer NIC: 15% above £5,000 a year). Both make a band — the UK workplace pension is 3%
 > of earnings between £6,240 and £50,270, and Spain's 2026 solidarity contribution is three
 > bands stacked above the €5,101.20 ceiling. Bulgaria's ceiling changed in the middle of the
-> year (€2,111.64 → €2,300 from 1 August); the bot uses the one in force now and says so.
+> year (€2,111.64 → €2,300 from 1 August); the bot prices a hire made today, so it applies the
+> ceiling in force now to every month and says so under the breakdown.
 >
 > All money is `Decimal`. Rates and amounts in the data files are JSON *strings* — the schema
 > refuses `0.093` as a number, because by the time Python sees it, it is already
@@ -117,7 +118,7 @@ compare with another country. The same in Russian, with the plurals right — *�
 > (equal cost is not "cheaper").
 >
 > **What the numbers say, and what they leave out.** On Deel's list price of $599 a month, a
-> person costs ~€6,450 a year in EOR fees; a small company costs a few thousand euros a year to run. So on
+> person costs ~€6,450 a year in EOR fees; a small company costs roughly €2,500–8,500 a year to run. So on
 > direct costs alone, the entity wins from one or two people. The reply says plainly that this
 > is direct costs only. What it does not price is exactly why companies use an EOR anyway: the
 > weeks an entity takes to open, your own team's time on local payroll, HR and filings, and the
@@ -251,7 +252,8 @@ docker compose logs -f
 ```
 
 Read-only root filesystem, no capabilities, no published ports (long polling needs none), and a
-healthcheck on a heartbeat the bot writes after every successful call to Telegram. The `data`
+healthcheck on a heartbeat file: a background task calls Telegram's `getMe` every minute and
+touches it on success, so "healthy" means the process is alive and can reach Telegram. The `data`
 volume holds the FX cache and the language table.
 
 ### On a VPS

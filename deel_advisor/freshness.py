@@ -1,6 +1,6 @@
 """Is the data still true? Three checks, each surfaced in the reply rather than buried in a log.
 
-1. The rates are for an earlier year than today's — contribution ceilings move every January.
+1. The rates' period is over — ceilings move every January (every April in the UK).
 2. Nobody has re-checked the official figures for a long time.
 3. Deel's public guide states a figure differently from the official source.
 """
@@ -48,7 +48,7 @@ def check(country: Country, today: date) -> Freshness:
     age = (today - country.official.checked_at).days
     return Freshness(
         country=country,
-        outdated_year=country.year < today.year,
+        outdated_year=today > country.last_day,
         unchecked_days=age if age > STALE_AFTER_DAYS else None,
         mismatches=mismatches(country),
     )

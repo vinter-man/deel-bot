@@ -1,7 +1,7 @@
 """Inline keyboards and the callback data behind them.
 
 Callback data comes back from the client and Telegram does not check it against the message
-that carried the button, so every field is re-validated before use (`handlers._from_button`).
+that carried the button, so every field is re-validated before use (`handlers._button_query`).
 The salary travels in minor units of the currency it was typed in: an integer survives the
 round trip through a 64-byte string exactly, a Decimal's repr would not be guaranteed to.
 """
@@ -47,6 +47,8 @@ class PickPeopleCb(CallbackData, prefix="pp"):
     code: str
     cur: str
     minor: int
+    # The horizon to keep when the team size changes (12 when coming from a /cost reply).
+    months: int
 
 
 class PlanCb(CallbackData, prefix="pln"):
@@ -92,7 +94,7 @@ def after_cost(lang: Lang, code: str, cur: str, minor: int) -> InlineKeyboardMar
             [InlineKeyboardButton(text=t(lang, "btn.compare"),
                                   callback_data=PickCompareCb(code=code, cur=cur, minor=minor).pack())],
             [InlineKeyboardButton(text=t(lang, "btn.plan"),
-                                  callback_data=PickPeopleCb(code=code, cur=cur, minor=minor).pack())],
+                                  callback_data=PickPeopleCb(code=code, cur=cur, minor=minor, months=12).pack())],
             [InlineKeyboardButton(text=t(lang, "btn.sources"), callback_data=SourcesCb(code=code).pack())],
         ]
     )  # fmt: skip
@@ -129,7 +131,8 @@ def after_plan(lang: Lang, cb: PlanCb) -> InlineKeyboardMarkup:
         inline_keyboard=[
             months,
             [InlineKeyboardButton(text=t(lang, "btn.plan"),
-                                  callback_data=PickPeopleCb(code=cb.code, cur=cb.cur, minor=cb.minor).pack())],
+                                  callback_data=PickPeopleCb(code=cb.code, cur=cb.cur, minor=cb.minor,
+                                                             months=cb.months).pack())],
             [InlineKeyboardButton(text=t(lang, "btn.compare"),
                                   callback_data=PickCompareCb(code=cb.code, cur=cb.cur, minor=cb.minor).pack())],
             [InlineKeyboardButton(text=t(lang, "btn.sources"), callback_data=SourcesCb(code=cb.code).pack())],

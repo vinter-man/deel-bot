@@ -6,15 +6,17 @@ Each handler receives `services` and `lang` through aiogram's dependency injecti
 
 from __future__ import annotations
 
+import contextlib
 import html
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
 from aiogram import BaseMiddleware, F, Router
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import CallbackQuery, ErrorEvent, InlineKeyboardMarkup, Message, TelegramObject, User
 
@@ -25,7 +27,7 @@ from deel_advisor.fx import FxCache
 from deel_advisor.i18n import LANGS, Lang, pick_lang, t
 from deel_advisor.models import Country
 from deel_advisor.money import from_minor, to_minor
-from deel_advisor.parser import Kind, ParseError, Query, build_query, find_country, parse
+from deel_advisor.parser import MAX_MONTHS, Kind, ParseError, Query, build_query, find_country, parse
 from deel_advisor.prefs import LanguageStore
 from deel_advisor.stats import Stats
 
@@ -102,13 +104,29 @@ def render(query: Query, lang: Lang, ctx: replies.Context) -> tuple[str, InlineK
     return replies.compare(lang, query, ctx), kb.after_compare(lang, *query.countries)
 
 
+# Telegram's limit is 4096 characters of visible text; markup does not count, so splitting the
+# raw HTML at this length is conservative. Blocks are separated by blank lines and every tag
+# opens and closes inside its block, so a split there never breaks the markup.
+MESSAGE_LIMIT = 4096
+
+
+def split_message(text: str, limit: int = MESSAGE_LIMIT) -> list[str]:
+    parts: list[str] = []
+    for block in text.split("\n\n"):
+        if parts and len(parts[-1]) + 2 + len(block) <= limit:
+            parts[-1] += "\n\n" + block
+        else:
+            parts.append(block)
+    return parts
+
+
 async def _answer_text(message: Message, text: str | None, kind: Kind | None, services: Services, lang: Lang) -> None:
     usage = f"usage.{kind}" if kind else "usage.free"
     if not text or not text.strip():
         await message.answer(t(lang, usage))
         return
     try:
-        query = parse(text, services.catalog.index, _currencies(services), kind)
+        query = parse(text, services.catalog.index, _currencies(services), kind, in_eur=_in_eur(services))
         body, markup = render(query, lang, services.context())
     except ParseError as error:
         services.stats.hit(f"error.{error.code}")
@@ -119,6 +137,11 @@ async def _answer_text(message: Message, text: str | None, kind: Kind | None, se
 
 def _currencies(services: Services) -> set[str]:
     return {"EUR", *services.fx.rates.per_eur}
+
+
+def _in_eur(services: Services) -> Callable[[Decimal, str], Decimal]:
+    rates = services.fx.rates
+    return lambda amount, currency: rates.convert(amount, currency, "EUR")
 
 
 # --- commands -----------------------------------------------------------------------------
@@ -171,7 +194,8 @@ async def sources_cmd(message: Message, command: CommandObject, services: Servic
     except ParseError as error:
         await message.answer(error_text(lang, error, services.catalog, "usage.sources"))
         return
-    await message.answer(replies.sources(lang, country, services.context()))
+    for part in split_message(replies.sources(lang, country, services.context())):
+        await message.answer(part)
 
 
 @router.message(Command("stats"))
@@ -217,7 +241,9 @@ def _button_query(
     if cur not in _currencies(services):
         raise ParseError("stale_button")
     countries = tuple(_country(services, code) for code in codes)
-    return build_query(kind, countries, from_minor(minor), currency=cur, people=people, months=months)
+    return build_query(
+        kind, countries, from_minor(minor), currency=cur, people=people, months=months, in_eur=_in_eur(services)
+    )
 
 
 async def _send_or_edit(callback: CallbackQuery, text: str, markup: InlineKeyboardMarkup, edit: bool) -> None:
@@ -305,7 +331,11 @@ async def on_pick_people(
     except ParseError as error:
         await _button_error(callback, lang, error)
         return
-    markup = kb.pick_people(callback_data.code, callback_data.cur, callback_data.minor, months=12)
+    cb = callback_data
+    if not 1 <= cb.months <= MAX_MONTHS:
+        await _button_error(callback, lang, ParseError("stale_button"))
+        return
+    markup = kb.pick_people(cb.code, cb.cur, cb.minor, months=cb.months)
     await callback.answer()
     await _send_or_edit(callback, t(lang, "pick.people"), markup, edit=False)
 
@@ -333,7 +363,8 @@ async def on_sources(callback: CallbackQuery, callback_data: kb.SourcesCb, servi
         return
     await callback.answer()
     if isinstance(callback.message, Message):
-        await callback.message.answer(replies.sources(lang, country, services.context()))
+        for part in split_message(replies.sources(lang, country, services.context())):
+            await callback.message.answer(part)
 
 
 @router.callback_query()
@@ -342,7 +373,7 @@ async def on_unknown_button(callback: CallbackQuery, lang: Lang) -> None:
 
 
 @router.errors()
-async def on_error(event: ErrorEvent) -> bool:
+async def on_error(event: ErrorEvent, **data: Any) -> bool:
     # The update id, never its content: message text is exactly what must not reach the log.
     log.error(
         "update %s failed: %s",
@@ -350,4 +381,12 @@ async def on_error(event: ErrorEvent) -> bool:
         type(event.exception).__name__,
         exc_info=(type(event.exception), event.exception, event.exception.__traceback__),
     )
+    # Tell the user rather than leave them waiting (or a button spinning). Best effort only:
+    # if Telegram itself is what failed, this fails too, and that is already logged.
+    lang: Lang = data.get("lang", "en")
+    with contextlib.suppress(TelegramAPIError):
+        if event.update.callback_query is not None:
+            await event.update.callback_query.answer(t(lang, "err.internal"), show_alert=True)
+        elif event.update.message is not None:
+            await event.update.message.answer(t(lang, "err.internal"))
     return True

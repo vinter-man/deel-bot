@@ -9,6 +9,8 @@ services:
         GIT_SHA: ${GIT_SHA:-unknown}
     image: deel-advisor:latest
     container_name: deel-advisor
+    # Only the bot's own variables belong in this .env (see .env.example): compose hands the
+    # container every line of it.
     env_file: .env
     volumes:
       - data:/app/data

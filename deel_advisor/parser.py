@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import difflib
 import re
-from collections.abc import Collection, Iterable
+from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Literal
@@ -17,6 +17,8 @@ from typing import Literal
 from deel_advisor.models import Country
 
 Kind = Literal["cost", "compare", "plan"]
+# (amount, currency) -> amount in EUR; the parser knows nothing about exchange rates itself.
+InEur = Callable[[Decimal, str], Decimal]
 
 MIN_SALARY = Decimal(1_000)
 MAX_SALARY = Decimal(10_000_000)
@@ -54,8 +56,9 @@ _FILLER = {
 _AMOUNT = re.compile(r"^(?P<pre>[€$£])?(?P<num>\d+(?:[.,]\d+)*)(?P<mult>k|к|тыс|тис|m|м|млн)?(?P<post>[€$£]|zł)?$")
 _TIMES = re.compile(r"^[x×](?P<n>\d+)$")
 _ATTACHED_UNIT = re.compile(r"^(?P<n>\d+)(?P<unit>[^\d.,]+)$")
-_MULTIPLIERS = {"k": 1_000, "к": 1_000, "тыс": 1_000, "тис": 1_000, "m": 1_000_000, "м": 1_000_000}
-_MULTIPLIERS["млн"] = 1_000_000
+_MULTIPLIERS = {
+    "k": 1_000, "к": 1_000, "тыс": 1_000, "тис": 1_000, "m": 1_000_000, "м": 1_000_000, "млн": 1_000_000,
+}  # fmt: skip
 
 
 class ParseError(Exception):
@@ -88,6 +91,16 @@ class _Found:
     months: int | None = None
     bare: list[int] = field(default_factory=list)
     monthly: bool = False
+
+    def set_people(self, value: int, word: str) -> None:
+        if self.people is not None:
+            raise ParseError("twice", word=word)
+        self.people = value
+
+    def set_months(self, value: int, word: str) -> None:
+        if self.months is not None:
+            raise ParseError("twice", word=word)
+        self.months = value
 
 
 class CountryIndex:
@@ -137,12 +150,16 @@ def _tokens(text: str) -> list[str]:
     words = [w for w in words if w]
     merged: list[str] = []
     first_number: int | None = None
-    for word in words:
+    counted = _PEOPLE_WORDS | _MONTH_WORDS | _YEAR_WORDS
+    for i, word in enumerate(words):
         # "80 000" typed with a space: glue three-digit groups back onto the first number, and
-        # only the first — in "/plan Germany 60000 5 120" the 5 and the 120 are separate.
+        # only the first — in "/plan Germany 60000 5 120" the 5 and the 120 are separate — and
+        # never a group that counts something ("80 000 200 people").
+        nxt = words[i + 1] if i + 1 < len(words) else ""
         if (
             first_number == len(merged) - 1
             and re.fullmatch(r"\d{3}", word)
+            and nxt not in counted
             and re.fullmatch(r"[€$£]?\d{1,3}(\s\d{3})*", merged[-1])
         ):
             merged[-1] = f"{merged[-1]} {word}"
@@ -171,9 +188,13 @@ def _amount(token: str, currencies: Collection[str]) -> tuple[Decimal, str | Non
 
 def _currency(token: str, currencies: Collection[str]) -> str | None:
     code = _SYMBOLS.get(token) or _CURRENCY_WORDS.get(token)
-    if code is None and re.fullmatch(r"[a-z]{3}", token) and token.upper() in currencies:
+    if code is None and re.fullmatch(r"[a-z]{3}", token):
         code = token.upper()
-    return code
+    if code is None or code in currencies:
+        return code
+    if code in _SYMBOLS.values():
+        raise ParseError("unknown_currency", currency=code)
+    return None  # some other three-letter word: let the caller decide what it is
 
 
 def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found:
@@ -194,21 +215,23 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
         times = _TIMES.match(token)
         attached = _ATTACHED_UNIT.match(token)
         if times:
-            found.people = int(times["n"])
+            found.set_people(int(times["n"]), token)
         elif attached and attached["unit"] in _PEOPLE_WORDS:
-            found.people = int(attached["n"])
+            found.set_people(int(attached["n"]), token)
         elif attached and attached["unit"] in _MONTH_WORDS | _YEAR_WORDS and found.salary is not None:
             factor = 12 if attached["unit"] in _YEAR_WORDS else 1
-            found.months = int(attached["n"]) * factor
+            found.set_months(int(attached["n"]) * factor, token)
         elif token.isdigit() and found.salary is not None and nxt in _PEOPLE_WORDS:
-            found.people = int(token)
+            found.set_people(int(token), f"{token} {nxt}")
             i += 1
         elif token.isdigit() and found.salary is not None and nxt in _MONTH_WORDS | _YEAR_WORDS:
-            found.months = int(token) * (12 if nxt in _YEAR_WORDS else 1)
+            found.set_months(int(token) * (12 if nxt in _YEAR_WORDS else 1), f"{token} {nxt}")
             i += 1
-        elif token in _MONTHLY_SALARY or (token in _PER_WORDS and nxt in _MONTH_WORDS):
+        elif token in _MONTHLY_SALARY:
             found.monthly = True
-            i += 0 if token in _MONTHLY_SALARY else 1
+        elif token in _PER_WORDS and nxt in _MONTH_WORDS:
+            found.monthly = True  # "per month", "в месяц"
+            i += 1
         elif token in _PER_WORDS and nxt in _YEAR_WORDS:
             i += 1  # "per year": the default, nothing to do
         elif token in _MULTIPLIERS and found.salary is not None and salary_at == i - 1:
@@ -221,12 +244,15 @@ def _scan(text: str, index: CountryIndex, currencies: Collection[str]) -> _Found
                 found.salary = value
                 found.currency = currency or found.currency
                 salary_at = i
-            elif value == value.to_integral_value():
+            elif token.isdigit():
                 found.bare.append(int(value))
             else:
+                # "80k 90k", "5.5": a second amount is not a team size or a horizon.
                 raise ParseError("unexpected", word=token)
         elif token in _FILLER or token in _PEOPLE_WORDS or token in {"-", "—", "/", "&", "+"}:
             pass
+        elif re.match(r"-\d", token):
+            raise ParseError("unexpected", word=token)  # a negative salary or count
         elif re.search(r"[^\W\d_]", token):
             # A country we do not cover, a typo, or a currency ECB does not publish.
             raise ParseError("unknown_word", word=token, suggestion=index.suggest(token) or "")
@@ -241,8 +267,12 @@ def parse(
     countries: CountryIndex,
     currencies: Collection[str],
     kind: Kind | None = None,
+    in_eur: InEur | None = None,
 ) -> Query:
-    """`kind` is fixed by a command; free text (`kind=None`) infers it from what was typed."""
+    """`kind` is fixed by a command; free text (`kind=None`) infers it from what was typed.
+
+    `in_eur` converts the salary for the sanity bounds, so "80k JPY" is judged as ~€450.
+    """
     if not text.strip():
         raise ParseError("empty")
     found = _scan(text, countries, currencies)
@@ -279,6 +309,7 @@ def parse(
         people=found.people if found.people is not None else 1,
         months=found.months if found.months is not None else DEFAULT_MONTHS,
         salary_was_monthly=found.monthly,
+        in_eur=in_eur,
     )
 
 
@@ -291,6 +322,7 @@ def build_query(
     people: int = 1,
     months: int = DEFAULT_MONTHS,
     salary_was_monthly: bool = False,
+    in_eur: InEur | None = None,
 ) -> Query:
     """The checks every query passes, whether it was typed or came back from a button."""
     expected = 2 if kind == "compare" else 1
@@ -300,10 +332,11 @@ def build_query(
         raise ParseError("too_many_countries")
     if kind == "compare" and countries[0].code == countries[1].code:
         raise ParseError("same_country")
-    if salary < MIN_SALARY:
-        raise ParseError("salary_too_low", minimum=str(MIN_SALARY))
-    if salary > MAX_SALARY:
-        raise ParseError("salary_too_high", maximum=str(MAX_SALARY))
+    comparable = in_eur(salary, currency or countries[0].currency) if in_eur else salary
+    if comparable < MIN_SALARY:
+        raise ParseError("salary_too_low", minimum=f"{MIN_SALARY} EUR")
+    if comparable > MAX_SALARY:
+        raise ParseError("salary_too_high", maximum=f"{MAX_SALARY} EUR")
     if not 1 <= people <= MAX_PEOPLE:
         raise ParseError("people_range", maximum=str(MAX_PEOPLE))
     if not 1 <= months <= MAX_MONTHS:

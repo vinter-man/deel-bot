@@ -124,3 +124,13 @@ def test_export_shots_uses_real_replies() -> None:
     assert "Did you mean <b>Germany</b>" in shots["errors"][1]["in"]["html"]
     assert "annual gross salary" in shots["errors"][3]["in"]["html"]
     assert "between 1 and" in shots["errors"][5]["in"]["html"]
+
+
+async def test_robots_network_error_means_no_fetching() -> None:
+    with respx.mock:
+        respx.get("https://www.deel.com/robots.txt").mock(side_effect=httpx.ConnectError("down"))
+        page = respx.get("https://www.deel.com/hiring/employees/spain/")
+        async with httpx.AsyncClient() as client:
+            [result] = await guides.run(["ES"], client, delay=0)
+    assert not page.called
+    assert result.reason == "disallowed by robots.txt"

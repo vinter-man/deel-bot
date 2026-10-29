@@ -13,9 +13,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Dependencies first, so a code change does not invalidate this layer.
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project --no-cache
 
+# README.md is package metadata (pyproject `readme`), needed only to build the project itself.
+COPY README.md ./
 COPY deel_advisor ./deel_advisor
 RUN uv sync --frozen --no-dev --no-editable --no-cache \
     && rm -rf deel_advisor

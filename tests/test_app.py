@@ -64,9 +64,23 @@ async def test_daily_check_is_quiet_when_all_is_well(tmp_path: Path, real_catalo
         with respx.mock:
             respx.get(ECB_URL).respond(503)
             await app.daily_check(services, bot, reported)
-    mismatches = [p for p in reported if "Deel guide differs" in p]
-    assert bot.send_message.await_count == (1 if mismatches else 0)
-    assert all("data is for" not in p for p in reported)
+    # The bundled data has six known guide discrepancies and nothing else to report.
+    assert sorted(reported) == sorted(
+        f"{code}: Deel guide differs on {key}"
+        for code, key in [("BG", "max_insurable_income"), ("DE", "care_rate"), ("DE", "insolvency_rate"),
+                          ("ES", "minimum_wage"), ("GB", "minimum_wage"), ("PL", "pension_cap")]
+    )  # fmt: skip
+    assert bot.send_message.await_count == 1
+
+
+def test_reported_problems_survive_a_restart(tmp_path: Path) -> None:
+    path = tmp_path / "reported.json"
+    assert app.load_reported(path) == set()
+    app.save_reported(path, {"DE: Deel guide differs on care_rate"})
+    assert app.load_reported(path) == {"DE: Deel guide differs on care_rate"}
+    path.write_text("{not json")
+    assert app.load_reported(path) == set()
+    app.save_reported(tmp_path / "missing" / "x.json", {"a"})  # unwritable: logged, not raised
 
 
 async def test_heartbeat_writes_file_only_when_telegram_answers(tmp_path: Path) -> None:

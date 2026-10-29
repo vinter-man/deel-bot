@@ -78,8 +78,11 @@ class Robots:
         base = f"{parts.scheme}://{parts.netloc}"
         if base not in self._parsers:
             parser = RobotFileParser(f"{base}/robots.txt")
-            response = await self._client.get(f"{base}/robots.txt")
-            if response.status_code >= 500:
+            try:
+                response: httpx.Response | None = await self._client.get(f"{base}/robots.txt")
+            except httpx.HTTPError:
+                response = None
+            if response is None or response.status_code >= 500:
                 # Unreachable robots.txt: assume the worst and fetch nothing from this host.
                 parser.parse(["User-agent: *", "Disallow: /"])
             elif response.status_code >= 400:

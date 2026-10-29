@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from deel_advisor.prefs import LanguageStore
 from deel_advisor.stats import Stats
 
@@ -43,3 +45,22 @@ def test_stats_counts_without_identities() -> None:
     stats.hit("cost")
     stats.hit("plan")
     assert stats.lines() == ["cost: 2", "plan: 1"]
+
+
+async def test_malformed_key_is_replaced(tmp_path: Path) -> None:
+    (tmp_path / "prefs.key").write_text("")  # what a crash mid-write used to leave
+    store = LanguageStore(tmp_path)
+    await store.set(1, "uk")
+    assert len(bytes.fromhex((tmp_path / "prefs.key").read_text())) == 32
+    (tmp_path / "prefs.key").write_text("zz")
+    assert await LanguageStore(tmp_path).get(1) is None  # new key: old rows are unreachable
+
+
+def test_empty_owner_id_means_unset(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from deel_advisor.config import Settings
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("BOT_TOKEN=1:x\nOWNER_ID=\nSERVER_PASSWORD=unrelated\n")
+    settings = Settings()
+    assert settings.owner_id is None
+    assert settings.bot_token.get_secret_value() == "1:x"

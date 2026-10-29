@@ -116,6 +116,11 @@ class CostItem(_Model):
     source: Source
 
 
+class ShareCapital(_Model):
+    amount: Amount
+    source: Source
+
+
 class Entity(_Model):
     """Running your own legal entity: one-off setup plus monthly fixed costs, each sourced."""
 
@@ -123,7 +128,7 @@ class Entity(_Model):
     monthly_fixed: list[CostItem] = Field(min_length=1)
     # Paid-up share capital: money that stays the company's, so it is shown but never added
     # to the cost.
-    share_capital: Amount | None = None
+    share_capital: ShareCapital | None = None
     notes: list[str] = Field(default_factory=list)
 
     @field_validator("setup_cost")
@@ -196,6 +201,8 @@ class Country(_Model):
     currency: Currency
     year: int = Field(ge=2020, le=2100)
     effective_from: date
+    # Last day these rates apply; defaults to 31 December. The UK tax year runs to 5 April.
+    valid_until: date | None = None
     contributions: list[Contribution] = Field(min_length=1)
     minimum_wage: MinimumWage | None = None
     entity: Entity
@@ -217,12 +224,18 @@ class Country(_Model):
             raise ValueError(f"duplicate contribution ids in {self.country}")
         if self.effective_from.year != self.year:
             raise ValueError("effectiveFrom must fall in the data year")
+        if self.valid_until is not None and self.valid_until <= self.effective_from:
+            raise ValueError("validUntil must be after effectiveFrom")
         for key, figure in self.official.figures.items():
             if figure.kind == "money" and figure.currency != self.currency:
                 raise ValueError(f"{self.country}: official {key} is in {figure.currency}, not {self.currency}")
         # A Deel figure may be in another currency (a guide written before Bulgaria's euro
         # switch): that is a discrepancy to report, not a broken file.
         return self
+
+    @property
+    def last_day(self) -> date:
+        return self.valid_until or date(self.year, 12, 31)
 
 
 class EorPricing(_Model):

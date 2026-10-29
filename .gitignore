@@ -17,3 +17,5 @@ dist/
 node_modules/
 docs/remotion/out/
 .DS_Store
+.claude/
+.deploy.lock

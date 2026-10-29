@@ -107,6 +107,35 @@ def eor_fee(country: Country, ctx: Context) -> Decimal:
     return ctx.rates.convert(eor.monthly_fee, eor.currency, country.currency)
 
 
+def _input_lines(lang: Lang, query: Query, country: Country, ctx: Context) -> list[str]:
+    """How the typed salary became the one in the header: monthly × 12, and the FX rate used."""
+    lines = []
+    if query.salary_was_monthly:
+        monthly = _money(lang, query.salary / 12, query.currency or country.currency)
+        lines.append(t(lang, "cost.monthly_input", monthly=monthly))
+    if query.currency and query.currency != country.currency:
+        amount = _money(lang, query.salary, query.currency)
+        lines.append(t(lang, "cost.converted", amount=amount, date=_date(ctx.rates.day)))
+    return lines
+
+
+CEILING_FIGURES = ("pension_cap", "health_cap", "max_insurable_income")
+
+
+def _ceiling_changed(country: Country) -> date | None:
+    """When a ceiling moved during the year (Bulgaria, 1 August), the date of the current one.
+
+    The calculation is for a hire made now, so every month uses the ceiling in force today
+    rather than averaging in months already behind us; the reply says that out loud.
+    """
+    dates = [
+        figure.effective_from
+        for key, figure in country.official.figures.items()
+        if key in CEILING_FIGURES and figure.effective_from and figure.effective_from > country.effective_from
+    ]
+    return max(dates, default=None)
+
+
 def cost(lang: Lang, query: Query, ctx: Context) -> str:
     country = query.countries[0]
     salary = local_salary(query, country, ctx.rates)
@@ -117,14 +146,7 @@ def cost(lang: Lang, query: Query, ctx: Context) -> str:
         t(lang, "cost.header", flag=country.flag, country=country_name(lang, country),
           salary=_money(lang, result.annual_salary, cur)),
     ]  # fmt: skip
-    if query.salary_was_monthly:
-        input_cur = query.currency or cur
-        out.append(t(lang, "cost.monthly_input", monthly=_money(lang, query.salary / 12, input_cur)))
-    if query.currency and query.currency != cur:
-        out.append(
-            t(lang, "cost.converted", amount=_money(lang, query.salary, query.currency),
-              date=_date(ctx.rates.day))
-        )  # fmt: skip
+    out += _input_lines(lang, query, country, ctx)
     out += [
         "",
         t(lang, "cost.total", annual=_money(lang, result.total_annual, cur),
@@ -140,17 +162,21 @@ def cost(lang: Lang, query: Query, ctx: Context) -> str:
         capped = f", {t(lang, 'cost.capped')}" if line.capped and c.floor is None else ""
         out.append(f"• {contribution_name(lang, c)} {rate}{capped} — {_money(lang, line.annual, cur)}")
     out += ["", t(lang, "cost.footer", year=country.year, since=_date(country.effective_from))]
+    if (cap_since := _ceiling_changed(country)) is not None:
+        out.append(t(lang, "cost.cap_since", date=_date(cap_since)))
     if any(c.estimate for c in country.contributions):
         out.append(t(lang, "cost.estimate_note"))
 
     extra = []
     minimum = country.minimum_wage
     if minimum is not None and salary < minimum.annual:
-        example = f"{country.country} {whole(query.salary)}/mo"
-        extra.append(
-            t(lang, "cost.below_min_wage", year=country.year, minimum=_money(lang, minimum.annual, cur),
-              example=html.escape(example))
-        )  # fmt: skip
+        warning = t(lang, "cost.below_min_wage", year=country.year, minimum=_money(lang, minimum.annual, cur))
+        if not query.salary_was_monthly:
+            # They probably typed a monthly figure: offer exactly that back, currency included.
+            currency = f" {query.currency}" if query.currency else ""
+            example = f"{country.country} {whole(query.salary)}{currency}/mo"
+            warning += " " + t(lang, "cost.monthly_hint", example=html.escape(example))
+        extra.append(warning)
     extra += warnings(lang, country, ctx) + _fx_warning(lang, ctx)
     if extra:
         out += ["", *extra]
@@ -183,15 +209,20 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
     fee = eor_fee(country, ctx)
     result = calc.plan(country, local_salary(query, country, ctx.rates), fee, query.people, query.months)
     team, horizon = i18n.people_gen(lang, query.people), i18n.months(lang, query.months)
+    eor = ctx.catalog.eor
+    fee_source = ""
+    if eor.currency != cur:
+        list_price = _money(lang, eor.monthly_fee, eor.currency)
+        fee_source = " " + t(lang, "plan.eor_fx", price=list_price, date=_date(ctx.rates.day))
 
     out = [
         t(lang, "plan.header", flag=country.flag, country=country_name(lang, country),
           team=i18n.people(lang, query.people), salary=_money(lang, result.cost.annual_salary, cur),
           months=horizon),
+        *_input_lines(lang, query, country, ctx),
         "",
-        t(lang, "plan.eor", provider=html.escape(ctx.catalog.eor.provider),
-          total=_money(lang, result.eor_total, cur)),
-        "   " + t(lang, "plan.eor_detail", fee=_money(lang, fee, cur)),
+        t(lang, "plan.eor", provider=html.escape(eor.provider), total=_money(lang, result.eor_total, cur)),
+        "   " + t(lang, "plan.eor_detail", fee=_money(lang, fee, cur)) + fee_source,
         t(lang, "plan.entity", total=_money(lang, result.entity_total, cur)),
         "   " + t(lang, "plan.entity_detail", setup=_money(lang, result.entity.setup, cur),
                   fixed=_money(lang, result.entity.monthly_fixed, cur),
@@ -246,10 +277,11 @@ def compare(lang: Lang, query: Query, ctx: Context) -> str:
         else:
             out.append("   " + t(lang, "compare.row_eor", fee=fee_text, team=i18n.people_gen(lang, team)))
 
-    (c1, total1, burden1), (c2, total2, burden2) = totals
+    (c1, total1, _), (c2, total2, _) = totals
     if whole(total1) != whole(total2):
         cheaper, diff = (c1, total2 - total1) if total1 < total2 else (c2, total1 - total2)
-        rate = format_rate(abs(burden1 - burden2).quantize(Decimal("0.001")), lang)
+        # Share of the dearer country's total, not a difference of contribution rates.
+        rate = format_rate((diff / max(total1, total2)).quantize(Decimal("0.001")), lang)
         out += [
             "",
             t(lang, "compare.cheaper", country=country_name(lang, cheaper), diff=_money(lang, diff, common),
@@ -283,7 +315,8 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
     ]  # fmt: skip
     for c in country.contributions:
         rate = ("~" if c.estimate else "") + format_rate(c.rate, lang)
-        out.append(f"• {contribution_name(lang, c)} {rate} — {_link(c.source, _host(c.source))}")
+        local = f" ({html.escape(c.local_name)})" if c.local_name else ""
+        out.append(f"• {contribution_name(lang, c)}{local} {rate} — {_link(c.source, _host(c.source))}")
     if country.minimum_wage is not None:
         mw = country.minimum_wage
         value = figure_value(lang, Figure(value=str(mw.amount), kind="money", currency=cur, period=mw.period))
@@ -292,13 +325,15 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
 
     out += ["", t(lang, "sources.entity")]
     for item in (*country.entity.setup_cost, *country.entity.monthly_fixed):
-        suffix = i18n.PERIODS[lang]["month"] if item in country.entity.monthly_fixed else ""
-        out.append(
-            f"• {html.escape(item.name)} {_money(lang, item.amount, cur)}{suffix} — "
-            f"{_link(item.source, _host(item.source))}"
-        )
-    if country.entity.share_capital:
-        out.append("• " + t(lang, "sources.capital", amount=_money(lang, country.entity.share_capital, cur)))
+        amount = format_money(item.amount, cur, lang, with_cents=item.amount != whole(item.amount))
+        if item in country.entity.monthly_fixed:
+            amount += t(lang, "sources.per_person") if item.per_employee else i18n.PERIODS[lang]["month"]
+        official = f" · {t(lang, 'sources.official')}" if item.kind == "official" else ""
+        out.append(f"• {html.escape(item.name)} {amount}{official} — {_link(item.source, _host(item.source))}")
+    capital = country.entity.share_capital
+    if capital is not None:
+        line = t(lang, "sources.capital", amount=_money(lang, capital.amount, cur))
+        out.append(f"• {line} — {_link(capital.source, _host(capital.source))}")
 
     guide = country.deel_guide
     out += [
@@ -319,6 +354,9 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
             )  # fmt: skip
         else:
             out.append(t(lang, "sources.guide_ok", label=label, value=figure_value(lang, guide.figures[key])))
+    notes = [*country.notes, *country.entity.notes]
+    if notes:
+        out += ["", t(lang, "sources.notes"), *(f"• {html.escape(note)}" for note in notes)]
     out += ["", t(lang, "sources.fx", date=_date(ctx.rates.day))]
     return "\n".join(out)
 

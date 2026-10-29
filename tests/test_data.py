@@ -6,7 +6,6 @@ The expected amounts are worked out by hand from the official rates (see each co
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -95,10 +94,10 @@ def test_every_comparable_guide_figure_can_be_rechecked(real_catalog: Catalog, c
         assert country.deel_guide.figures[key].quote, f"{code}.{key} has no quote for check_deel_guides.py"
 
 
-def test_data_is_current(real_catalog: Catalog) -> None:
+def test_figures_were_checked_within_the_data_period(real_catalog: Catalog) -> None:
     for country in real_catalog.countries:
-        assert country.year == 2026
-        assert country.official.checked_at >= date(2026, 10, 1)
+        assert country.effective_from <= country.official.checked_at <= country.last_day
+        assert country.deel_guide.checked_at <= country.last_day
 
 
 def test_eor_price(real_catalog: Catalog) -> None:

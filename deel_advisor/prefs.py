@@ -10,24 +10,37 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import logging
 import secrets
 import sqlite3
 from pathlib import Path
 
 from deel_advisor.i18n import LANGS, Lang
 
+log = logging.getLogger(__name__)
 _SCHEMA = "CREATE TABLE IF NOT EXISTS lang (who TEXT PRIMARY KEY, lang TEXT NOT NULL)"
+
+
+KEY_BYTES = 32
 
 
 def _load_key(path: Path) -> bytes:
     try:
-        return bytes.fromhex(path.read_text().strip())
+        key = bytes.fromhex(path.read_text().strip())
+        if len(key) == KEY_BYTES:
+            return key
+        log.warning("prefs key is malformed; starting a new one (saved languages are forgotten)")
     except FileNotFoundError:
-        key = secrets.token_bytes(32)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch(mode=0o600)
-        path.write_text(key.hex())
-        return key
+        pass
+    except ValueError:
+        log.warning("prefs key is not hex; starting a new one (saved languages are forgotten)")
+    key = secrets.token_bytes(KEY_BYTES)
+    # Written whole and renamed into place: a crash cannot leave an empty key behind.
+    tmp = path.with_suffix(".tmp")
+    tmp.touch(mode=0o600)
+    tmp.write_text(key.hex())
+    tmp.replace(path)
+    return key
 
 
 class LanguageStore:
@@ -37,8 +50,9 @@ class LanguageStore:
         self._db = data_dir / "prefs.db"
         with self._connect() as db:
             db.execute(_SCHEMA)
-        # Read-through cache: the language is looked up on every update.
-        self._cache: dict[str, Lang] = {}
+        # Read-through cache: the language is looked up on every update, so "never picked one"
+        # is cached too (as None), not re-queried each time.
+        self._cache: dict[str, Lang | None] = {}
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self._db, timeout=5)
@@ -64,8 +78,7 @@ class LanguageStore:
         if who in self._cache:
             return self._cache[who]
         lang = await asyncio.to_thread(self._get, who)
-        if lang is not None:
-            self._cache[who] = lang
+        self._cache[who] = lang
         return lang
 
     async def set(self, user_id: int, lang: Lang) -> None:

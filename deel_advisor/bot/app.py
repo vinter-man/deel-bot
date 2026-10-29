@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
@@ -26,6 +27,7 @@ from deel_advisor.config import Settings
 from deel_advisor.fx import FxCache
 from deel_advisor.i18n import LANGS, Lang
 from deel_advisor.prefs import LanguageStore
+from deel_advisor.replies import FX_STALE_DAYS
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +78,7 @@ async def daily_check(services: Services, bot: Bot, reported: set[str]) -> None:
             problems.append(f"{country.code}: official figures unchecked for {state.unchecked_days} days")
         problems += [f"{country.code}: Deel guide differs on {m.key}" for m in state.mismatches]
     fx_age = services.fx.age_days(today)
-    if fx_age > 4:
+    if fx_age > FX_STALE_DAYS:
         problems.append(f"FX rates are {fx_age} days old")
     for problem in problems:
         log.warning("data check: %s", problem)
@@ -88,11 +90,27 @@ async def daily_check(services: Services, bot: Bot, reported: set[str]) -> None:
     reported.update(problems)
 
 
-async def daily_loop(services: Services, bot: Bot) -> None:
-    reported: set[str] = set()
+def load_reported(path: Path) -> set[str]:
+    """What the owner has already been told, so a restart (every deploy) does not repeat it."""
+    try:
+        return {str(item) for item in json.loads(path.read_text())}
+    except (OSError, ValueError, TypeError):
+        return set()
+
+
+def save_reported(path: Path, reported: set[str]) -> None:
+    try:
+        path.write_text(json.dumps(sorted(reported), ensure_ascii=False))
+    except OSError as error:
+        log.warning("could not save the reported problems: %s", error)
+
+
+async def daily_loop(services: Services, bot: Bot, state_file: Path) -> None:
+    reported = load_reported(state_file)
     while True:
         try:
             await daily_check(services, bot, reported)
+            save_reported(state_file, reported)
         except Exception:  # a background job must outlive any one bad day
             log.exception("daily check failed")
         await asyncio.sleep(seconds_until(datetime.now(UTC), DAILY_AT))
@@ -123,7 +141,8 @@ async def set_commands(bot: Bot) -> None:
 
 async def run(settings: Settings) -> None:
     data = catalog.load()
-    log.info("loaded %d countries: %s", len(data.countries), ", ".join(c.code for c in data.countries))
+    log.info("starting %s; %d countries: %s", settings.git_sha[:8], len(data.countries),
+             ", ".join(c.code for c in data.countries))  # fmt: skip
     bot = Bot(
         settings.bot_token.get_secret_value(),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML, link_preview_is_disabled=True),
@@ -138,7 +157,7 @@ async def run(settings: Settings) -> None:
         dp = build_dispatcher(services)
         await set_commands(bot)
         jobs = [
-            asyncio.create_task(daily_loop(services, bot), name="daily"),
+            asyncio.create_task(daily_loop(services, bot, settings.data_dir / "reported.json"), name="daily"),
             asyncio.create_task(heartbeat_loop(bot, settings.heartbeat_file), name="heartbeat"),
         ]
         try:

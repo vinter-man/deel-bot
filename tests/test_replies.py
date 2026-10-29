@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 
 from deel_advisor import replies
+from deel_advisor.bot.handlers import split_message
 from deel_advisor.catalog import Catalog
 from deel_advisor.fx import Rates
 from deel_advisor.models import Country, EorPricing
@@ -154,8 +155,78 @@ def test_real_data_renders_in_every_language(real_catalog: Catalog, fixed_rates:
 
 
 @pytest.mark.parametrize("code", ["DE", "GB", "ES", "PL", "BG"])
-def test_real_sources_fit_one_message(real_catalog: Catalog, fixed_rates: Rates, code: str) -> None:
+def test_real_sources_split_into_valid_messages(real_catalog: Catalog, fixed_rates: Rates, code: str) -> None:
     country = real_catalog.by_code(code)
     assert country is not None
     text = replies.sources("ru", country, replies.Context(real_catalog, fixed_rates, TODAY))
-    assert len(text) < 4096
+    parts = split_message(text)
+    assert "\n\n".join(parts) == text
+    for part in parts:
+        assert len(part) <= 4096
+        assert part.count("<a ") == part.count("</a>")
+        assert part.count("<b>") == part.count("</b>")
+
+
+def test_split_message_keeps_blocks_whole() -> None:
+    assert split_message("a\n\nbb\n\nccc", limit=6) == ["a\n\nbb", "ccc"]
+    assert split_message("short") == ["short"]
+
+
+def test_monthly_input_below_minimum_gets_no_monthly_hint(testland: Country, ctx: replies.Context) -> None:
+    query = parse("Testland 900/mo", ctx.catalog.index, {"EUR"})
+    text = replies.cost("en", query, ctx)
+    assert "Below the 2026 minimum wage" in text
+    assert "/mo</code>" not in text  # they already typed a monthly salary
+
+
+def test_monthly_hint_keeps_the_currency(testland: Country, ctx: replies.Context) -> None:
+    text = replies.cost("en", build_query("cost", (testland,), Decimal(5_000), currency="USD"), ctx)
+    assert "<code>Testland 5000 USD/mo</code>" in text
+
+
+def test_plan_discloses_conversions(testland: Country, ctx: replies.Context) -> None:
+    query = build_query("plan", (testland,), Decimal(60_000), currency="USD", people=2)
+    text = replies.plan("en", query, ctx)
+    assert "≈ $60,000 at the ECB rate of 29.10.2026" in text
+    assert "fee €550 per person a month" in text  # Testland's EOR price is already in EUR
+
+
+def test_plan_names_the_list_price_when_converted(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    query = parse("Germany 80k 5 people", real_catalog.index, {"EUR", "USD"})
+    assert "fee €479 per person a month ($599 list price, ECB rate of 29.10.2026)" in replies.plan("en", query, ctx)
+
+
+def test_compare_percentage_is_share_of_the_dearer_total(testland: Country, fixed_rates: Rates) -> None:
+    pricey = Country.model_validate(
+        country_data(country="Pricey", code="PR", aliases=["pricey"],
+                     contributions=[{"id": "pension", "name": "Pension", "rate": "0.5", "source": "https://example.gov/x"}])
+    )  # fmt: skip
+    ctx = replies.Context(_catalog(testland, pricey), fixed_rates, TODAY)
+    text = replies.compare("en", build_query("compare", (testland, pricey), Decimal(48_000)), ctx)
+    # Testland €55,080 vs Pricey €72,000: €16,920 is 23.5% of €72,000.
+    assert "Testland is cheaper to employ in by ~€16,920 a year (23.5% less)" in text
+
+
+def test_uk_rates_hold_until_april(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    uk = real_catalog.by_code("GB")
+    assert uk is not None
+    from deel_advisor import freshness
+
+    assert not freshness.check(uk, date(2027, 3, 1)).outdated_year
+    assert freshness.check(uk, date(2027, 4, 6)).outdated_year
+
+
+def test_mid_year_ceiling_is_announced(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    bulgaria = parse("Bulgaria 60k", real_catalog.index, {"EUR"})
+    assert "ceiling as in force since 01.08.2026, applied to every month" in replies.cost("en", bulgaria, ctx)
+    germany = parse("Germany 60k", real_catalog.index, {"EUR"})
+    assert "ceiling as in force since" not in replies.cost("en", germany, ctx)
+
+
+def test_share_capital_has_a_source(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    germany = real_catalog.by_code("DE")
+    assert germany is not None
+    text = replies.sources("en", germany, replies.Context(real_catalog, fixed_rates, TODAY))
+    assert "Share capital €25,000: stays the company's, not a cost — <a href=" in text

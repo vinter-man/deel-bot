@@ -42,7 +42,8 @@ CI runs ruff, prettier, mypy, the tests with a coverage gate, shellcheck, and bu
 and imports every module from it. Only when all of that is green does it SSH in with the tested
 commit's sha. `deploy.sh` accepts that sha only if it is on `origin/main` and not behind what is
 running, builds first (a broken build changes nothing), restarts, and waits for the container's
-healthcheck — the heartbeat the bot writes after each successful call to Telegram. Unhealthy
+healthcheck — a heartbeat file a background task touches each minute after a successful
+`getMe`, i.e. the process is alive and reaches Telegram. Unhealthy
 after a deploy that started from a healthy state means an automatic rollback to the previous
 commit.
 
