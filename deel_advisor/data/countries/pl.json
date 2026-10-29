@@ -122,7 +122,32 @@
         "amount": "75.00",
         "perEmployee": true,
         "kind": "estimate",
-        "source": "https://cenauslug.pl/poradniki/ile-kosztuje-prowadzenie-ksiegowosci-porownanie-biur-rachunkowych-i-programow-online"
+        "source": "https://cenauslug.pl/poradniki/ile-kosztuje-prowadzenie-ksiegowosci-porownanie-biur-rachunkowych-i-programow-online",
+        "payroll": true
+      }
+    ],
+    "setupTime": {
+      "weeks": 15,
+      "source": "https://grantthornton.pl/en/article/limited-liability-company-sp-z-o-o-in-poland-for-foreign-investors-how-to-start-business-quickly-case-study/"
+    },
+    "adminTime": {
+      "hoursPerYear": 334,
+      "hoursSource": "https://archive.doingbusiness.org/content/dam/doingBusiness/country/p/poland/POL.pdf",
+      "hourlyCost": "80.73",
+      "hourlyCostSource": "https://ec.europa.eu/eurostat/databrowser/view/lc_lci_lev/default/table"
+    },
+    "exitCost": [
+      {
+        "name": "Liquidation: court fees",
+        "amount": "550.00",
+        "kind": "official",
+        "source": "https://api.sejm.gov.pl/eli/acts/DU/2025/1228/text.pdf"
+      },
+      {
+        "name": "Creditor call in the court gazette",
+        "amount": "420.00",
+        "kind": "official",
+        "source": "https://api.sejm.gov.pl/eli/acts/DU/2017/1957/text.pdf"
       }
     ],
     "shareCapital": {
@@ -131,7 +156,10 @@
     },
     "notes": [
       "Sp. z o.o. formed at a notary; the online S24 route needs a Polish e-ID.",
-      "Formation service: EUR 1,450 + EUR 350 for a corporate shareholder, converted at about 4.25 PLN/EUR."
+      "Formation service: EUR 1,450 + EUR 350 for a corporate shareholder, converted at about 4.25 PLN/EUR.",
+      "Hourly cost: Eurostat EUR 19.10 at the NBP rate of 31.12.2025 (4.2267).",
+      "Opening a bank account for a foreign-owned company takes 3-4 months or more (Grant Thornton).",
+      "ZUS may add a fee of up to 100% of unpaid contributions; late interest is 10.5% a year."
     ]
   },
   "deelGuide": {

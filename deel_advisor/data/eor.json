@@ -4,5 +4,12 @@
   "currency": "USD",
   "source": "https://www.deel.com/pricing/",
   "checkedAt": "2026-10-29",
-  "note": "Public list price: \"Starting at $599 per EOR employee per month\". Negotiated and volume prices are lower; the bot uses the list price."
+  "note": "Public list price: \"Starting at $599 per EOR employee per month\", month-to-month. Negotiated and volume prices are lower; the bot uses the list price.",
+  "payroll": {
+    "monthlyFee": "29.00",
+    "currency": "USD",
+    "source": "https://www.deel.com/pricing/",
+    "checkedAt": "2026-10-29",
+    "note": "Deel Payroll for a company's own entity: \"Starting at $29 per employee per month\"."
+  }
 }

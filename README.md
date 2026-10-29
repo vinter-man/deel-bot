@@ -18,14 +18,17 @@ three things:
 1. **The full employer cost** — salary plus every employer contribution (pension, health,
    unemployment, accident, the levies nobody remembers), with contribution ceilings applied,
    line by line.
-2. **EOR versus your own entity** — Deel's list price per person per month against the one-off
-   setup and the monthly fixed costs of a local company, each cost line with a source.
-3. **The break-even point** — from how many people, and after how many months, the entity
-   becomes cheaper.
+2. **EOR versus your own entity** — Deel's list price per person per month against everything
+   a local company really costs: setting it up, running it, your own team's hours on its tax and
+   payroll filings, the weeks before it can run its first payroll, and closing it again. Every
+   line has a source.
+3. **The break-even point** — up to which team size the EOR is the cheaper way in, and from which
+   one it is time for your own entity, run on Deel Payroll.
 
-And a fourth one I did not plan for: when **Deel's own public country guide** states a figure
-differently from the official source, the reply says so — *"Deel's guide says 0.06%; officially
-from 01.01.2026: 0.15% (source)"*. Six of those turned up in five countries.
+And a fourth one I did not plan for: when **Deel's own public country guide** shows a figure
+that has since changed, the reply says so — *"Deel's guide still shows 0.06%; the official figure
+since 01.01.2026 is 0.15% (source)"*. Six of those turned up in five countries; the checker that
+found them is in the repo.
 
 Try it: [@deel_hea_unofficial_bot](https://t.me/deel_hea_unofficial_bot). It speaks the
 languages of the countries it covers — English, German, Spanish, Polish and Bulgarian — and asks
@@ -97,9 +100,14 @@ the country's minimum wage, the reply suggests you probably meant a monthly one.
 
 ### <a name="plan"></a> EOR or your own entity
 
-`/plan Germany 80000 5 12` — country, salary, people, months. Or `Germany 80k 5 people`.
+`/plan Germany 80000 3 12` — country, salary, people, months. Or `Germany 80k 3 people`.
 
 ![plan](docs/assets/plan.png)
+
+Three people in Germany: the EOR is cheaper, and an entity starts to pay off at five. Ten
+people, and the answer turns — with the next step spelled out:
+
+![scale](docs/assets/scale.png)
 
 The buttons switch the horizon (6 / 12 / 24 / 36 months) in place, change the team size, or
 compare with another country. The same in German, with the grammar right — *für 3 Personen*,
@@ -109,24 +117,34 @@ miesiącach*, *przez 24 miesiące*. Numbers follow the language too: `80.000 €
 ![de](docs/assets/de.png)
 
 > :hurtrealbad: Salary and contributions are identical either way — an EOR invoices them
-> through — so they are shown once and cancel out. What is compared is the EOR fee against the
-> entity's overhead:
+> through — so they are shown once and cancel out. What is compared is everything else:
+>
+> | Entity side | Where the number comes from |
+> |---|---|
+> | setup: registration, notary, formation for a foreign owner | official fee schedules, law-firm price pages |
+> | running: accountant, address, bank, chamber fees, occupational health | official fees, provider price pages |
+> | your team's hours on tax and payroll filings | World Bank *Paying Taxes* hours × Eurostat (ONS for the UK) hourly labour cost |
+> | the setup weeks, during which the team is on the EOR anyway | law firms and Big-4 guides for a foreign-owned company: 6–16 weeks |
+> | closing the entity at the end of the horizon | liquidation fees and statutory waiting periods |
+> | payroll per person | Deel Payroll's list price |
 >
 > ```
-> entity is cheaper for N people over M months  ⇔  N·M·(fee − payroll per head) > setup + M·fixed
+> entity cheaper for N people over M months  ⇔
+>     N · (M − setup months) · (fee − payroll per head)  >  setup + exit + M · (fixed + admin)
 > ```
 >
-> which gives the smallest team for a horizon and the first month for a team, both strict
-> (equal cost is not "cheaper").
+> which gives the smallest team for a horizon and the shortest horizon for a team, both strict
+> (equal cost is not "cheaper"); a test checks both closed forms against brute force.
 >
-> **What the numbers say, and what they leave out.** On Deel's list price of $599 a month, a
-> person costs ~€6,450 a year in EOR fees; a small company costs roughly €2,500–8,500 a year to run. So on
-> direct costs alone, the entity wins from one or two people. The reply says plainly that this
-> is direct costs only. What it does not price is exactly why companies use an EOR anyway: the
-> weeks an entity takes to open, your own team's time on local payroll, HR and filings, and the
-> compliance risk (misclassification, permanent establishment, local labour law) that the EOR
-> carries instead of you. I would rather show sourced numbers and name what is missing than
-> invent a "management overhead" line to make the answer look familiar.
+> **What the numbers say.** With Deel's list price and every sourced cost, one hire is cheaper
+> on the EOR in every country at any horizon, and two are almost everywhere; an entity pays off
+> from three to five people over a year (five in Germany, where the admin hours are dearest).
+> Where a source gives a range, the model takes the upper half and says so in `/sources`. What is
+> still not priced — management time beyond filings, and the misclassification and
+> permanent-establishment exposure an EOR takes on — only moves the line further towards the
+> EOR. There is no hidden "risk" percentage: nobody publishes one I could cite, so penalty
+> regimes (Germany's 1% a month on late contributions, Spain's 10–20% surcharges, ZUS's up to
+> 100%) are listed as notes instead of being turned into a number.
 
 ### <a name="compare"></a> Two countries side by side
 
@@ -308,11 +326,11 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 
 > :godmode: Coverage says a line ran; it does not say a test would notice the line being wrong.
 > So the logic modules (`calc`, `money`, `parser`, `freshness`, `fx`, `models`) are also
-> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,080 small deliberate bugs,
+> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,117 small deliberate bugs,
 > each run against the suite. The first run caught **84%**. The survivors were real holes — a
 > salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
 > wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
-> **96.9%** are caught, and the 34 left alive are equivalent mutants (`//` vs `/` on positive
+> **96.8%** are caught, and the 36 left alive are equivalent mutants (`//` vs `/` on positive
 > numbers, a temp file's name, the wording of a log line).
 >
 > ```bash

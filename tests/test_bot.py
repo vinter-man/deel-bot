@@ -187,11 +187,16 @@ async def test_plan_flow_through_buttons(dispatcher: Dispatcher, env: Any) -> No
 async def test_sources(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _message("/sources Spain"))
-    text = session.last_text()
+    parts = [m.text for m in session.sent()]
+    assert len(parts) >= 2  # long enough to be split, and split at block boundaries
+    text = "\n\n".join(parts)
     assert "boe.es" in text
     assert "deel.com" in text
+    assert "Deel Payroll" in text
+    assert "Setup until the first payroll: 16 weeks" in text
+    before = len(session.sent())
     await send(dispatcher, bot, _callback("src:PL"))
-    assert "zus.pl" in session.last_text()
+    assert "zus.pl" in "\n".join(m.text for m in session.sent()[before:])
 
 
 @pytest.mark.parametrize(

@@ -67,8 +67,14 @@ def test_rejects_non_positive_salary(testland: Country) -> None:
 
 def test_entity_cost_splits_fixed_and_per_employee(testland: Country) -> None:
     entity = calc.entity_cost(testland)
-    assert entity == calc.EntityCost(setup=D(2400), monthly_fixed=D(300), per_employee_monthly=D(50))
-    assert entity.monthly(3) == D(450)
+    assert entity == calc.EntityCost(
+        setup=D(2400), exit=D(0), monthly_fixed=D(300), admin_monthly=D(0), per_employee_monthly=D(50), bridge_months=0
+    )
+    assert entity.overhead_monthly == D(300)
+
+
+def test_deel_payroll_replaces_the_local_provider(testland: Country) -> None:
+    assert calc.entity_cost(testland, payroll_fee=D(26)).per_employee_monthly == D(26)  # not 50 + 26
 
 
 def test_plan_totals(testland: Country) -> None:
@@ -163,3 +169,69 @@ def test_breakeven_people_floors_rather_than_rounds(testland: Country) -> None:
     entity = calc.entity_cost(testland)
     # overhead 6,000 / (margin 499 × 12) = 1.002: the smallest strictly cheaper team is 2.
     assert calc.breakeven_people(entity, D(549), months=12) == 2
+
+
+# --- what an entity costs that an EOR absorbs ------------------------------------------------
+
+
+@pytest.fixture
+def hidden() -> Country:
+    """Testland with a 6-week setup, 120 admin hours a year at €40 and €1,000 to close."""
+    data = country_data()
+    src = "https://example.gov/rates"
+    data["entity"]["setupTime"] = {"weeks": 6, "source": src}
+    data["entity"]["adminTime"] = {"hoursPerYear": 120, "hoursSource": src, "hourlyCost": "40", "hourlyCostSource": src}
+    data["entity"]["exitCost"] = [{"name": "Closing", "amount": "1000", "kind": "estimate", "source": src}]
+    return Country.model_validate(data)
+
+
+@pytest.mark.parametrize(("weeks", "months"), [(0, 0), (1, 1), (4, 1), (5, 2), (7, 2), (8, 2), (9, 3), (13, 3),
+                                               (16, 4), (52, 12)])  # fmt: skip
+def test_setup_weeks_round_up_to_whole_payroll_months(weeks: int, months: int) -> None:
+    data = country_data()
+    data["entity"]["setupTime"]["weeks"] = weeks
+    assert calc.entity_cost(Country.model_validate(data)).bridge_months == months
+
+
+def test_hidden_costs_on_the_entity_side(hidden: Country) -> None:
+    entity = calc.entity_cost(hidden)
+    assert (entity.bridge_months, entity.admin_monthly, entity.exit) == (2, D(400), D(1000))
+    plan = calc.plan(hidden, D(48_000), eor_fee=D(550), people=3, months=12)
+    assert plan.bridge_fees == D(550 * 3 * 2)  # two months on the EOR while the entity is set up
+    assert plan.running_months == 10
+    # setup + exit + 12 × (fixed + admin) + payroll for the running months + the bridge fees
+    assert plan.entity_overhead == D(2400 + 1000 + 12 * (300 + 400) + 50 * 3 * 10 + 3300)
+    assert plan.entity_saving == plan.eor_fees - plan.entity_overhead == D(19_800 - 16_600)
+
+
+def test_horizon_shorter_than_setup(hidden: Country) -> None:
+    plan = calc.plan(hidden, D(48_000), eor_fee=D(550), people=3, months=1)
+    assert (plan.bridge_months, plan.running_months) == (1, 0)
+    assert plan.entity_saving < 0  # the entity never ran payroll, yet was opened and closed
+    assert plan.breakeven_people is None  # no running month to save anything in
+
+
+def test_breakeven_with_hidden_costs_matches_brute_force(hidden: Country) -> None:
+    """The closed forms must agree with simply trying every team size and horizon."""
+    entity = calc.entity_cost(hidden)
+    for fee in (D(400), D(550), D(900)):
+        for months in (1, 2, 3, 6, 12, 24, 60):
+            brute = next(
+                (n for n in range(1, 500) if calc.plan(hidden, D(48_000), fee, n, months).entity_saving > 0), None
+            )
+            assert calc.breakeven_people(entity, fee, months) == brute, (fee, months)
+        for people in (1, 2, 3, 5, 10, 40):
+            brute = next(
+                (m for m in range(1, 2000) if calc.plan(hidden, D(48_000), fee, people, m).entity_saving > 0), None
+            )
+            assert calc.breakeven_months(entity, fee, people) == brute, (fee, people)
+
+
+def test_plan_passes_the_payroll_price_on(testland: Country) -> None:
+    assert calc.plan(testland, D(48_000), D(550), 1, 12, payroll_fee=D(26)).entity.per_employee_monthly == D(26)
+
+
+def test_a_margin_below_one_unit_still_breaks_even(testland: Country) -> None:
+    # 5 cents a person a month over 12 months: 60 cents in total, far from "never".
+    entity = calc.entity_cost(testland)
+    assert calc.breakeven_people(entity, D("50.05"), months=12) == 10_001  # 6,000 // 0.60 + 1

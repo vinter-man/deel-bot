@@ -105,19 +105,41 @@
         "amount": "12.00",
         "perEmployee": true,
         "kind": "estimate",
-        "source": "https://www.theaccountancy.co.uk/pricing"
+        "source": "https://www.theaccountancy.co.uk/pricing",
+        "payroll": true
       },
       {
         "name": "Employers' liability insurance",
-        "amount": "5.00",
+        "amount": "14.58",
         "perEmployee": true,
         "kind": "estimate",
         "source": "https://www.goforma.com/business-resources/how-much-does-employers-liability-insurance-cost"
       }
     ],
+    "setupTime": {
+      "weeks": 12,
+      "source": "https://www.rsmuk.com/insights/considerations-for-international-businesses-when-setting-up-in-the-uk/branch-vs-subsidiary"
+    },
+    "adminTime": {
+      "hoursPerYear": 114,
+      "hoursSource": "https://archive.doingbusiness.org/content/dam/doingBusiness/country/u/united-kingdom/GBR.pdf",
+      "hourlyCost": "24.08",
+      "hourlyCostSource": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/bulletins/annualsurveyofhoursandearnings/latest"
+    },
+    "exitCost": [
+      {
+        "name": "Members' voluntary liquidation",
+        "amount": "5623.75",
+        "kind": "estimate",
+        "source": "https://www.gov.uk/government/publications/members-voluntary-liquidations-a-statistical-review-of-mvl-practice-and-outcomes/members-voluntary-liquidations-a-statistical-review-of-mvl-practice-and-outcomes"
+      }
+    ],
     "notes": [
       "Private limited company; no minimum share capital.",
-      "Employers' liability insurance is a legal requirement from the first employee."
+      "Employers' liability insurance is a legal requirement from the first employee.",
+      "A foreign-owned UK subsidiary is audit-exempt only if the whole worldwide group is small (s479 Companies Act 2006); the audit is not priced here.",
+      "Hourly cost: ONS median full-time pay (April 2026) plus employer NIC and 3% pension.",
+      "Late payroll reports: £100 a month for 1-9 employees; late PAYE 1-4% plus 5% at 6 and 12 months."
     ]
   },
   "deelGuide": {

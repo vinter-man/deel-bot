@@ -6,7 +6,8 @@ import {Shot, type ShotName} from './shots';
 /** Each shot is as tall as its own content, so the README has no letterboxing. */
 export const SHOTS: Partial<Record<ShotName, number>> = {
   start: 760,
-  plan: 820,
+  plan: 900,
+  scale: 940,
   cost: 830,
   compare: 640,
   sources: 1060,

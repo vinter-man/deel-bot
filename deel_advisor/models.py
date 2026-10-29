@@ -125,8 +125,27 @@ class CostItem(_Model):
     name: str = Field(min_length=2, max_length=60)
     amount: Amount
     per_employee: bool = False
+    # A local payroll provider: replaced by Deel Payroll's price when the plan prices an entity
+    # run on Deel Payroll.
+    payroll: bool = False
     kind: Literal["official", "estimate"]
     source: Source
+
+
+class SetupTime(_Model):
+    """Weeks from deciding to open an entity until it can legally run its first payroll."""
+
+    weeks: int = Field(ge=0, le=52)
+    source: Source
+
+
+class AdminTime(_Model):
+    """Your own team's hours on payroll-tax and contribution compliance, and what an hour costs."""
+
+    hours_per_year: int = Field(ge=0, le=2000)
+    hours_source: Source
+    hourly_cost: Amount
+    hourly_cost_source: Source
 
 
 class ShareCapital(_Model):
@@ -139,16 +158,20 @@ class Entity(_Model):
 
     setup_cost: list[CostItem] = Field(min_length=1)
     monthly_fixed: list[CostItem] = Field(min_length=1)
+    setup_time: SetupTime
+    admin_time: AdminTime
+    # Closing the entity at the end of the horizon: liquidation fees, liquidator, final filings.
+    exit_cost: list[CostItem] = Field(min_length=1)
     # Paid-up share capital: money that stays the company's, so it is shown but never added
     # to the cost.
     share_capital: ShareCapital | None = None
     notes: list[str] = Field(default_factory=list)
 
-    @field_validator("setup_cost")
+    @field_validator("setup_cost", "exit_cost")
     @classmethod
-    def _setup_is_one_off(cls, items: list[CostItem]) -> list[CostItem]:
-        if any(item.per_employee for item in items):
-            raise ValueError("setup costs are one-off; perEmployee belongs in monthlyFixed")
+    def _one_off(cls, items: list[CostItem]) -> list[CostItem]:
+        if any(item.per_employee or item.payroll for item in items):
+            raise ValueError("setup and exit costs are one-off; perEmployee and payroll belong in monthlyFixed")
         return items
 
 
@@ -251,10 +274,16 @@ class Country(_Model):
         return self.valid_until or date(self.year, 12, 31)
 
 
-class EorPricing(_Model):
-    provider: str
+class Price(_Model):
     monthly_fee: Amount
     currency: Currency
     source: Source
     checked_at: date
     note: str
+
+
+class EorPricing(Price):
+    """Deel's public list prices: the EOR fee, and Deel Payroll for a company's own entity."""
+
+    provider: str
+    payroll: Price | None = None

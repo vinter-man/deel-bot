@@ -11,7 +11,7 @@ import {mkdirSync} from 'node:fs';
 
 const OUT = '../assets';
 const TMP = 'out';
-const SHOTS = ['start', 'plan', 'cost', 'compare', 'sources', 'errors', 'de'];
+const SHOTS = ['start', 'plan', 'scale', 'cost', 'compare', 'sources', 'errors', 'de'];
 
 const run = (cmd, args) => execFileSync(cmd, args, {stdio: 'inherit'});
 

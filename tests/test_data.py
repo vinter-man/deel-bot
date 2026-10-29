@@ -102,3 +102,32 @@ def test_figures_were_checked_within_the_data_period(real_catalog: Catalog) -> N
 
 def test_eor_price(real_catalog: Catalog) -> None:
     assert (real_catalog.eor.monthly_fee, real_catalog.eor.currency) == (D(599), "USD")
+
+
+@pytest.mark.parametrize("code", ["DE", "GB", "ES", "PL", "BG"])
+def test_one_hire_is_cheaper_on_eor_everywhere(real_catalog: Catalog, code: str) -> None:
+    """With Deel's list price and every sourced entity cost, a single hire never justifies an
+    entity, whatever the salary or horizon — the case EOR exists for."""
+    from deel_advisor.fx import bundled_rates
+
+    country = _country(real_catalog, code)
+    rates = bundled_rates()
+    eor = real_catalog.eor
+    assert eor.payroll is not None
+    fee = rates.convert(eor.monthly_fee, eor.currency, country.currency)
+    payroll = rates.convert(eor.payroll.monthly_fee, eor.payroll.currency, country.currency)
+    entity = calc.entity_cost(country, payroll)
+    assert entity.bridge_months >= 2  # no entity runs payroll in under five weeks
+    for months in (6, 12, 24, 60, 120):
+        assert calc.plan(country, D(60_000), fee, 1, months, payroll).entity_saving < 0, months
+
+
+def test_germany_breaks_even_from_five_people_over_a_year(real_catalog: Catalog) -> None:
+    from deel_advisor.fx import bundled_rates
+
+    germany = _country(real_catalog, "DE")
+    rates = bundled_rates()
+    fee = rates.convert(D(599), "USD", "EUR")
+    entity = calc.entity_cost(germany, rates.convert(D(29), "USD", "EUR"))
+    assert entity.admin_monthly == D("817.50")  # World Bank 218 h a year × Eurostat €45 an hour / 12
+    assert calc.breakeven_people(entity, fee, 12) == 5

@@ -42,7 +42,7 @@ def test_cost_reply(testland: Country, ctx: replies.Context) -> None:
     assert "• Accident ~1% — €480" in text
     assert "typical rate" in text
     # Testland's guide disagrees with the official minimum wage:
-    assert "Deel's guide says minimum wage: €950/mo; officially from 01.01.2026: €1,000/mo" in text
+    assert "Deel's guide still shows minimum wage: €950/mo; the official figure since 01.01.2026 is €1,000/mo" in text
 
 
 def test_cost_in_another_currency(testland: Country, ctx: replies.Context) -> None:
@@ -142,7 +142,7 @@ def test_sources(testland: Country, ctx: replies.Context) -> None:
     assert '<a href="https://example.gov/rates">example.gov</a>' in text
     assert "• Registration €2,400" in text
     assert "• Payroll €50/mo" in text
-    assert "⚠️ Minimum wage: Deel €950/mo, official €1,000/mo" in text
+    assert "📝 Minimum wage: Deel €950/mo, official €1,000/mo" in text
     assert "✅ Pension contribution ceiling: €60,000/yr" in text
 
 

@@ -165,7 +165,45 @@
         "amount": "25.00",
         "perEmployee": true,
         "kind": "estimate",
-        "source": "https://www.lohndialog.de/lohnabrechnung-steuerberater-kosten/"
+        "source": "https://www.lohndialog.de/lohnabrechnung-steuerberater-kosten/",
+        "payroll": true
+      },
+      {
+        "name": "Chamber of commerce (IHK) basic fee",
+        "amount": "24.63",
+        "kind": "official",
+        "source": "https://www.ihk-nuernberg.de/fileadmin/IHK_Nuernberg/KundenService_Mitgliedschaft/Rund_um_den_Beitrag/Wirtschaftssatzung_2026.pdf"
+      },
+      {
+        "name": "Annual accounts publication",
+        "amount": "2.33",
+        "kind": "official",
+        "source": "https://www.gesetze-im-internet.de/jvkostg/anlage.html"
+      },
+      {
+        "name": "Company doctor",
+        "amount": "1.71",
+        "perEmployee": true,
+        "kind": "estimate",
+        "source": "https://www.provestiga.de/beitrag/betriebsarzt-kosten-fuer-arbeitgeber.html"
+      }
+    ],
+    "setupTime": {
+      "weeks": 7,
+      "source": "https://lawyersgermany.com/starting-a-gmbh-in-germany/"
+    },
+    "adminTime": {
+      "hoursPerYear": 218,
+      "hoursSource": "https://archive.doingbusiness.org/content/dam/doingBusiness/country/g/germany/DEU.pdf",
+      "hourlyCost": "45.00",
+      "hourlyCostSource": "https://ec.europa.eu/eurostat/databrowser/view/lc_lci_lev/default/table"
+    },
+    "exitCost": [
+      {
+        "name": "Liquidation: notary, register, accounts, Sperrjahr",
+        "amount": "4250.00",
+        "kind": "estimate",
+        "source": "https://onlinebilanz.de/gmbh-aufloesen-kosten/"
       }
     ],
     "shareCapital": {
@@ -175,7 +213,9 @@
     "notes": [
       "GmbH; EUR 12,500 of the EUR 25,000 share capital is paid in before registration (§5, §7 GmbHG).",
       "Not included: apostilles and translations of the parent company's documents.",
-      "The safety officer + company doctor figure is a 2020 association rate: treat it as a floor."
+      "The safety officer + company doctor figure is a 2020 association rate: treat it as a floor.",
+      "Closing a GmbH takes 14-24 months, including the one-year creditor wait (Sperrjahr, §73 GmbHG).",
+      "Late social contributions cost 1% of the arrears per started month (§24 SGB IV)."
     ]
   },
   "deelGuide": {

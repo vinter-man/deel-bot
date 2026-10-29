@@ -39,8 +39,14 @@ def country_data(**overrides: Any) -> dict[str, Any]:
             "setupCost": [{"name": "Registration", "amount": "2400", "kind": "official", "source": src}],
             "monthlyFixed": [
                 {"name": "Accountant", "amount": "300", "kind": "estimate", "source": src},
-                {"name": "Payroll", "amount": "50", "perEmployee": True, "kind": "estimate", "source": src},
+                {"name": "Payroll", "amount": "50", "perEmployee": True, "payroll": True, "kind": "estimate",
+                 "source": src},
             ],
+            # Zero by default so the arithmetic in the older tests stays round; tests of these
+            # costs set them explicitly (see test_calc.hidden).
+            "setupTime": {"weeks": 0, "source": src},
+            "adminTime": {"hoursPerYear": 0, "hoursSource": src, "hourlyCost": "0", "hourlyCostSource": src},
+            "exitCost": [{"name": "Closing", "amount": "0", "kind": "estimate", "source": src}],
         },
         "deelGuide": {
             "url": "https://www.deel.com/hiring-guide/testland/",

@@ -14,7 +14,7 @@ the entity's one-off setup and its monthly fixed costs, and that is all the brea
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 
 from deel_advisor.models import Contribution, Country
 from deel_advisor.money import ZERO, cents
@@ -93,42 +93,77 @@ def employer_cost(country: Country, annual_salary: Decimal) -> EmployerCost:
 
 @dataclass(frozen=True, slots=True)
 class EntityCost:
+    """What running your own entity costs beyond the employment itself, per month and one-off.
+
+    `bridge_months` is the setup time: until the entity can run payroll, the team is employed
+    through the EOR anyway (or not at all), so those months carry the EOR fee on the entity side.
+    `admin_monthly` is your own team's time on tax and payroll compliance, which an EOR does
+    for you; `exit` is closing the entity at the end of the horizon.
+    """
+
     setup: Decimal
+    exit: Decimal
     monthly_fixed: Decimal
+    admin_monthly: Decimal
     per_employee_monthly: Decimal
+    bridge_months: int
 
-    def monthly(self, people: int) -> Decimal:
-        return self.monthly_fixed + self.per_employee_monthly * people
+    @property
+    def overhead_monthly(self) -> Decimal:
+        return self.monthly_fixed + self.admin_monthly
 
 
-def entity_cost(country: Country) -> EntityCost:
-    items = country.entity.monthly_fixed
+WEEKS_PER_MONTH = Decimal(52) / 12
+
+
+def entity_cost(country: Country, payroll_fee: Decimal | None = None) -> EntityCost:
+    """`payroll_fee`: run payroll on Deel Payroll at this price per person instead of the local
+    provider in the data (items flagged `payroll`)."""
+    entity = country.entity
+    items = entity.monthly_fixed
+    per_employee = [i.amount for i in items if i.per_employee and not (payroll_fee is not None and i.payroll)]
+    if payroll_fee is not None:
+        per_employee.append(payroll_fee)
+    admin = entity.admin_time
     return EntityCost(
-        setup=sum((item.amount for item in country.entity.setup_cost), ZERO),
+        setup=sum((item.amount for item in entity.setup_cost), ZERO),
+        exit=sum((item.amount for item in entity.exit_cost), ZERO),
         monthly_fixed=sum((item.amount for item in items if not item.per_employee), ZERO),
-        per_employee_monthly=sum((item.amount for item in items if item.per_employee), ZERO),
+        admin_monthly=cents(admin.hourly_cost * admin.hours_per_year / MONTHS_PER_YEAR),
+        per_employee_monthly=sum(per_employee, ZERO),
+        # Part of a month is a month: payroll runs monthly, so 7 weeks means two EOR invoices.
+        # (Not `-(-a // b)`: Decimal's `//` truncates towards zero rather than flooring.)
+        bridge_months=int((entity.setup_time.weeks / WEEKS_PER_MONTH).to_integral_value(ROUND_CEILING)),
     )
 
 
 def breakeven_people(entity: EntityCost, eor_fee: Decimal, months: int) -> int | None:
     """Smallest team for which the entity is strictly cheaper over `months`; None if never.
 
-    Each person saves `eor_fee - per_employee_monthly` a month, and the entity has to earn back
-    `setup + monthly_fixed × months` out of that.
+    The entity side pays the setup, the exit, its monthly overhead for every month, and the EOR
+    fee during the setup months; each person saves `eor_fee - per_employee_monthly` for every
+    month after them.
     """
-    margin = eor_fee - entity.per_employee_monthly
-    if margin <= 0 or months <= 0:
+    running = months - min(entity.bridge_months, months)
+    margin = (eor_fee - entity.per_employee_monthly) * running
+    if margin <= 0:
         return None
-    overhead = entity.setup + entity.monthly_fixed * months
-    return int(overhead // (margin * months)) + 1
+    overhead = entity.setup + entity.exit + entity.overhead_monthly * months
+    return int(overhead // margin) + 1
 
 
 def breakeven_months(entity: EntityCost, eor_fee: Decimal, people: int) -> int | None:
-    """First month after which the entity has paid for itself; None if it never does."""
-    saving = (eor_fee - entity.per_employee_monthly) * people - entity.monthly_fixed
-    if saving <= 0:
+    """Shortest horizon over which the entity is strictly cheaper; None if it never is.
+
+    For a horizon M past the setup months the entity's advantage is
+    `M × slope − (setup + exit + bridge months × people × margin)`.
+    """
+    per_person = eor_fee - entity.per_employee_monthly
+    slope = per_person * people - entity.overhead_monthly
+    if slope <= 0:
         return None
-    return int(entity.setup // saving) + 1
+    sunk = entity.setup + entity.exit + per_person * people * entity.bridge_months
+    return int(sunk // slope) + 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,8 +184,32 @@ class Plan:
         return self.eor_fee * self.people * self.months
 
     @property
+    def bridge_months(self) -> int:
+        return min(self.entity.bridge_months, self.months)
+
+    @property
+    def running_months(self) -> int:
+        return self.months - self.bridge_months
+
+    @property
+    def bridge_fees(self) -> Decimal:
+        """EOR fees paid on the entity side while the entity is being set up."""
+        return self.eor_fee * self.people * self.bridge_months
+
+    @property
+    def admin(self) -> Decimal:
+        return self.entity.admin_monthly * self.months
+
+    @property
     def entity_overhead(self) -> Decimal:
-        return self.entity.setup + self.entity.monthly(self.people) * self.months
+        return (
+            self.entity.setup
+            + self.entity.exit
+            + self.entity.monthly_fixed * self.months
+            + self.admin
+            + self.entity.per_employee_monthly * self.people * self.running_months
+            + self.bridge_fees
+        )
 
     @property
     def eor_total(self) -> Decimal:
@@ -174,7 +233,15 @@ class Plan:
         return breakeven_months(self.entity, self.eor_fee, self.people)
 
 
-def plan(country: Country, annual_salary: Decimal, eor_fee: Decimal, people: int, months: int) -> Plan:
+def plan(
+    country: Country,
+    annual_salary: Decimal,
+    eor_fee: Decimal,
+    people: int,
+    months: int,
+    payroll_fee: Decimal | None = None,
+) -> Plan:
     if people < 1 or months < 1:
         raise ValueError("people and months must be at least 1")
-    return Plan(employer_cost(country, annual_salary), entity_cost(country), eor_fee, people, months)
+    entity = entity_cost(country, payroll_fee)
+    return Plan(employer_cost(country, annual_salary), entity, eor_fee, people, months)

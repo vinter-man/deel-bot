@@ -53,9 +53,11 @@ def build() -> dict[str, Any]:
             {"in": {"html": t(lang, "lang.prompt"), "keyboard": _keys(kb.languages())}},
             {"in": {"html": t(lang, "start", countries=countries), "keyboard": _keys(kb.start_examples(lang))}},
         ],
-        "plan": [{"out": "Germany 80k 5 people"}, {"in": _reply(ctx, lang, "Germany 80k 5 people")}],
+        "plan": [{"out": "Germany 80k 3 people"}, {"in": _reply(ctx, lang, "Germany 80k 3 people")}],
         # The demo GIF taps "24 mo" on the reply above; this is what the bot edits it into.
-        "plan24": [{"out": "Germany 80k 5 people"}, {"in": _reply(ctx, lang, "Germany 80k 5 people 24 months")}],
+        "plan24": [{"out": "Germany 80k 3 people"}, {"in": _reply(ctx, lang, "Germany 80k 3 people 24 months")}],
+        # And the other side of the break-even: a team big enough for its own entity.
+        "scale": [{"out": "Germany 80k 10 people"}, {"in": _reply(ctx, lang, "Germany 80k 10 people")}],
         "cost": [{"out": "/cost Bulgaria 60000 EUR"}, {"in": _reply(ctx, lang, "Bulgaria 60000 EUR")}],
         "compare": [{"out": "UK vs Poland 50k GBP"}, {"in": _reply(ctx, lang, "UK vs Poland 50k GBP")}],
         "sources": [

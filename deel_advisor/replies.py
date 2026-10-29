@@ -18,7 +18,7 @@ from deel_advisor.fx import Rates
 from deel_advisor.i18n import Lang, t
 from deel_advisor.models import Contribution, Country, Figure
 from deel_advisor.money import format_money, format_rate, whole
-from deel_advisor.parser import Query
+from deel_advisor.parser import MAX_MONTHS, Query
 
 # Weekends and ECB holidays leave the last set up to four days old; older than that is news.
 FX_STALE_DAYS = 4
@@ -100,6 +100,14 @@ def local_salary(query: Query, country: Country, rates: Rates) -> Decimal:
     if query.currency is None:
         return query.salary
     return rates.convert(query.salary, query.currency, country.currency)
+
+
+def payroll_fee(country: Country, ctx: Context) -> Decimal | None:
+    """Deel Payroll's price per person in the country's currency, if the data has one."""
+    payroll = ctx.catalog.eor.payroll
+    if payroll is None:
+        return None
+    return ctx.rates.convert(payroll.monthly_fee, payroll.currency, country.currency)
 
 
 def eor_fee(country: Country, ctx: Context) -> Decimal:
@@ -192,6 +200,8 @@ def _pays_off(lang: Lang, result: calc.Plan) -> list[str]:
     elif team > result.people:
         lines.append(t(lang, "plan.pays_off_people", team=i18n.people_for(lang, team), months=horizon))
     after = result.breakeven_months
+    if after is not None and after > MAX_MONTHS:
+        after = None  # "pays off after 234 years" is a never, not a plan
     if after is None:
         if team is not None:
             lines.append(t(lang, "plan.never_months", team=i18n.people_for(lang, result.people)))
@@ -207,9 +217,12 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
     country = query.countries[0]
     cur = country.currency
     fee = eor_fee(country, ctx)
-    result = calc.plan(country, local_salary(query, country, ctx.rates), fee, query.people, query.months)
+    payroll = payroll_fee(country, ctx)
+    result = calc.plan(country, local_salary(query, country, ctx.rates), fee, query.people, query.months, payroll)
     team, horizon = i18n.people_for(lang, query.people), i18n.months(lang, query.months)
     eor = ctx.catalog.eor
+    entity = result.entity
+    admin = country.entity.admin_time
     fee_source = ""
     if eor.currency != cur:
         list_price = _money(lang, eor.monthly_fee, eor.currency)
@@ -223,13 +236,20 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
         "",
         t(lang, "plan.eor", provider=html.escape(eor.provider), total=_money(lang, result.eor_total, cur)),
         "   " + t(lang, "plan.eor_detail", fee=_money(lang, fee, cur)) + fee_source,
-        t(lang, "plan.entity", total=_money(lang, result.entity_total, cur)),
-        "   " + t(lang, "plan.entity_detail", setup=_money(lang, result.entity.setup, cur),
-                  fixed=_money(lang, result.entity.monthly_fixed, cur),
-                  per_employee=_money(lang, result.entity.per_employee_monthly, cur)),
-        t(lang, "plan.same", amount=_money(lang, result.employment, cur)),
-        "",
+        t(lang, "plan.entity_deel" if payroll is not None else "plan.entity",
+          total=_money(lang, result.entity_total, cur)),
+        "   " + t(lang, "plan.entity_detail", setup=_money(lang, entity.setup, cur),
+                  exit=_money(lang, entity.exit, cur), fixed=_money(lang, entity.monthly_fixed, cur),
+                  per_employee=_money(lang, entity.per_employee_monthly, cur)),
+        "   " + t(lang, "plan.entity_admin", hours=admin.hours_per_year,
+                  amount=_money(lang, entity.admin_monthly, cur)),
     ]  # fmt: skip
+    if result.bridge_months:
+        out.append(
+            "   " + t(lang, "plan.entity_bridge", weeks=country.entity.setup_time.weeks,
+                      amount=_money(lang, result.bridge_fees, cur))
+        )  # fmt: skip
+    out += [t(lang, "plan.same", amount=_money(lang, result.employment, cur)), ""]
 
     diff = whole(abs(result.entity_saving))
     if diff == 0:
@@ -238,6 +258,8 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
         key = "plan.entity_cheaper" if result.entity_saving > 0 else "plan.eor_cheaper"
         out.append(t(lang, key, team=team, months=horizon, diff=_money(lang, diff, cur)))
     out += _pays_off(lang, result)
+    if result.entity_saving > 0 and payroll is not None:
+        out.append(t(lang, "plan.switch", fee=_money(lang, payroll, cur)))
     out += ["", t(lang, "plan.note")]
     if (cap_since := _ceiling_changed(country)) is not None:
         out.append(t(lang, "cost.cap_since", date=_date(cap_since, lang)))
@@ -259,7 +281,8 @@ def compare(lang: Lang, query: Query, ctx: Context) -> str:
     for country in (first, second):
         local = ctx.rates.convert(query.salary, common, country.currency)
         fee = eor_fee(country, ctx)
-        result = calc.plan(country, local, fee, people=1, months=REFERENCE_MONTHS)
+        result = calc.plan(country, local, fee, people=1, months=REFERENCE_MONTHS,
+                           payroll_fee=payroll_fee(country, ctx))  # fmt: skip
         total_common = ctx.rates.convert(result.cost.total_annual, country.currency, common)
         totals.append((country, total_common, result.cost.burden))
         out.append(
@@ -332,6 +355,17 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
             amount += t(lang, "sources.per_person") if item.per_employee else i18n.PERIODS[lang]["month"]
         official = f" · {t(lang, 'sources.official')}" if item.kind == "official" else ""
         out.append(f"• {html.escape(item.name)} {amount}{official} — {_link(item.source, _host(item.source))}")
+    setup_time, admin, exit_items = country.entity.setup_time, country.entity.admin_time, country.entity.exit_cost
+    out.append(f"• {t(lang, 'sources.setup_time', weeks=setup_time.weeks)} — "
+               f"{_link(setup_time.source, _host(setup_time.source))}")  # fmt: skip
+    rate = format_money(admin.hourly_cost, cur, lang, with_cents=True)
+    out.append(f"• {t(lang, 'sources.admin', hours=admin.hours_per_year, rate=rate)} — "
+               f"{_link(admin.hours_source, _host(admin.hours_source))}, "
+               f"{_link(admin.hourly_cost_source, _host(admin.hourly_cost_source))}")  # fmt: skip
+    for item in exit_items:
+        amount = format_money(item.amount, cur, lang, with_cents=item.amount != whole(item.amount))
+        out.append(f"• {t(lang, 'sources.exit')} {html.escape(item.name)} {amount} — "
+                   f"{_link(item.source, _host(item.source))}")  # fmt: skip
     capital = country.entity.share_capital
     if capital is not None:
         line = t(lang, "sources.capital", amount=_money(lang, capital.amount, cur))
@@ -343,9 +377,14 @@ def sources(lang: Lang, country: Country, ctx: Context) -> str:
         t(lang, "sources.eor", provider=html.escape(eor.provider),
           fee=_money(lang, eor.monthly_fee, eor.currency),
           url=html.escape(str(eor.source), quote=True), checked=_date(eor.checked_at, lang)),
-        t(lang, "sources.guide", url=html.escape(str(guide.url), quote=True),
-          checked=_date(guide.checked_at, lang)),
     ]  # fmt: skip
+    if eor.payroll is not None:
+        out.append(
+            t(lang, "sources.payroll", fee=_money(lang, eor.payroll.monthly_fee, eor.payroll.currency),
+              url=html.escape(str(eor.payroll.source), quote=True), checked=_date(eor.payroll.checked_at, lang))
+        )  # fmt: skip
+    out.append(t(lang, "sources.guide", url=html.escape(str(guide.url), quote=True),
+                 checked=_date(guide.checked_at, lang)))  # fmt: skip
     bad = {m.key: m for m in freshness.mismatches(country)}
     for key in sorted(guide.figures.keys() & country.official.figures.keys()):
         label = figure_label(lang, key, capitalize=True)
