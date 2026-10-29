@@ -171,7 +171,7 @@
       {
         "name": "Chamber of commerce (IHK) basic fee",
         "amount": "24.63",
-        "kind": "official",
+        "kind": "estimate",
         "source": "https://www.ihk-nuernberg.de/fileadmin/IHK_Nuernberg/KundenService_Mitgliedschaft/Rund_um_den_Beitrag/Wirtschaftssatzung_2026.pdf"
       },
       {
@@ -202,7 +202,8 @@
       "Not included: apostilles and translations of the parent company's documents.",
       "The safety officer + company doctor figure is a 2020 association rate: treat it as a floor.",
       "Closing a GmbH takes 14-24 months, including the one-year creditor wait (Sperrjahr, §73 GmbHG).",
-      "Late social contributions cost 1% of the arrears per started month (§24 SGB IV)."
+      "Late social contributions cost 1% of the arrears per started month (§24 SGB IV).",
+      "IHK membership is compulsory; each chamber sets its own fees. The figure is the Nürnberg chamber's 2026 basic fee."
     ]
   },
   "deelGuide": {

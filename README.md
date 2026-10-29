@@ -144,7 +144,11 @@ miesiącach*, *przez 24 miesiące*. Numbers follow the language too: `80.000 €
 > **What the numbers say.** With Deel's list price and every sourced cost, a single hire is
 > cheaper on the EOR for the whole first year in all five countries, two people are in Germany,
 > Spain and the UK, and an entity pays off from two to four people over a year. Where a source
-> gives a range the data takes a mid-range value, and `/sources` links the range.
+> gives a range the data takes a mid-range value, and `/sources` links the range. The EOR side is
+> Deel's public "starting at" price; real quotes vary by country and contract, in both directions.
+> In the UK the entity carries a statutory audit (£811 of its £994 a month), which applies unless
+> your whole group is small — without it a UK entity already pays off for a single hire over a
+> year, the one case where the EOR loses that early.
 >
 > What is not priced, and would only move the line towards the EOR: your team's own time on the
 > entity (management, HR, working with the accountant), the months a liquidation takes (a GmbH
@@ -178,7 +182,7 @@ figure by figure: ✅ agrees, ⚠️ differs.
 > |---|---|---|
 > | 🇩🇪 long-term care, employer | 1.7% | 1.8% |
 > | 🇩🇪 insolvency levy | 0.06% | 0.15% (§ 360 SGB III) |
-> | 🇬🇧 National Living Wage | £12.21/h ("as of April 2025") | £12.71/h from 01.04.2026 |
+> | 🇬🇧 National Living Wage | £12.21/h (in a table headed "As of April 2025") | £12.71/h from 01.04.2026 |
 > | 🇵🇱 pension/disability ceiling | PLN 260,190 (the 2025 limit) | PLN 282,600 |
 > | 🇧🇬 maximum insurable income | BGN 3,750 | €2,300 (euro since 01.01.2026) |
 > | 🇪🇸 minimum wage | €1,262.28/mo | €1,221/mo × 14 (SMI) |
@@ -346,6 +350,10 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 > ```bash
 > uv run mutmut run && uv run mutmut results
 > ```
+>
+> The `mutation` job in CI recomputes the score on Linux on every push to `main` and fails below
+> 95%. On macOS, mutmut 3.8 reports some killed mutants as "segfault"; the figures above count
+> those after re-running each one directly with pytest.
 
 The screenshots in this README are not screenshots. `scripts/export_shots.py` runs the bot's own
 reply functions and writes them to JSON, and [Remotion](https://www.remotion.dev) draws them in a
