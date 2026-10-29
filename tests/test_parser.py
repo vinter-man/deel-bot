@@ -1,5 +1,5 @@
 """The free-text parser: what people really type, what they type by mistake, and what a bored
-tester types to see what happens. Every input either parses to exactly the intended query or is
+tester types to see what happens. Every input either parses to exactly the intended team or is
 refused with an error that names the problem — never a silently wrong number.
 """
 
@@ -16,10 +16,9 @@ from deel_advisor.parser import (
     MAX_MONTHS,
     MAX_PEOPLE,
     CountryIndex,
+    Member,
     ParseError,
-    Query,
     Team,
-    build_query,
     check_team,
     find_country,
     parse,
@@ -38,15 +37,19 @@ def index(testland: Country) -> CountryIndex:
     return CountryIndex([testland, other])
 
 
-def p(text: str, index: CountryIndex, kind: str | None = None) -> Query:
-    result = parse(text, index, CURRENCIES, kind)  # type: ignore[arg-type]
-    assert isinstance(result, Query), result
-    return result
+def team(text: str, index: CountryIndex) -> Team:
+    return parse(text, index, CURRENCIES)
 
 
-def err(text: str, index: CountryIndex, kind: str | None = None) -> ParseError:
+def one(text: str, index: CountryIndex) -> Member:
+    """The only member of a one-country team."""
+    (member,) = team(text, index).members
+    return member
+
+
+def err(text: str, index: CountryIndex) -> ParseError:
     with pytest.raises(ParseError) as caught:
-        p(text, index, kind)
+        team(text, index)
     return caught.value
 
 
@@ -58,26 +61,34 @@ def err(text: str, index: CountryIndex, kind: str | None = None) -> ParseError:
     [
         ("Testland 80000", 80_000), ("testland 80k", 80_000), ("TESTLAND 80K", 80_000),
         ("Testland 80,000", 80_000), ("Testland 80.000", 80_000), ("Testland 80 000", 80_000),
-        ("Testland 1.200.000", 1_200_000), ("Testland 1,200,000", 1_200_000), ("Testland 1 200 000", 1_200_000),
+        ("Testland 1.200.000", 1_200_000), ("Testland 1,200,000", 1_200_000), ("Testland 150 000", 150_000),
         ("Testland 80.5k", 80_500), ("Testland 80,5k", 80_500), ("Testland 1.2m", 1_200_000),
         ("Testland 75000,50", D("75000.50")), ("Testland 75000.50", D("75000.50")),
         ("testlandia 80k", 80_000), ("Testland 80 tys.", 80_000), ("Testland 80 tsd", 80_000),
         ("Testland 80 mil", 80_000), ("Testland 80 хил.", 80_000), ("Testland 1,2 Mio.", 1_200_000),
-        ("Testland 1,5 mln", 1_500_000), ("Testland 80tys", 80_000), ("Testland 80 000", 80_000),
+        ("Testland 1,5 mln", 1_500_000), ("Testland 80tys", 80_000), ("Testland 1 × 1 200 000", 1_200_000),
         ("  Testland   80000  ", 80_000), ("Testland, 80000!", 80_000), ("(Testland) 80000", 80_000),
         ("Testland 80000 ???", 80_000), ("Testland: 80000;", 80_000),
     ],
 )  # fmt: skip
 def test_salary_formats(text: str, salary: Decimal, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert query.kind == "cost"
-    assert query.salary == salary
-    assert query.currency is None
+    member = one(text, index)
+    assert member.salary == salary
+    assert member.currency == "EUR"  # the country's own
+
+
+def test_a_head_count_before_grouped_thousands(index: CountryIndex) -> None:
+    # A head count after every country is the norm, so "1 200 000" is one person at 200,000;
+    # "× " or "people" settles it either way.
+    assert (one("Testland 1 200 000", index).count, one("Testland 1 200 000", index).salary) == (1, 200_000)
+    assert one("Testland 2 × 150 000", index).salary == 150_000
+    assert one("Testland 2 150 000", index).salary == 150_000
+    assert one("Testland 80 000 200 people", index).count == 200
 
 
 @pytest.mark.parametrize("text", ["80000 Testland", "80k testland", "€60k Testland"])
 def test_order_does_not_matter(text: str, index: CountryIndex) -> None:
-    assert p(text, index).countries[0].code == "TL"
+    assert one(text, index).country.code == "TL"
 
 
 @pytest.mark.parametrize(
@@ -86,14 +97,11 @@ def test_order_does_not_matter(text: str, index: CountryIndex) -> None:
      ("Testland 60000 usd", "USD"), ("Testland 60000 pounds", "GBP"), ("Testland 60000 zł", "PLN"),
      ("Testland 60000 chf", "CHF"), ("Testland 60000 euro", "EUR"), ("Testland 60000 евро", "EUR"),
      ("Testland 60000 Pfund", "GBP"), ("Testland 60000 dólares", "USD"), ("Testland 60000 złotych", "PLN"),
-     ("Testland £60k", "GBP"), ("Testland 60000 jpy", "JPY"), ("Testland 60k zł", "PLN")],
+     ("Testland £60k", "GBP"), ("Testland 60000 jpy", "JPY"), ("Testland 60k zł", "PLN"),
+     ("Testland EUR 60000", "EUR"), ("Testland 60000 €", "EUR"), ("Testland 60000 £", "GBP")],
 )  # fmt: skip
 def test_currencies(text: str, currency: str, index: CountryIndex) -> None:
-    assert p(text, index).currency == currency
-
-
-def test_last_currency_wins_over_none_but_symbol_sets_it(index: CountryIndex) -> None:
-    assert p("Testland EUR 60000", index).currency == "EUR"  # the code before the amount still counts
+    assert one(text, index).currency == currency
 
 
 @pytest.mark.parametrize(
@@ -102,94 +110,49 @@ def test_last_currency_wins_over_none_but_symbol_sets_it(index: CountryIndex) ->
              "Testland 5k mensual"],
 )  # fmt: skip
 def test_monthly_salary(text: str, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert query.salary == 60_000, text
-    assert query.salary_was_monthly
+    assert one(text, index).salary == 60_000, text
 
 
 @pytest.mark.parametrize("text", ["Testland 60000 per year", "Testland 60000 a year", "Testland 60000 al año"])
 def test_per_year_is_the_default(text: str, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert (query.salary, query.salary_was_monthly) == (60_000, False)
+    assert one(text, index).salary == 60_000
 
 
-# --- team and horizon -----------------------------------------------------------------------
-
-
-def test_free_text_plan(index: CountryIndex) -> None:
-    query = p("Testland 80k 5 people", index)
-    assert (query.kind, query.people, query.months) == ("plan", 5, 12)
+# --- people and horizon ---------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     ("text", "people", "months"),
     [
+        ("Testland 80k", 1, 12), ("Testland 2 × 80k", 2, 12), ("Testland 80k 5 people", 5, 12),
         ("Testland 80k 5 people 24 months", 5, 24), ("Testland 80k x3", 3, 12), ("Testland 80k ×3", 3, 12),
         ("Testland 80k 3ppl", 3, 12), ("Testland 80k 5 Personen 2 Jahre", 5, 24),
         ("Testland 80k 4 osoby 18 miesięcy", 4, 18), ("Testland 80k 7 personas 3 años", 7, 36),
         ("Testland 80k 2 служители 6 месеца", 2, 6), ("Testland 80k for 10 employees 6mo", 10, 6),
-        ("Testland 80k 5", 5, 12), ("Testland 80k 5 36", 5, 36), ("Testland 80k 24 months 5 people", 5, 24),
-        ("Testland 80k 1 year", 1, 12), ("Testland 80k 10 years", 1, 120), ("Testland 80k 1 person", 1, 12),
+        ("Testland 80k 24 months 5 people", 5, 24), ("Testland 80k 1 year", 1, 12),
+        ("Testland 80k 10 years", 1, 120), ("Testland 80k 1 person", 1, 12), ("Testland 80k 2yrs", 1, 24),
+        ("Testland 80k 3mo", 1, 3), ("Testland 5000 per month 3 people", 3, 12),
+        ("Testland 60000 per year 5 people", 5, 12), ("Testland 80 000 120 months", 1, 120),
     ],
 )  # fmt: skip
 def test_people_and_months(text: str, people: int, months: int, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert (query.kind, query.people, query.months) == ("plan", people, months)
-
-
-def test_positional_plan_command(index: CountryIndex) -> None:
-    query = p("Testland 60000 5 120", index, "plan")
-    assert (query.salary, query.people, query.months) == (60_000, 5, 120)
-
-
-@pytest.mark.parametrize(
-    ("text", "salary", "people", "months"),
-    [("Testland 80 000 200 people", 80_000, 200, 12), ("Testland 80 000 120 months", 80_000, 1, 120),
-     ("Testland 1 200 000 5 people", 1_200_000, 5, 12), ("Testland 80 000 5 120", 80_000, 5, 120)],
-)  # fmt: skip
-def test_grouped_thousands_stop_before_a_count(
-    text: str, salary: int, people: int, months: int, index: CountryIndex
-) -> None:
-    query = p(text, index)
-    assert (query.salary, query.people, query.months) == (salary, people, months)
+    result = team(text, index)
+    assert (result.people, result.months) == (people, months)
 
 
 def test_bounds_are_inclusive(index: CountryIndex) -> None:
-    assert p(f"Testland 80k {MAX_PEOPLE} people {MAX_MONTHS} months", index).people == MAX_PEOPLE
-    assert p("Testland 1000", index).salary == 1000
-    assert p("Testland 10m", index).salary == 10_000_000
+    assert team(f"Testland 80k {MAX_PEOPLE} people {MAX_MONTHS} months", index).people == MAX_PEOPLE
+    assert one("Testland 1000", index).salary == 1000
+    assert one("Testland 10m", index).salary == 10_000_000
     assert err(f"Testland 80k {MAX_PEOPLE + 1} people", index).code == "people_range"
     assert err(f"Testland 80k {MAX_MONTHS + 1} months", index).code == "months_range"
     assert err("Testland 999.99", index).code == "salary_too_low"
     assert err("Testland 10000000.01", index).code == "salary_too_high"
 
 
-# --- kinds of question ----------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "text", ["Testland vs United Otherland 60k", "Testland United Otherland 60k", "testland и otherland 60k",
-             "Testland gegen Otherland 60k", "Testland contra uo 60k", "Testland vs. Otherland 60000 EUR"],
-)  # fmt: skip
-def test_compare_free_text(text: str, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert query.kind == "compare"
-    assert [c.code for c in query.countries] == ["TL", "UO"]
-
-
 def test_multiword_alias_beats_its_prefix(index: CountryIndex) -> None:
     # "united otherland" must match as one country, not "united" as an unknown word.
-    assert [c.code for c in p("united otherland 80k", index).countries] == ["UO"]
-
-
-def test_cost_command_with_people_becomes_a_plan(index: CountryIndex) -> None:
-    assert p("Testland 80k 5 people", index, "cost").kind == "plan"
-
-
-def test_command_arity(index: CountryIndex) -> None:
-    assert err("Testland 60k", index, "compare").code == "need_two_countries"
-    assert err("Testland Otherland 60k", index, "cost").code == "too_many_countries"
-    assert err("Testland Otherland 60k", index, "plan").code == "too_many_countries"
+    assert one("united otherland 80k", index).country.code == "UO"
 
 
 # --- what goes wrong ------------------------------------------------------------------------
@@ -199,16 +162,17 @@ def test_command_arity(index: CountryIndex) -> None:
     ("text", "code"),
     [
         ("", "empty"), ("   ", "empty"), ("\n\t", "empty"), ("80000", "no_country"), ("Testland", "no_salary"),
-        ("Testland 500", "salary_too_low"), ("Testland 0", "salary_too_low"), ("Testland 50m", "salary_too_high"),
+        ("Testland 500", "salary_too_low"), ("Testland 0", "no_salary"), ("Testland 50m", "salary_too_high"),
         ("Testland 80k 0 people", "people_range"), ("Testland 80k 2 people 500 months", "months_range"),
         ("Testland 80k 0 months", "months_range"), ("Testland Testland 80k", "same_country"),
-        ("Testland 80k 5 6 7", "unexpected"), ("Testland 80k 5 1.5", "unexpected"),
+        ("Testland 80k 5", "unexpected"), ("Testland 80k 5 36", "unexpected"), ("Testland 80k 5 1.5", "unexpected"),
         ("Testland 80k 90k", "unexpected"), ("Testland -80k", "unexpected"), ("Testland 80k -5 people", "unexpected"),
         ("Testland 80k 5 people 5 people", "twice"), ("Testland 80k x3 x4", "twice"),
         ("Testland 80k 12 months 24 months", "twice"), ("Testland 80k 12 months 1 year", "twice"),
         ("Testland 1e6", "unknown_word"), ("Testland 80k 🙂", "unexpected"),
         ("Testland 80k <script>", "unknown_word"), ("Testland 0x1F", "unknown_word"),
         ("Testland 80k bgn", "unknown_currency"), ("Testland 80k лв", "unknown_currency"),
+        ("Testland 60000 a year 4", "unexpected"),
     ],
 )  # fmt: skip
 def test_errors(text: str, code: str, index: CountryIndex) -> None:
@@ -242,8 +206,52 @@ def test_three_letter_word_that_is_no_currency(index: CountryIndex) -> None:
     assert err("Testland 80k xyz", index).code == "unknown_word"
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # A colon or comma after a country is punctuation, not a shared salary.
+        ("Testland: 2 × 150 000", [("TL", 2, 150_000, "EUR")]), ("Testland, 2 × 150 000", [("TL", 2, 150_000, "EUR")]),
+        ("Testland: 2 150 000", [("TL", 2, 150_000, "EUR")]), ("Testland: 3 × 80k", [("TL", 3, 80_000, "EUR")]),
+        ("Testland: 2 × 80k, Otherland: 1 × 70k", [("TL", 2, 80_000, "EUR"), ("UO", 1, 70_000, "EUR")]),
+        ("Testland 2 × 80k, Otherland: 1 × 120 000", [("TL", 2, 80_000, "EUR"), ("UO", 1, 120_000, "EUR")]),
+        ("Testland: 80k", [("TL", 1, 80_000, "EUR")]),
+        # Cyrillic "х" for times, a big × count, a symbol glued to the last group.
+        ("Testland 2 х 80k", [("TL", 2, 80_000, "EUR")]), ("Testland 5000 × 60k", [("TL", 5000, 60_000, "EUR")]),
+        ("Testland 80 000€", [("TL", 1, 80_000, "EUR")]), ("Testland 2 × 80 000€", [("TL", 2, 80_000, "EUR")]),
+        ("Testland 200 000zł", [("TL", 1, 200_000, "PLN")]),
+    ],
+)  # fmt: skip
+def test_typing_habits(text: str, expected: list[tuple[str, int, int, str]], index: CountryIndex) -> None:
+    assert members(team(text, index)) == expected
+
+
+def test_a_huge_count_with_times_is_a_range_error(index: CountryIndex) -> None:
+    assert err(f"Testland {MAX_PEOPLE + 1} × 60k", index).code == "people_range"
+
+
+def test_currencies_and_typos_are_checked_everywhere(index: CountryIndex) -> None:
+    # Before the first country, with no country at all, and in a re-read amount alike.
+    assert err("£80k Narnia", index).params == {"word": "narnia", "suggestion": ""}
+    assert err("Testlnd Otherland 80k", index).params == {"word": "testlnd", "suggestion": "Testland"}
+    with pytest.raises(ParseError, match="unknown_currency"):
+        parse("Testland 1 × 1 200 000 £", index, {"EUR"})
+
+
+def test_two_head_counts_are_said_twice_not_guessed(index: CountryIndex) -> None:
+    # "2 150 000 5 people": 5 people at 2,150,000, or 2 at 150,000 and a stray 5? Neither: an error.
+    assert err("Testland 2 150 000 5 people", index).params == {"word": "2 … 5"}
+    assert err("Testland 1 200 000 € 5 people", index).code == "twice"
+
+
+def test_spanish_de_is_a_word_not_germany(real_catalog: Catalog) -> None:
+    team = parse("España 2 personas de 80 000 €", real_catalog.index, CURRENCIES)
+    assert [(m.country.code, m.count, m.salary) for m in team.members] == [("ES", 2, 80_000)]
+    assert parse("DEU 80k", real_catalog.index, CURRENCIES).members[0].country.code == "DE"
+
+
 def test_no_salary_example_uses_the_country(index: CountryIndex) -> None:
-    assert err("United Otherland", index).params == {"example": "United Otherland 80000"}
+    assert err("United Otherland", index).params == {"example": "United Otherland 2 × 80k"}
+    assert err("Testland 3", index).params == {"example": "Testland 2 × 80k"}
 
 
 def test_very_long_input_is_refused_quickly(index: CountryIndex) -> None:
@@ -267,7 +275,7 @@ def test_salary_bounds_are_judged_in_euro(index: CountryIndex) -> None:
     with pytest.raises(ParseError) as caught:
         parse("Testland 80000 jpy", index, CURRENCIES, in_eur=_in_eur)
     assert (caught.value.code, caught.value.params) == ("salary_too_low", {"minimum": "1,000 EUR"})
-    assert parse("Testland 80000 pln", index, CURRENCIES, in_eur=_in_eur).salary == 80_000
+    assert parse("Testland 80000 pln", index, CURRENCIES, in_eur=_in_eur).members[0].salary == 80_000
     with pytest.raises(ParseError, match="salary_too_high"):
         parse("Testland 9m gbp", index, CURRENCIES, in_eur=_in_eur)  # £9m ≈ €11.25m
 
@@ -277,19 +285,11 @@ def test_bounds_without_currency_use_the_country_currency(testland: Country) -> 
                                                    official={"checkedAt": "2026-10-01", "figures": {}}))  # fmt: skip
     with pytest.raises(ParseError, match="salary_too_low"):
         parse("pzland 3000", CountryIndex([pln_land]), CURRENCIES, in_eur=_in_eur)  # 3000 PLN ≈ €750
+    member = parse("pzland 2 — 200k", CountryIndex([pln_land]), CURRENCIES).members[0]
+    assert (member.salary, member.currency) == (200_000, "PLN")  # alone, a dash shares with nobody
 
 
-# --- buttons and /sources -------------------------------------------------------------------
-
-
-def test_build_query_validates_button_input(testland: Country) -> None:
-    with pytest.raises(ParseError, match="salary_too_low"):
-        build_query("cost", (testland,), D(10))
-    with pytest.raises(ParseError, match="people_range"):
-        build_query("plan", (testland,), D(50_000), people=0)
-    with pytest.raises(ParseError, match="same_country"):
-        build_query("compare", (testland, testland), D(50_000))
-    assert build_query("plan", (testland,), D(50_000), people=3).people == 3
+# --- /sources -------------------------------------------------------------------------------
 
 
 def test_find_country(index: CountryIndex) -> None:
@@ -316,8 +316,7 @@ def test_find_country(index: CountryIndex) -> None:
      ("България 60k", "BG"), ("Bułgaria 60k", "BG"), ("Bulgarien 60k", "BG")],
 )  # fmt: skip
 def test_every_country_in_every_language(real_catalog: Catalog, text: str, code: str) -> None:
-    query = parse(text, real_catalog.index, CURRENCIES)
-    assert query.countries[0].code == code
+    assert parse(text, real_catalog.index, CURRENCIES).members[0].country.code == code
 
 
 def test_real_aliases_are_unique_and_unambiguous(real_catalog: Catalog) -> None:
@@ -333,7 +332,7 @@ def test_real_aliases_are_unique_and_unambiguous(real_catalog: Catalog) -> None:
 @pytest.mark.parametrize(
     ("text", "code", "params"),
     [
-        ("Testland 80k 5 6 7", "unexpected", {"word": "7"}),
+        ("Testland 80k 5 6 7", "unexpected", {"word": "5"}),
         ("Testland 80k 90k", "unexpected", {"word": "90k"}),
         ("Testland -80k", "unexpected", {"word": "-80k"}),
         ("Testland 80k 🙂", "unexpected", {"word": "🙂"}),
@@ -353,53 +352,25 @@ def test_error_params_name_the_problem(text: str, code: str, params: dict[str, s
     assert (error.code, error.params) == (code, params)
 
 
-@pytest.mark.parametrize(
-    ("text", "people", "months"),
-    [("Testland 80k 2yrs", 1, 24), ("Testland 80k 3mo", 1, 3), ("Testland 80k 24 months", 1, 24),
-     ("Testland 5000 per month 3 people", 3, 12), ("Testland 60000 per year 5 people", 5, 12),
-     ("Testland 60000 a year 4", 4, 12)],
-)  # fmt: skip
-def test_units_do_not_swallow_the_next_number(text: str, people: int, months: int, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert (query.kind, query.people, query.months) == ("plan", people, months)
-
-
-@pytest.mark.parametrize("sep", ["-", "—", "/", "&", "+"])
-def test_separators_between_countries(sep: str, index: CountryIndex) -> None:
-    query = p(f"Testland {sep} Otherland 60k", index)
-    assert [c.code for c in query.countries] == ["TL", "UO"]
-
-
 def test_a_lone_year_word_is_not_silently_eaten(index: CountryIndex) -> None:
     assert err("Testland 80k brutto year", index).params["word"] == "year"
 
 
-def test_currency_symbol_on_its_own(index: CountryIndex) -> None:
-    assert p("Testland 60000 €", index).currency == "EUR"
-    assert p("Testland 60000 £", index).currency == "GBP"
-
-
 def test_grouping_after_a_multiword_country(index: CountryIndex) -> None:
-    assert p("United Otherland 80 000", index).salary == 80_000
+    assert one("United Otherland 80 000", index).salary == 80_000
 
 
 def test_country_name_and_code_work_without_aliases() -> None:
     plain = Country.model_validate(country_data(country="Plainland", code="PX", aliases=["somewhere"]))
     index = CountryIndex([plain])
-    assert p("plainland 80k", index).countries[0].code == "PX"
-    assert p("PX 80k", index).countries[0].code == "PX"
+    assert one("plainland 80k", index).country.code == "PX"
+    assert one("PX 80k", index).country.code == "PX"
 
 
 def test_suggestions_need_a_close_match(index: CountryIndex) -> None:
     assert err("Testlxyz 80k", index).params["suggestion"] == ""  # 62% similar: too far
     assert err("united otherlnd 80k", index).code == "unknown_word"
     assert index.suggest("united otherlnd") == "United Otherland"  # multi-word aliases too
-
-
-def test_build_query_defaults(testland: Country) -> None:
-    query = build_query("cost", (testland,), D(50_000))
-    assert (query.people, query.months, query.currency, query.salary_was_monthly) == (1, 12, None, False)
-    assert build_query("plan", (testland,), D(50_000), months=1).months == 1
 
 
 def test_find_country_error_params(index: CountryIndex) -> None:
@@ -417,10 +388,6 @@ def test_find_country_error_params(index: CountryIndex) -> None:
     assert caught.value.code == "no_country"
 
 
-def test_months_alone_make_a_plan(index: CountryIndex) -> None:
-    assert p("Testland 80k 24 months", index).kind == "plan"
-
-
 # --- teams across countries ------------------------------------------------------------------
 
 
@@ -430,12 +397,6 @@ def pln_index(index: CountryIndex) -> CountryIndex:
     pz = Country.model_validate(country_data(country="Pzland", code="PZ", aliases=["pzland"], currency="PLN",
                                              official={"checkedAt": "2026-10-01", "figures": {}}))  # fmt: skip
     return CountryIndex([pz, *index.by_alias.values()])
-
-
-def team(text: str, index: CountryIndex, kind: str | None = None) -> Team:
-    result = parse(text, index, CURRENCIES, kind)  # type: ignore[arg-type]
-    assert isinstance(result, Team), result
-    return result
 
 
 def members(result: Team) -> list[tuple[str, int, int, str]]:
@@ -458,6 +419,7 @@ def members(result: Team) -> list[tuple[str, int, int, str]]:
         ("Testland 2, Otherland 1, 70000 EUR 24 months", [("TL", 2, 70_000, "EUR"), ("UO", 1, 70_000, "EUR")], 24),
         ("Testland 2, Otherland 1: 70k", [("TL", 2, 70_000, "EUR"), ("UO", 1, 70_000, "EUR")], 12),
         ("Testland 2, Otherland — 70k", [("TL", 2, 70_000, "EUR"), ("UO", 1, 70_000, "EUR")], 12),
+        ("Testland, Otherland, 70k", [("TL", 1, 70_000, "EUR"), ("UO", 1, 70_000, "EUR")], 12),
         ("Testland 2\nOtherland 1\n- 70k", [("TL", 2, 70_000, "EUR"), ("UO", 1, 70_000, "EUR")], 12),
         # A comma after a salary of its own is just a comma.
         ("Testland 2×80000, Otherland 1×50000, 24 months", [("TL", 2, 80_000, "EUR"), ("UO", 1, 50_000, "EUR")], 24),
@@ -479,7 +441,7 @@ def test_team(text: str, expected: list[tuple[str, int, int, str]], months: int,
 
 
 def test_each_salary_is_in_its_own_countrys_currency(pln_index: CountryIndex) -> None:
-    # Like /plan: "Pzland 1 × 200k" is 200,000 zł, not €200,000; a symbol overrides it.
+    # "Pzland 1 × 200k" is 200,000 zł, not €200,000; a symbol overrides it.
     result = team("Testland 2 × 80k, Pzland 1 × 200k", pln_index)
     assert members(result) == [("TL", 2, 80_000, "EUR"), ("PZ", 1, 200_000, "PLN")]
     assert members(team("Testland 2 × 80k, Pzland 1 × €50k", pln_index))[1] == ("PZ", 1, 50_000, "EUR")
@@ -493,7 +455,7 @@ def test_a_shared_salary_after_the_third_country(pln_index: CountryIndex) -> Non
 
 def test_a_head_count_alone_makes_a_team_question(index: CountryIndex) -> None:
     # "Testland 3 Otherland": a team without salaries, asked with the team's own example.
-    assert err("Testland 3 Otherland", index).params == {"example": "Germany 2 × 80k, Spain 1 × 50k"}
+    assert err("Testland 3 Otherland", index).params == {"example": "Testland 2 × 80k"}
 
 
 def test_a_shared_salary_is_in_euros_whoever_comes_last(pln_index: CountryIndex) -> None:
@@ -519,13 +481,9 @@ def test_salaries_are_checked_in_euros_per_member(pln_index: CountryIndex) -> No
         parse_team("Testland 2, Otherland 1, 80000 jpy")
 
 
-def test_team_command_and_count_after_one_country(index: CountryIndex) -> None:
-    assert len(team("Testland 2 × 80k, Otherland 1 × 50k", index, "team").members) == 2
-    single = p("Testland 2 80k", index)  # one country with a count is a plan for that many
-    assert (single.kind, single.people) == ("plan", 2)
-    assert err("Testland 2 70k", index, "team").code == "team_needs_two"
-    assert err("Testland 80k", index, "team").code == "team_needs_two"
-    assert err("2 × 80k", index, "team").code == "team_needs_two"
+def test_one_country_is_a_team_of_its_own(index: CountryIndex) -> None:
+    assert members(team("Testland 2 80k", index)) == [("TL", 2, 80_000, "EUR")]
+    assert err("2 × 80k", index).code == "no_country"
 
 
 @pytest.mark.parametrize(
@@ -537,7 +495,7 @@ def test_team_command_and_count_after_one_country(index: CountryIndex) -> None:
         ("Testland 2, Otherland 1 × 200k", "team_salary", {"country": "TL"}),
         ("Testland 3, Otherland 2 £60k", "team_salary", {"country": "TL"}),
         ("Testland 2 Otherland 1 70k", "team_salary", {"country": "TL"}),
-        ("Testland 2, Otherland 1", "no_salary", {"example": "Germany 2 × 80k, Spain 1 × 50k"}),
+        ("Testland 2, Otherland 1", "no_salary", {"example": "Testland 2 × 80k"}),
         ("Testland 2 × 80k 3 people, Otherland 1 × 50k", "twice", {"word": "2 … 3"}),
         ("Testland 2 × 80k 24 months, Otherland 1 × 50k 36 months", "twice", {"word": "36"}),
         ("Testland 0 × 80k, Otherland 1 × 50k", "people_range", {"maximum": str(MAX_PEOPLE)}),
@@ -564,8 +522,8 @@ def test_team_size_is_bounded_in_total(index: CountryIndex) -> None:
     assert team(f"Testland 80k {MAX_PEOPLE - 1} people, Otherland 1 × 50k", index).people == MAX_PEOPLE
     assert err(f"Testland 80k {MAX_PEOPLE} people, Otherland 1 × 50k", index).code == "people_range"
     with pytest.raises(ParseError) as caught:
-        check_team(Team(team("Testland 2 × 80k, Otherland 1 × 50k", index).members[:1]))
-    assert caught.value.code == "team_needs_two"
+        check_team(Team(()))
+    assert caught.value.code == "no_country"
 
 
 def test_check_team_bounds(index: CountryIndex) -> None:
@@ -586,16 +544,19 @@ def test_check_team_bounds(index: CountryIndex) -> None:
 
 @pytest.mark.parametrize("text", ["Testland 80 tys.", "Testland 900 /mo", "Testland 60 mil EUR"])
 def test_a_number_before_an_amount_word_is_not_a_head_count(text: str, index: CountryIndex) -> None:
-    query = p(text, index)
-    assert query.people == 1
-    assert query.salary >= 10_000
+    member = one(text, index)
+    assert member.count == 1
+    assert member.salary >= 10_000
 
 
-@pytest.mark.parametrize("text", ["Testland Otherland 60k", "Testland vs Otherland 60k 24 months",
-                                  "Testland 60k Otherland", "Otherland vs Testland 60000 EUR",
-                                  "Testland, Otherland, 70k"])  # fmt: skip
-def test_one_salary_and_no_head_counts_is_a_comparison(text: str, index: CountryIndex) -> None:
-    assert p(text, index).kind == "compare"
+@pytest.mark.parametrize(
+    ("text", "country"),
+    [("Testland Otherland 60k", "TL"), ("Testland vs Otherland 60k 24 months", "TL"),
+     ("Testland 60k Otherland", "UO")],
+)  # fmt: skip
+def test_one_salary_glued_to_a_country_is_that_countrys(text: str, country: str, index: CountryIndex) -> None:
+    # Comparisons are gone: a salary right after a country belongs to it, and the other is asked for.
+    assert err(text, index).params == {"country": country}
 
 
 def test_head_count_boundaries(index: CountryIndex) -> None:
@@ -607,9 +568,4 @@ def test_head_count_boundaries(index: CountryIndex) -> None:
 
 
 def test_head_count_and_people_together_is_said_twice(index: CountryIndex) -> None:
-    assert err("Testland 2 80k 3 people", index).params == {"word": "2"}
-
-
-def test_compare_with_head_counts_is_an_error(index: CountryIndex) -> None:
-    error = err("Testland 2 Otherland 3 70k", index, "compare")
-    assert (error.code, error.params) == ("unexpected", {"word": "2"})
+    assert err("Testland 2 80k 3 people", index).params == {"word": "2 … 3"}

@@ -12,7 +12,7 @@ from deel_advisor.bot.handlers import split_message
 from deel_advisor.catalog import Catalog
 from deel_advisor.fx import Rates
 from deel_advisor.models import Country, EorPricing
-from deel_advisor.parser import Member, Team, build_query, parse
+from deel_advisor.parser import Member, Team, parse
 from tests.conftest import TODAY, country_data
 
 
@@ -33,110 +33,6 @@ def ctx(testland: Country, fixed_rates: Rates) -> replies.Context:
     return replies.Context(_catalog(testland), fixed_rates, TODAY)
 
 
-def test_cost_reply(testland: Country, ctx: replies.Context) -> None:
-    text = replies.cost("en", build_query("cost", (testland,), Decimal(48_000)), ctx)
-    assert "🏳️ <b>Testland</b> · €48,000 gross a year" in text
-    assert "Employer cost: <b>€55,080</b> a year · €4,590 a month" in text
-    assert "+€7,080 a year (14.8%)" in text
-    assert "• Health 5%, capped — €1,800" in text
-    assert "• Accident ~1% — €480" in text
-    assert "typical rate" in text
-    # Testland's guide disagrees with the official minimum wage:
-    assert "Deel's guide still shows minimum wage: €950/mo; the official figure since 1 Jan 2026 is €1,000/mo" in text
-
-
-def test_cost_in_another_currency(testland: Country, ctx: replies.Context) -> None:
-    text = replies.cost("en", build_query("cost", (testland,), Decimal(60_000), currency="USD"), ctx)
-    assert "€48,000 gross a year" in text  # 60,000 USD at 1.25
-    assert "≈ $60,000 at the ECB rate of 29 Oct 2026" in text
-
-
-def test_monthly_input_is_shown(testland: Country, ctx: replies.Context) -> None:
-    query = parse("Testland 4000/mo", ctx.catalog.index, {"EUR"})
-    assert "€4,000 a month × 12" in replies.cost("en", query, ctx)
-
-
-def test_below_minimum_wage_hint(testland: Country, ctx: replies.Context) -> None:
-    text = replies.cost("en", build_query("cost", (testland,), Decimal(5_000)), ctx)
-    assert "Below the 2026 minimum wage (€12,000 a year)" in text
-    assert "<code>Testland 5000/mo</code>" in text
-
-
-def test_stale_fx_and_old_year(testland: Country) -> None:
-    old_rates = Rates(date(2026, 1, 2), {"USD": Decimal(1)})
-    ctx = replies.Context(_catalog(testland), old_rates, date(2027, 5, 1))
-    text = replies.cost("en", build_query("cost", (testland,), Decimal(48_000)), ctx)
-    assert "These are 2026 rates; 2027 figures may differ" in text
-    assert "Official figures last checked 1 Oct 2026" in text  # 212 days ago
-    assert "Exchange rates are from 2 Jan 2026" in text
-
-
-def test_plan_entity_cheaper(testland: Country, ctx: replies.Context) -> None:
-    text = replies.plan("en", build_query("plan", (testland,), Decimal(48_000), people=3), ctx)
-    assert "🏳️ <b>Testland</b> · 3 people × €48,000 a year · 12 months" in text
-    assert "<b>EOR (Deel)</b>: €185,040" in text  # 3 × 12 × (4590 + 550)
-    assert "<b>Own entity</b>: €173,040" in text  # 3 × 12 × 4590 + 2400 + 12 × 450
-    assert "your own entity is cheaper by ~€12,000" in text
-    # 3 × (550 − 50) − 300 = 1200 saved a month: 2400 of setup is even at month 2, ahead at 3.
-    assert "With 3 people it pays off after 3 months." in text
-
-
-def test_plan_eor_cheaper_and_breakeven_team(testland: Country, ctx: replies.Context) -> None:
-    text = replies.plan("en", build_query("plan", (testland,), Decimal(48_000), people=1, months=6), ctx)
-    assert "For 1 person over 6 months EOR is cheaper by ~€" in text
-    assert "An entity pays off from 2 people (over 6 months)." in text
-    assert "With 1 person it pays off after 13 months." in text
-
-
-def test_plan_even(testland: Country, ctx: replies.Context) -> None:
-    text = replies.plan("en", build_query("plan", (testland,), Decimal(48_000), people=1, months=12), ctx)
-    assert "both cost about the same" in text
-
-
-def test_plan_never_pays_off(testland: Country, fixed_rates: Rates) -> None:
-    ctx = replies.Context(_catalog(testland, fee="40"), fixed_rates, TODAY)
-    text = replies.plan("en", build_query("plan", (testland,), Decimal(48_000), people=2), ctx)
-    assert "At these prices an entity never pays off." in text
-    assert "EOR is cheaper" in text
-
-
-def test_plan_never_for_this_team(testland: Country, fixed_rates: Rates) -> None:
-    ctx = replies.Context(_catalog(testland, fee="340"), fixed_rates, TODAY)
-    text = replies.plan("en", build_query("plan", (testland,), Decimal(48_000), people=1), ctx)
-    assert "With 1 person it never pays off" in text
-
-
-def test_plan_grammar_in_polish_and_german(testland: Country, ctx: replies.Context) -> None:
-    text = replies.plan("pl", build_query("plan", (testland,), Decimal(48_000), people=1, months=6), ctx)
-    assert "Dla 1 osoby przez 6 miesięcy EOR jest tańszy" in text
-    assert "Spółka opłaca się od 2 osób (przez 6 miesięcy)." in text
-    assert "Dla 1 osoby zwraca się po 13 miesiącach." in text
-    german = replies.plan("de", build_query("plan", (testland,), Decimal(48_000), people=1, months=6), ctx)
-    assert "Mit 1 Person rechnet sie sich nach 13 Monaten." in german
-    assert "Für 1 Person über 6 Monate ist EOR" in german
-
-
-def test_compare(testland: Country, fixed_rates: Rates) -> None:
-    pricey = Country.model_validate(
-        country_data(country="Pricey", code="PR", aliases=["pricey"], currency="PLN",
-                     official={"checkedAt": "2026-10-01", "figures": {}})
-    )  # fmt: skip
-    ctx = replies.Context(_catalog(testland, pricey), fixed_rates, TODAY)
-    text = replies.compare("en", build_query("compare", (testland, pricey), Decimal(48_000)), ctx)
-    assert "<b>Testland vs Pricey</b> · €48,000 gross a year" in text
-    assert "in PLN:" in text
-    assert "💡 Cheaper: " in text
-    assert "Converted at ECB rates of 29 Oct 2026" in text
-
-
-def test_compare_identical_countries_has_no_winner(testland: Country, fixed_rates: Rates) -> None:
-    twin = Country.model_validate(country_data(country="Twin", code="TW", aliases=["twin"]))
-    ctx = replies.Context(_catalog(testland, twin), fixed_rates, TODAY)
-    text = replies.compare("en", build_query("compare", (testland, twin), Decimal(48_000)), ctx)
-    assert "cheaper to employ" not in text
-    assert "Converted" not in text  # nothing was converted
-
-
 def test_sources(testland: Country, ctx: replies.Context) -> None:
     text = replies.sources("en", testland, ctx)
     assert '<a href="https://example.gov/rates">example.gov</a>' in text
@@ -144,18 +40,6 @@ def test_sources(testland: Country, ctx: replies.Context) -> None:
     assert "• Payroll €50/mo" in text
     assert "📝 Minimum wage: Deel €950/mo, official €1,000/mo" in text
     assert "✅ Pension contribution ceiling: €60,000/yr" in text
-
-
-@pytest.mark.parametrize("lang", ["en", "de", "es", "pl", "bg"])
-@pytest.mark.parametrize("text", ["Germany 80k", "Bulgaria 60k 3 people", "UK vs Spain 70000 EUR", "Poland 9000/mo"])
-def test_real_data_renders_in_every_language(real_catalog: Catalog, fixed_rates: Rates, lang: str, text: str) -> None:
-    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
-    query = parse(text, real_catalog.index, {"EUR", *fixed_rates.per_eur})
-    render = {"cost": replies.cost, "plan": replies.plan, "compare": replies.compare}[query.kind]
-    out = render(lang, query, ctx)  # type: ignore[arg-type]
-    assert len(out) < 4096  # one Telegram message
-    assert out.count("<b>") == out.count("</b>")
-    assert out.count("<a ") == out.count("</a>")
 
 
 @pytest.mark.parametrize("code", ["DE", "GB", "ES", "PL", "BG"])
@@ -176,42 +60,6 @@ def test_split_message_keeps_blocks_whole() -> None:
     assert split_message("short") == ["short"]
 
 
-def test_monthly_input_below_minimum_gets_no_monthly_hint(testland: Country, ctx: replies.Context) -> None:
-    query = parse("Testland 900/mo", ctx.catalog.index, {"EUR"})
-    text = replies.cost("en", query, ctx)
-    assert "Below the 2026 minimum wage" in text
-    assert "/mo</code>" not in text  # they already typed a monthly salary
-
-
-def test_monthly_hint_keeps_the_currency(testland: Country, ctx: replies.Context) -> None:
-    text = replies.cost("en", build_query("cost", (testland,), Decimal(5_000), currency="USD"), ctx)
-    assert "<code>Testland 5000 USD/mo</code>" in text
-
-
-def test_plan_discloses_conversions(testland: Country, ctx: replies.Context) -> None:
-    query = build_query("plan", (testland,), Decimal(60_000), currency="USD", people=2)
-    text = replies.plan("en", query, ctx)
-    assert "≈ $60,000 at the ECB rate of 29 Oct 2026" in text
-    assert "fee €550 per person a month" in text  # Testland's EOR price is already in EUR
-
-
-def test_plan_names_the_list_price_when_converted(real_catalog: Catalog, fixed_rates: Rates) -> None:
-    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
-    query = parse("Germany 80k 5 people", real_catalog.index, {"EUR", "USD"})
-    assert "fee €479 per person a month ($599 list price, ECB rate of 29 Oct 2026)" in replies.plan("en", query, ctx)
-
-
-def test_compare_percentage_is_share_of_the_dearer_total(testland: Country, fixed_rates: Rates) -> None:
-    pricey = Country.model_validate(
-        country_data(country="Pricey", code="PR", aliases=["pricey"],
-                     contributions=[{"id": "pension", "name": "Pension", "rate": "0.5", "source": "https://example.gov/x"}])
-    )  # fmt: skip
-    ctx = replies.Context(_catalog(testland, pricey), fixed_rates, TODAY)
-    text = replies.compare("en", build_query("compare", (testland, pricey), Decimal(48_000)), ctx)
-    # Testland €55,080 vs Pricey €72,000: €16,920 is 23.5% of €72,000.
-    assert "Cheaper: Testland, by ~€16,920 a year (23.5% less)" in text
-
-
 def test_uk_rates_hold_until_april(real_catalog: Catalog, fixed_rates: Rates) -> None:
     uk = real_catalog.by_code("GB")
     assert uk is not None
@@ -221,14 +69,6 @@ def test_uk_rates_hold_until_april(real_catalog: Catalog, fixed_rates: Rates) ->
     assert freshness.check(uk, date(2027, 4, 6)).outdated_year
 
 
-def test_mid_year_ceiling_is_announced(real_catalog: Catalog, fixed_rates: Rates) -> None:
-    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
-    bulgaria = parse("Bulgaria 60k", real_catalog.index, {"EUR"})
-    assert "ceiling from 1 Aug 2026, applied to every month" in replies.cost("en", bulgaria, ctx)
-    germany = parse("Germany 60k", real_catalog.index, {"EUR"})
-    assert "ceiling from" not in replies.cost("en", germany, ctx)
-
-
 def test_share_capital_has_a_source(real_catalog: Catalog, fixed_rates: Rates) -> None:
     germany = real_catalog.by_code("DE")
     assert germany is not None
@@ -236,20 +76,11 @@ def test_share_capital_has_a_source(real_catalog: Catalog, fixed_rates: Rates) -
     assert "Share capital €25,000: stays the company's, not a cost — <a href=" in text
 
 
-def test_ceiling_note_is_in_plan_replies_too(real_catalog: Catalog, fixed_rates: Rates) -> None:
-    bulgaria = parse("Bulgaria 60k 3 people", real_catalog.index, {"EUR"})
-    # Even before the date the calculation uses the newer ceiling, so the note is always there.
-    july = replies.Context(real_catalog, fixed_rates, date(2026, 7, 15))
-    assert "ceiling from 1 Aug 2026, applied to every month" in replies.plan("en", bulgaria, july)
-
-
 REAL_TEAM = "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
 
 
 def _team(text: str, catalog: Catalog, rates: Rates) -> Team:
-    result = parse(text, catalog.index, {"EUR", *rates.per_eur})
-    assert isinstance(result, Team)
-    return result
+    return parse(text, catalog.index, {"EUR", *rates.per_eur})
 
 
 def _member(country: Country, count: int = 1, salary: int = 48_000) -> Member:
@@ -348,3 +179,33 @@ def test_team_reply_says_when_figures_are_stale(real_catalog: Catalog, fixed_rat
     ctx = replies.Context(real_catalog, fixed_rates, date(2027, 6, 1))
     text = replies.team("en", _team("Germany 2 × 70k, UK 1 × £60k", real_catalog, fixed_rates), ctx)
     assert "🇩🇪 ⚠️ Official figures last checked 29 Oct 2026." in text
+
+
+def test_one_country_reads_as_one_company(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    text = replies.team("en", _team("Germany 2 × 80k", real_catalog, fixed_rates), ctx)
+    assert text.startswith("🇩🇪 <b>Germany</b> · 2 people · 12 months")
+    assert "<b>Total</b>: EOR (Deel) €11,501 · own entity €17,708" in text
+    assert "EOR saves ~€6,207 — and no company to open, run and close." in text
+    assert "countries" not in text
+    assert "own entities" not in text
+
+
+def test_one_country_where_the_entity_wins(testland: Country, fixed_rates: Rates) -> None:
+    ctx = replies.Context(_catalog(testland), fixed_rates, TODAY)
+    text = replies.team("de", Team((_member(testland, 50),), months=36), ctx)
+    assert "wäre eine eigene Gesellschaft ~" in text
+    assert "eigene Gesellschaften" not in text
+
+
+@pytest.mark.parametrize("lang", ["en", "de", "es", "pl", "bg"])
+@pytest.mark.parametrize(
+    "text", ["Germany 80k", "Bulgaria 60k 3 people", "Poland 9000/mo", "UK 1 × £60k, Spain 1, 70k"]
+)
+def test_real_data_renders_in_every_language(real_catalog: Catalog, fixed_rates: Rates, lang: str, text: str) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, TODAY)
+    for breakdown in (True, False):
+        out = replies.team(lang, _team(text, real_catalog, fixed_rates), ctx, breakdown=breakdown)  # type: ignore[arg-type]
+        assert len(out) < 4096  # one Telegram message
+        assert "{" not in out
+        assert out.count("<b>") == out.count("</b>")

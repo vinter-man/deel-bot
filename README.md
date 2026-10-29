@@ -20,27 +20,16 @@ salary per country, each in its own currency:
 ![team](docs/assets/team.png)
 
 Four entities would cost ~€24,000 more in the first year — before anyone counts the work of
-running a company in four countries — and the gap keeps growing in the second. That is the
-case EOR exists for, and the bot shows it with every cost line sourced.
+running a company in four countries. That is the case EOR exists for, and the bot shows it per
+country: Deel's list price against what a local company really costs — setting it up, running it
+(accountant, address, bank, chamber fees, occupational health, the UK audit), the weeks before
+it can run its first payroll, and closing it again — and the team size from which a company of
+your own would start to pay off, run on Deel Payroll. Every line has a source.
 
-For one country, you type a country, an annual gross salary and a team size, and get three
-things:
-
-1. **The full employer cost** — salary plus every employer contribution (pension, health,
-   unemployment, accident, the levies nobody remembers), with contribution ceilings applied,
-   line by line.
-2. **EOR versus your own entity** — Deel's list price per person per month against what a local
-   company really costs: setting it up, running it (accountant, address, bank, chamber fees,
-   occupational health, the UK audit), the weeks before it can run its first payroll, and closing
-   it again. Every line has a source.
-3. **The break-even point** — up to which team size the EOR is the cheaper way in, and from which
-   one it is time for your own entity, run on Deel Payroll.
-
-And a fourth one I did not plan for: when **Deel's own public country guide** shows a figure
-that has since changed, the reply says so — *"Deel's guide still shows 0.06%; the official figure
-since 1 Jan 2026 is 0.15% (source)"*. I compared the guides with the official sources by hand and
-found six in five countries; a script in the repo re-checks that the quoted figures are still on
-Deel's pages.
+And one thing I did not plan for: when **Deel's own public country guide** shows a figure that
+has since changed, the bot says so, and `/sources` shows it side by side — *Deel 0.06%, official
+0.15% (§ 360 SGB III)*. I compared the guides with the official sources by hand and found six in
+five countries; a script in the repo re-checks that the quoted figures are still on Deel's pages.
 
 Try it: [@deel_hea_unofficial_bot](https://t.me/deel_hea_unofficial_bot). It speaks the
 languages of the countries it covers — English, German, Spanish, Polish and Bulgarian — and asks
@@ -56,10 +45,8 @@ Germany, United Kingdom, Spain, Poland and Bulgaria, with 2026 rates.
 
 * [User guide](#user-guide)
   * [First steps](#fs)
-  * [A team across countries](#team)
-  * [What it costs to employ someone](#cost)
-  * [EOR or your own entity](#plan)
-  * [Two countries side by side](#compare)
+  * [Asking about a team](#team)
+  * [How the comparison works](#how)
   * [Where every number comes from](#sources)
   * [When you type something odd](#errors)
 * [Commands](#commands)
@@ -84,121 +71,84 @@ Germany, United Kingdom, Spain, Poland and Bulgaria, with 2026 rates.
 > the table cannot be joined back to an account. No names, no queries, no message text in the
 > logs; `/stats` (owner only) is a counter per command and nothing else. `prefs.py`.
 
-### <a name="team"></a> A team across countries
+### <a name="team"></a> Asking about a team
 
-`/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k` — each country, its head count and its
-salary, which is in that country's currency unless you write another (`UK 1 × $90k`). Commas,
-new lines or nothing between countries; `2 × 80k`, `2 80k` and `80k 2 people` all read the same.
-If everybody earns the same, say it once, set off with a dash, comma or colon:
-`Germany 2, Spain 1 — 70k` (in euros). A horizon goes at the end: `… 24 months`.
+Each country, its head count and its annual gross salary — `Germany 2 × 80k, UK 1 × £60k,
+Spain 1 × 50k`. A salary is in that country's currency unless you write another (`UK 1 × $90k`);
+`5000/mo` (or `pro Monat`, `al mes`, `miesięcznie`, `на месец`) is a monthly one. Commas, new
+lines or nothing between countries; `2 × 80k`, `2 80k` and `80k 2 people` all read the same. If
+everybody earns the same, say it once, set off with a dash, comma or colon: `Germany 2, Spain 1
+— 70k` (in euros). A horizon goes at the end: `… 24 months`.
 
-The answer is the chart above with a short caption: per country, EOR fees against what an own
-entity costs there — setup, running costs, the weeks before its first payroll, closing it — then
-the totals, the team size from which an entity would pay off in each country, and buttons that
-redraw it for 6, 12, 24 or 36 months. If the countries disagree — EOR cheaper in some, an entity
-in others — the caption names the cheapest mix, with the entities run on Deel Payroll.
+One country is a team too:
+
+![one country](docs/assets/one.png)
+
+The answer is a chart with a short caption: per country, EOR fees against what a company of your
+own costs there, the totals, the team size from which a company would pay off in each country,
+and buttons that redraw it for 3, 6 or 12 months and open each country's sources. If the
+countries disagree — EOR cheaper in some, a company in others — the caption names the cheapest
+mix, with the companies run on Deel Payroll.
 
 > :suspect: A number right after a country is its head count (`Germany 2`), unless the next
-> word makes it an amount (`80 tys.`, `900 /mo`, `500 EUR`). With a single country it simply
-> means "that many people"; a bare `Testland 500` is still read as a (too small) salary rather
-> than five hundred hires. A country without a salary (`Germany 2 × 80k, Spain 1`, or
-> `Germany 2, Poland 1 × 200k` — that 200k is Poland's, in złoty) is an error that names the
-> country, not a guess.
+> word makes it an amount (`80 tys.`, `900 /mo`, `500 EUR`) or it starts a grouped one
+> (`Germany 150 000`). A bare `Germany 500` is read as a (too small) salary rather than five
+> hundred hires. A country without a salary (`Germany 2 × 80k, Spain 1`, or `Germany 2, Poland 1
+> × 200k` — that 200k is Poland's, in złoty) is an error that names the country, not a guess.
 >
 > The chart is matplotlib on the Agg backend, drawn in a worker thread with a font shipped in the
 > package, so it looks the same on the server as here. If drawing fails, or the caption would pass
 > Telegram's 1,024 characters, the bot sends the whole breakdown as text instead. `charts.py`.
 
-### <a name="cost"></a> What it costs to employ someone
+### <a name="how"></a> How the comparison works
 
-`/cost Bulgaria 60000 EUR`, or just `Bulgaria 60k`.
+Salary and employer contributions are identical either way — an EOR invoices them through — so
+they are counted once and cancel out. What is compared is everything else:
 
-![cost](docs/assets/cost.png)
+| Own company | Where the number comes from |
+|---|---|
+| setup: registration, notary, formation for a foreign owner | official fee schedules, law-firm price pages |
+| running: accountant, address, bank, chamber fees, occupational health | official fees, provider price pages |
+| the UK statutory audit, required unless the whole group is small | a UK audit firm's published starting fee |
+| the setup weeks, during which the team is on the EOR anyway | law firms, RSM and Grant Thornton guides for a foreign-owned company: 6–16 weeks |
+| closing the company at the end of the horizon | liquidation fees and statutory waiting periods |
+| payroll per person | Deel Payroll's list price |
 
-Every line is a real payslip line: the annual salary is split into twelve monthly payslips,
-each contribution is charged on its own slice of the salary, rounded half-up to the cent, and
-the year is twelve of those. Lines marked `~` depend on the employer (accident insurance by
-industry, German U1/U2 by health insurer) and carry a typical rate.
-
-> :godmode: One formula covers every country: `rate × max(0, min(salary, cap) − floor)`. A
-> plain ceiling is a `cap` (German pension stops at €8,450 a month). A threshold is a `floor`
-> (UK employer NIC: 15% above £5,000 a year). Both make a band — the UK workplace pension is 3%
-> of earnings between £6,240 and £50,270, and Spain's 2026 solidarity contribution is three
-> bands stacked above the €5,101.20 ceiling. Bulgaria's ceiling changed in the middle of the
-> year (€2,111.64 → €2,300 from 1 August); the bot prices a hire made today, so it applies the
-> ceiling in force now to every month and says so under the breakdown.
->
-> All money is `Decimal`. Rates and amounts in the data files are JSON *strings* — the schema
-> refuses `0.093` as a number, because by the time Python sees it, it is already
-> 0.09299999999999999. Rounding is explicit and half-up, at the payslip line, the way payroll
-> does it; the reply shows whole units and says it. `calc.py`, `money.py`.
-
-Write `5000/mo` (or `pro Monat`, `al mes`, `miesięcznie`, `на месец`) for a monthly salary. If the annual figure is below
-the country's minimum wage, the reply suggests you probably meant a monthly one.
-
-### <a name="plan"></a> EOR or your own entity
-
-`/plan Germany 80000 2 12` — country, salary, people, months. Or `Germany 80k 2 people`.
-
-![plan](docs/assets/plan.png)
-
-Two people in Germany: the EOR is cheaper, and a GmbH starts to pay off at three.
-
-> :hurtrealbad: Salary and contributions are identical either way — an EOR invoices them
-> through — so they are shown once and cancel out. What is compared is everything else:
->
-> | Entity side | Where the number comes from |
-> |---|---|
-> | setup: registration, notary, formation for a foreign owner | official fee schedules, law-firm price pages |
-> | running: accountant, address, bank, chamber fees, occupational health | official fees, provider price pages |
-> | the UK statutory audit, required unless the whole group is small | a UK audit firm's published starting fee |
-> | the setup weeks, during which the team is on the EOR anyway | law firms, RSM and Grant Thornton guides for a foreign-owned company: 6–16 weeks |
-> | closing the entity at the end of the horizon | liquidation fees and statutory waiting periods |
-> | payroll per person | Deel Payroll's list price |
->
+> :hurtrealbad:
 > ```
-> entity cheaper for N people over M months  ⇔
+> company cheaper for N people over M months  ⇔
 >     N · (M − setup months) · (fee − payroll per head)  >  setup + exit + M · fixed
 > ```
 >
 > The fixed costs run from incorporation, setup months included (the company keeps books and an
 > address before its first payroll), and the exit is paid at the end of the horizon — so "pays
-> off after M months" means "if you closed it at month M".
->
-> which gives the smallest team for a horizon and the shortest horizon for a team, both strict
-> (equal cost is not "cheaper"); a test checks both closed forms against brute force.
+> off over M months" means "if you closed it at month M". That gives the smallest team for a
+> horizon, strictly (equal cost is not "cheaper"); a test checks the closed form against brute force.
 >
 > **What the numbers say.** With Deel's list price and every sourced cost, a single hire is
 > cheaper on the EOR for the whole first year in all five countries, two people are in Germany,
-> Spain and the UK, and an entity pays off from two to four people over a year. Where a source
+> Spain and the UK, and a company pays off from two to four people over a year. Where a source
 > gives a range the data takes a mid-range value, and `/sources` links the range. The EOR side is
 > Deel's public "starting at" price; real quotes vary by country and contract, in both directions.
-> In the UK the entity carries a statutory audit (£811 of its £994 a month), which applies unless
-> your whole group is small — without it a UK entity already pays off for a single hire over a
+> In the UK the company carries a statutory audit (£811 of its £994 a month), which applies unless
+> your whole group is small — without it a UK company already pays off for a single hire over a
 > year, the one case where the EOR loses that early.
 >
 > What is not priced, and would only move the line towards the EOR: your team's own time on the
-> entity (management, HR, working with the accountant), the months a liquidation takes (a GmbH
+> company (management, HR, working with the accountant), the months a liquidation takes (a GmbH
 > needs 14–24, with its fixed costs still running), and the misclassification and
 > permanent-establishment exposure an EOR takes on. I left them out rather than guess: an earlier
 > version priced the team's time with the World Bank's *Paying Taxes* hours, until a review
 > pointed out that those hours are for a 60-employee firm and overlap with the accountant and
 > payroll fees already counted. There is no hidden "risk" percentage either — nobody publishes
 > one I could cite — so penalty regimes (Germany's 1% a month on late contributions, Spain's
-> 10–20% surcharges, ZUS's up to 100%) are listed as notes instead of being turned into a number.
-
-### <a name="compare"></a> Two countries side by side
-
-`/compare UK Poland 50000 GBP`, or `UK vs Poland 50k GBP`. Totals are converted into the
-currency you typed, at the ECB reference rate of the day.
-
-![compare](docs/assets/compare.png)
+> 10–20% surcharges, ZUS's up to 100%) are listed in `/sources` instead of being turned into a number.
 
 ### <a name="sources"></a> Where every number comes from
 
-`/sources Poland` — every rate with its official source (government, social-security agency,
-official gazette), every entity cost line with its source, Deel's price page, and the Deel guide
-figure by figure: ✅ agrees, ⚠️ differs.
+`/sources Poland`, or the 📚 button under an answer — every rate with its official source
+(government, social-security agency, official gazette), every company cost line with its source,
+Deel's price page, and the Deel guide figure by figure: ✅ agrees, 📝 differs.
 
 ![sources](docs/assets/sources.png)
 
@@ -226,21 +176,20 @@ older than four days end up as a warning in the reply and a message to the owner
 
 ### <a name="errors"></a> When you type something odd
 
-The free-text parser is a tokenizer, not an LLM: country names in all five languages and their
-codes (`Deutschland`, `Hiszpania`, `България`, `UK`), `80k`, `80 000`, `80.000`, `1,2 Mio.`,
-`80 tys.`, `€60k`, `60000 zł`, `5 people`, `x5`, `5 Personen`, `3 osoby`, `24 months`, `2 años`,
-`vs`. Whatever it does not recognise is named back to you, and a contradiction (`5 people 6
-people`, `80k 90k`) is an error rather than a guess.
+The parser is a tokenizer, not an LLM: country names in all five languages and their codes
+(`Deutschland`, `Hiszpania`, `България`, `UK`), `80k`, `80 000`, `80.000`, `1,2 Mio.`,
+`80 tys.`, `€60k`, `60000 zł`, `2 ×`, `5 people`, `x5`, `5 Personen`, `3 osoby`, `24 months`,
+`2 años`. Whatever it does not recognise is named back to you, and a contradiction (`80k 5 people
+6 people`, `80k 90k`) is an error rather than a guess.
 
 ![errors](docs/assets/errors.png)
 
-> :suspect: Buttons carry their query in the callback data (country codes, currency, salary in
-> minor units, people, months), and Telegram does not check that data against the message it came
-> from. So a button goes through the same validation as typed text, and a forged or stale one
-> gets a polite alert instead of a traceback. A team with a salary per country does not fit in
-> Telegram's 64 bytes, so its buttons carry a short key into an in-memory store of recent teams —
-> numbers only, nothing about who asked — and an evicted key is just a stale button.
-> `handlers.py`, `parser.build_query`, `parser.check_team`.
+> :suspect: Telegram does not check a button's callback data against the message it came from,
+> so every button is validated again when it comes back, and a forged or stale one gets a polite
+> alert instead of a traceback. A team with a salary per country does not fit in Telegram's 64
+> bytes anyway, so the horizon buttons carry a short key into an in-memory store of recent teams
+> — numbers only, nothing about who asked — and an evicted key is just a stale button.
+> `handlers.py`, `parser.check_team`.
 
 ---
 ---
@@ -249,16 +198,13 @@ people`, `80k 90k`) is an error rather than a guess.
 
 | Command | What it does |
 |---|---|
-| `/cost <country> <salary> [currency]` | employer cost with the breakdown by contribution |
-| `/plan <country> <salary> <people> [months]` | EOR vs own entity, break-even team and month |
-| `/team <country> <count> × <salary>, … [months]` | a team across countries, as a chart: EOR vs one entity each, and the cheapest mix |
-| `/compare <country1> <country2> <salary>` | two countries, totals in one currency |
+| `/team <country> <people> × <salary>, … [months]` | EOR vs a company of your own, per country, as a chart |
 | `/sources <country>` | every source, check dates, where Deel's guide differs |
 | `/lang` | change language |
-| `/help` | all of the above, in your language |
+| `/help` | how to ask, in your language |
 
-Anything else you type is parsed as free text: `Germany 80k`, `Spain 50k 3 people 24 months`,
-`Германия срещу Полша 70k`, `Germany 2 × 80k, Spain 1 × 50k`.
+Anything else you type is read as a team: `Germany 2 × 80k`, `Германия 2 × 80k, България 1 × 30k`,
+`Germany 2, Spain 1 — 70k`.
 
 ---
 ---
@@ -288,6 +234,18 @@ The EOR price lives in [`eor.json`](deel_advisor/data/eor.json) — *"Starting a
 employee per month"*, checked on [deel.com/pricing](https://www.deel.com/pricing/) on 29.10.2026.
 Entity costs are mid-range estimates from official fee schedules where they exist and from
 providers' public price pages where they do not; each line says which.
+
+> :godmode: Salary plus contributions is worked out as a real payslip — the annual salary split
+> into twelve monthly payslips, each contribution charged on its own slice, rounded half-up to the
+> cent — and one formula covers every country: `rate × max(0, min(salary, cap) − floor)`. A plain
+> ceiling is a `cap` (German pension stops at €8,450 a month). A threshold is a `floor` (UK
+> employer NIC: 15% above £5,000 a year). Both make a band — the UK workplace pension is 3% of
+> earnings between £6,240 and £50,270, and Spain's 2026 solidarity contribution is three bands
+> stacked above the €5,101.20 ceiling.
+>
+> All money is `Decimal`. Rates and amounts in the data files are JSON *strings* — the schema
+> refuses `0.093` as a number, because by the time Python sees it, it is already
+> 0.09299999999999999. `calc.py`, `money.py`.
 
 > :shipit: Tests hold the data to its word: payslips for every country worked out by hand
 > (Germany at €80k is €98,854.68 a year, Spain's three solidarity bands at €120k, Poland above
@@ -337,19 +295,19 @@ new version does not come up.
 ## <a name="hood"></a> Under the hood
 
 ```
-text ─→ parser ─→ fx (ECB) ─→ calc ─→ freshness ─→ replies ─→ Telegram HTML
+text ─→ parser ─→ fx (ECB) ─→ calc ─→ freshness ─→ replies + charts ─→ Telegram
         tokens     daily cache   Decimal   Deel vs official   en de es pl bg
 ```
 
 | Module | What is in it |
 |---|---|
-| `calc.py` | every calculation and nothing else: payslip lines, entity cost, plan, break-even |
+| `calc.py` | every calculation and nothing else: payslip lines, company cost, break-even |
 | `models.py` | the schema of the country files |
-| `parser.py` | commands and free text → a validated `Query` or `Team`, errors with names |
+| `parser.py` | text → a validated `Team`, errors with names |
 | `fx.py` | ECB reference rates: daily fetch, cache on disk, bundled snapshot as a fallback |
 | `freshness.py` | outdated year, unchecked figures, Deel guide vs official |
 | `replies.py` | Telegram HTML; everything the user typed is escaped |
-| `charts.py` | the team chart: matplotlib, ink on paper, the same hand as the banner |
+| `charts.py` | the answer's chart: matplotlib, ink on paper |
 | `i18n.py` | the copy in five languages, with CLDR plural categories and case-aware counts |
 | `bot/` | aiogram handlers, keyboards and callback data, the daily job and the heartbeat |
 | `scripts/` | the Deel guide checker and the screenshot exporter |
@@ -359,7 +317,7 @@ nobody has to escape a full stop in `€1,221.00`.
 
 ```bash
 uv sync
-uv run pytest -q --cov        # 700+ tests, no network, no Telegram
+uv run pytest -q --cov        # 650+ tests, no network, no Telegram
 uv run ruff check . && uv run ruff format --check .
 uv run mypy
 ```
@@ -372,11 +330,11 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 
 > :godmode: Coverage says a line ran; it does not say a test would notice the line being wrong.
 > So the logic modules (`calc`, `money`, `parser`, `freshness`, `fx`, `models`) are also
-> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,519 small deliberate bugs,
+> mutation-tested with [mutmut](https://github.com/boxed/mutmut): 1,218 small deliberate bugs,
 > each run against the suite. The first run caught **84%**. The survivors were real holes — a
 > salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
 > wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
-> **96.6%** are caught, and the 52 left alive are equivalent mutants (`//` vs `/` on positive
+> **96.6%** are caught, and the 41 left alive are equivalent mutants (`//` vs `/` on positive
 > numbers, `zip(strict=…)` on lists equal by construction, a temp file's name, the wording of a
 > log line).
 >

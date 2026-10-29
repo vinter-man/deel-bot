@@ -122,83 +122,57 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "lang.set": "Language: English. Change it any time with /lang.",
         "start": (
             "👋 <b>Hire-or-Entity Advisor</b> <i>(unofficial)</i>\n\n"
-            "Tell me a country, an annual gross salary and a team size — I'll show the full "
-            "employer cost, EOR versus your own entity, and when an entity starts to pay off.\n\n"
-            "Try: <code>Germany 80k 2 people</code>\nor a team: <code>Germany 2 × 80k, Spain 1 × 50k</code>\n\n"
-            "{countries}\n/help — all commands"
+            "Tell me who you want to hire — country, people and annual gross salary — and I'll show "
+            "what the EOR costs against your own company in each country, and when a company would "
+            "start to pay off.\n\n"
+            "Try: <code>Germany 2 × 80k</code>\nor a team: <code>Germany 2 × 80k, Spain 1 × 50k</code>\n\n"
+            "{countries}\n/help — how to ask"
         ),
         "help": (
+            "<b>How to ask</b>\n"
+            "Country, people × annual gross salary — one country or several:\n"
+            "<code>Germany 2 × 80k</code>\n"
+            "<code>Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code>\n"
+            "<code>Germany 2, Spain 1 — 70k</code> (one salary for everyone, in EUR)\n"
+            "A salary is in the country's own currency unless you write another; for a monthly one add "
+            "<code>/mo</code>; a horizon goes at the end: <code>… 24 months</code>.\n\n"
             "<b>Commands</b>\n"
-            "/cost <code>country salary [currency]</code> — employer cost with a breakdown\n"
-            "/plan <code>country salary people [months]</code> — EOR vs own entity, break-even\n"
-            "/compare <code>country1 country2 salary</code> — two countries side by side\n"
-            "/team <code>country people × salary, …</code> — a team across countries: EOR vs one entity each\n"
+            "/team — the same, as a command\n"
             "/sources <code>country</code> — where every figure comes from\n"
             "/lang — change language\n\n"
-            "Or just type: <code>Bulgaria 60000 EUR</code>, <code>UK £60k 2 people 24 months</code>, "
-            "<code>Germany vs Poland 70k</code>.\n"
-            "Salaries are <b>annual gross</b>; for a monthly one add <code>/mo</code>.\n\n"
             "{countries}\n\n"
             "<i>Unofficial, estimates only, not legal or tax advice.</i>"
         ),
         "countries": "Countries: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} gross a year",
-        "cost.monthly_input": "{monthly} a month × 12",
-        "cost.converted": "≈ {amount} at the ECB rate of {date}",
-        "cost.total": "Employer cost: <b>{annual}</b> a year · {monthly} a month",
-        "cost.burden": "On top of salary: +{amount} a year ({rate})",
-        "cost.capped": "capped",
-        "cost.footer": (
-            "<i>{year} rates, in force since {since}. Payslip lines rounded to the cent, shown in whole units.</i>"
-        ),
-        "cost.estimate_note": "<i>~ typical rate, depends on the employer.</i>",
-        "cost.cap_since": "<i>Contribution ceiling from {date}, applied to every month.</i>",
-        "cost.below_min_wage": "⚠️ Below the {year} minimum wage ({minimum} a year).",
-        "cost.monthly_hint": "I expect an <b>annual</b> salary; for a monthly one write <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} a year · {months}",
-        "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "fee {fee} per person a month",
-        "plan.eor_fx": "({price} list price, ECB rate of {date})",
-        "plan.entity": "<b>Own entity</b>: {total}",
-        "plan.entity_detail": "setup {setup} + closing {exit} · {fixed} a month + {per_employee} per person a month",
-        "plan.entity_deel": "<b>Own entity on Deel Payroll</b>: {total}",
-        "plan.entity_bridge": "{weeks} to set up, on EOR meanwhile: {amount}",
-        "plan.switch": "💡 Time to move to your own entity: Deel Payroll can run its payroll for {fee} per person a month (included above).",
-        "plan.same": "Salary + contributions, identical either way: {amount}",
-        "plan.eor_cheaper": "💡 For {team} over {months} EOR is cheaper by ~{diff}.",
-        "plan.entity_cheaper": "💡 For {team} over {months} your own entity is cheaper by ~{diff}.",
-        "plan.even": "💡 For {team} over {months} both cost about the same.",
-        "plan.pays_off_people": "An entity pays off from {team} (over {months}).",
-        "plan.pays_off_months": "With {team} it pays off after {months}.",
-        "plan.never_months": "With {team} it never pays off: the fixed costs eat the saving.",
-        "plan.never_people": "At these prices an entity never pays off.",
-        "plan.note": "<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>",
+        "team.below_min_wage": "⚠️ Below the {year} minimum wage ({minimum} a year).",
+        "team.even": "💡 For {team} over {months} both cost about the same.",
         "team.header": "🌍 <b>Team in {countries} countries</b> · {team} · {months}",
+        "team.header_one": "{flag} <b>{country}</b> · {team} · {months}",
         "team.country": "{flag} <b>{country}</b> · {team} × {salary}",
         "team.eor_line": "EOR (Deel): {amount}",
         "team.entity_line": "Own entity: {amount}",
         "team.note": "<i>EOR fees against own-entity costs; salary + contributions ({amount}) are the same either way. Totals in EUR at ECB rates of {date}. Every figure: /sources.</i>",
         "team.total": "<b>Total</b>: EOR (Deel) {eor} · {entities} own entities {entity}",
+        "team.total_one": "<b>Total</b>: EOR (Deel) {eor} · own entity {entity}",
         "team.eor_saves": "💡 Over {months} EOR saves ~{diff} — and no company to open, run and close in {entities} countries.",
+        "team.eor_saves_one": "💡 Over {months} EOR saves ~{diff} — and no company to open, run and close.",
         "team.entities_win": "💡 Over {months} own entities would be ~{diff} cheaper — Deel Payroll can run their payroll.",
+        "team.entities_win_one": "💡 Over {months} an own entity would be ~{diff} cheaper — Deel Payroll can run its payroll.",
         "team.mix": "💡 Cheapest mix: EOR in {eor}, own entity on Deel Payroll in {entity} — {total}.",
         "team.breakeven": "An own entity pays off from: {list} people (over {months}).",
         "team.guides": "📝 Deel's guides for {flags} still show some figures that have since changed — details in /sources.",
         "chart.title": "Team in {countries} countries · {team} · {months}",
+        "chart.title_one": "{country} · {team} · {months}",
         "chart.subtitle": "EOR fees vs own-entity costs over the horizon, EUR",
         "chart.eor": "EOR (Deel)",
         "chart.entity": "Own entity",
         "chart.cheaper": "cheaper",
         "chart.total": "Total: EOR {eor} · {entities} own entities {entity}",
+        "chart.total_one": "Total: EOR {eor} · own entity {entity}",
         "chart.eor_saves": "EOR saves ~{diff}",
+        "chart.even": "About the same either way",
         "chart.entities_save": "Own entities save ~{diff}",
-        "compare.header": "<b>{a} vs {b}</b> · {salary} gross a year",
-        "compare.row": "{flag} <b>{country}</b>: {total} a year · +{rate}",
-        "compare.row_local": "in {currency}: {total}",
-        "compare.row_eor": "EOR {fee} a month · entity from {team} (12 mo)",
-        "compare.row_never": "EOR {fee} a month · entity never pays off",
-        "compare.cheaper": "💡 Cheaper: {country}, by ~{diff} a year ({rate} less).",
-        "compare.fx": "<i>Converted at ECB rates of {date}.</i>",
+        "chart.entities_save_one": "An own entity saves ~{diff}",
         "sources.header": "{flag} <b>{country}: sources</b>",
         "sources.rates": "<b>Rates {year}</b>, in force since {since} · checked {checked}",
         "sources.entity": "<b>Own entity</b> (estimates unless marked official)",
@@ -217,15 +191,9 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "sources.fx": "FX: ECB reference rates of {date}.",
         "warn.year": "⚠️ These are {year} rates; {current} figures may differ.",
         "warn.unchecked": "⚠️ Official figures last checked {date}.",
-        "warn.mismatch": '📝 Deel\'s guide still shows {label}: {deel}; the official figure since {since} is {official} (<a href="{url}">source</a>).',
         "warn.fx_old": "⚠️ Exchange rates are from {date}.",
-        "btn.compare": "🔁 Compare with another country",
-        "btn.plan": "👥 Plan for N people",
-        "btn.sources": "📚 Sources",
         "btn.months": "{n} mo",
-        "pick.country": "Compare {country} with:",
-        "pick.people": "How many people?",
-        "err.empty": "Send a country and an annual salary, e.g. <code>Germany 80k</code>.",
+        "err.empty": "Send a country, people and an annual salary, e.g. <code>Germany 2 × 80k</code>.",
         "err.no_country": "Which country? {countries}",
         "err.no_salary": "I need an annual gross salary too, e.g. <code>{example}</code>.",
         "err.unknown_word": "I don't know “{word}”.",
@@ -235,21 +203,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.salary_too_high": "That salary is above {maximum} — probably a typo.",
         "err.people_range": "Team size must be between 1 and {maximum}.",
         "err.months_range": "The horizon must be between 1 and {maximum} months.",
-        "err.need_two_countries": "Name two countries: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "One country at a time here; to compare two use /compare.",
-        "err.same_country": "Those are the same country — pick two different ones.",
+        "err.same_country": "Each country once, please — add up its head count.",
         "err.unexpected": "I didn't understand “{word}”.",
         "err.twice": "“{word}” says the same thing twice — keep one.",
         "err.team_salary": "Give {country} a salary too, e.g. <code>Germany 2 × 80k, Spain 1 × 50k</code>.",
-        "err.team_needs_two": "A team spans at least two countries: <code>/team Germany 2 × 80k, Spain 1 × 50k</code>.",
         "err.stale_button": "That button belongs to an old message. Send the query again.",
         "err.internal": "Something went wrong on my side. Please try again in a minute.",
-        "usage.cost": "Usage: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Usage: <code>/plan Germany 80000 2 12</code> (country, salary, people, months)",
-        "usage.compare": "Usage: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Usage: <code>/sources Spain</code>",
         "usage.team": "Usage: <code>/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code> (people × salary per country, one per line or comma)",
-        "usage.free": "Try <code>Germany 80k</code> or /help.",
         "stats": "<b>Since start</b> ({since})\n{lines}",
     },
     "de": {
@@ -257,85 +218,57 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "lang.set": "Sprache: Deutsch. Ändern kannst du sie jederzeit mit /lang.",
         "start": (
             "👋 <b>Hire-or-Entity Advisor</b> <i>(inoffiziell)</i>\n\n"
-            "Nenne mir ein Land, ein Bruttojahresgehalt und eine Teamgröße – ich zeige die vollen "
-            "Arbeitgeberkosten, EOR im Vergleich zur eigenen Gesellschaft und ab wann sich die "
+            "Sag mir, wen du einstellen willst – Land, Personen und Bruttojahresgehalt –, und ich zeige, "
+            "was EOR gegenüber einer eigenen Gesellschaft in jedem Land kostet und ab wann sich eine "
             "Gesellschaft rechnet.\n\n"
-            "Probier: <code>Deutschland 80k 2 Personen</code>\noder ein Team: <code>Deutschland 2 × 80k, Spanien 1 × 50k</code>\n\n"
-            "{countries}\n/help – alle Befehle"
+            "Probier: <code>Deutschland 2 × 80k</code>\noder ein Team: <code>Deutschland 2 × 80k, Spanien 1 × 50k</code>\n\n"
+            "{countries}\n/help – so fragst du"
         ),
         "help": (
+            "<b>So fragst du</b>\n"
+            "Land, Personen × Bruttojahresgehalt – ein Land oder mehrere:\n"
+            "<code>Deutschland 2 × 80k</code>\n"
+            "<code>Deutschland 2 × 80k, UK 1 × £60k, Spanien 1 × 50k</code>\n"
+            "<code>Deutschland 2, Spanien 1 — 70k</code> (ein Gehalt für alle, in EUR)\n"
+            "Ein Gehalt ist in der Währung des Landes, außer du schreibst eine andere; für ein Monatsgehalt "
+            "<code>/mo</code> anhängen; ein Zeitraum kommt ans Ende: <code>… 24 Monate</code>.\n\n"
             "<b>Befehle</b>\n"
-            "/cost <code>Land Gehalt [Währung]</code> – Arbeitgeberkosten mit Aufschlüsselung\n"
-            "/plan <code>Land Gehalt Personen [Monate]</code> – EOR oder eigene Gesellschaft, Break-even\n"
-            "/compare <code>Land1 Land2 Gehalt</code> – zwei Länder nebeneinander\n"
-            "/team <code>Land Personen × Gehalt, …</code> – ein Team über mehrere Länder: EOR oder je eine Gesellschaft\n"
+            "/team – dasselbe als Befehl\n"
             "/sources <code>Land</code> – woher jede Zahl stammt\n"
             "/lang – Sprache ändern\n\n"
-            "Oder einfach schreiben: <code>Bulgarien 60000 EUR</code>, <code>UK £60k 2 Personen 24 Monate</code>, "
-            "<code>Deutschland vs Polen 70k</code>.\n"
-            "Gehälter sind <b>Jahresbrutto</b>; für ein Monatsgehalt <code>/mo</code> anhängen.\n\n"
             "{countries}\n\n"
             "<i>Inoffiziell, nur Schätzungen, keine Rechts- oder Steuerberatung.</i>"
         ),
         "countries": "Länder: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} brutto im Jahr",
-        "cost.monthly_input": "{monthly} im Monat × 12",
-        "cost.converted": "≈ {amount} zum EZB-Kurs vom {date}",
-        "cost.total": "Arbeitgeberkosten: <b>{annual}</b> im Jahr · {monthly} im Monat",
-        "cost.burden": "Zusätzlich zum Gehalt: +{amount} im Jahr ({rate})",
-        "cost.capped": "gedeckelt",
-        "cost.footer": (
-            "<i>Sätze {year}, gültig seit {since}. Abrechnungszeilen auf den Cent gerundet, "
-            "in ganzen Beträgen angezeigt.</i>"
-        ),
-        "cost.estimate_note": "<i>~ typischer Satz, hängt vom Arbeitgeber ab.</i>",
-        "cost.cap_since": "<i>Beitragsbemessungsgrenze ab {date}, auf jeden Monat angewandt.</i>",
-        "cost.below_min_wage": "⚠️ Unter dem Mindestlohn {year} ({minimum} im Jahr).",
-        "cost.monthly_hint": "Ich erwarte ein <b>Jahresgehalt</b>; für ein Monatsgehalt schreib <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} im Jahr · {months}",
-        "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "Gebühr {fee} pro Person und Monat",
-        "plan.eor_fx": "(Listenpreis {price}, EZB-Kurs vom {date})",
-        "plan.entity": "<b>Eigene Gesellschaft</b>: {total}",
-        "plan.entity_detail": "Gründung {setup} + Schließung {exit} · {fixed} im Monat + {per_employee} pro Person und Monat",
-        "plan.entity_deel": "<b>Eigene Gesellschaft mit Deel Payroll</b>: {total}",
-        "plan.entity_bridge": "{weeks} bis zur Gründung, solange über EOR: {amount}",
-        "plan.switch": "💡 Zeit für die eigene Gesellschaft: Deel Payroll kann ihre Lohnabrechnung für {fee} pro Person und Monat übernehmen (oben enthalten).",
-        "plan.same": "Gehalt + Beiträge, in beiden Fällen gleich: {amount}",
-        "plan.eor_cheaper": "💡 Für {team} über {months} ist EOR um ~{diff} günstiger.",
-        "plan.entity_cheaper": "💡 Für {team} über {months} ist die eigene Gesellschaft um ~{diff} günstiger.",
-        "plan.even": "💡 Für {team} über {months} kosten beide etwa gleich viel.",
-        "plan.pays_off_people": "Eine Gesellschaft rechnet sich ab {team} (über {months}).",
-        "plan.pays_off_months": "Mit {team} rechnet sie sich nach {months}.",
-        "plan.never_months": "Mit {team} rechnet sie sich nie: Die Fixkosten fressen die Ersparnis.",
-        "plan.never_people": "Zu diesen Preisen rechnet sich eine Gesellschaft nie.",
-        "plan.note": "<i>Jede Zeile hat eine Quelle (/sources). Nicht eingepreist, und alles zugunsten des EOR: die Zeit deines Teams für die Gesellschaft, die Monate einer Liquidation und das Risiko von Scheinselbstständigkeit und Betriebsstätte, das ein EOR für dich trägt.</i>",
+        "team.below_min_wage": "⚠️ Unter dem Mindestlohn {year} ({minimum} im Jahr).",
+        "team.even": "💡 Für {team} über {months} kosten beide etwa gleich viel.",
         "team.header": "🌍 <b>Team in {countries} Ländern</b> · {team} · {months}",
+        "team.header_one": "{flag} <b>{country}</b> · {team} · {months}",
         "team.country": "{flag} <b>{country}</b> · {team} × {salary}",
         "team.eor_line": "EOR (Deel): {amount}",
         "team.entity_line": "Eigene Gesellschaft: {amount}",
         "team.note": "<i>EOR-Gebühren gegen Kosten eigener Gesellschaften; Gehalt + Beiträge ({amount}) sind in beiden Fällen gleich. Summen in EUR zu EZB-Kursen vom {date}. Alle Zahlen: /sources.</i>",
         "team.total": "<b>Gesamt</b>: EOR (Deel) {eor} · {entities} eigene Gesellschaften {entity}",
+        "team.total_one": "<b>Gesamt</b>: EOR (Deel) {eor} · eigene Gesellschaft {entity}",
         "team.eor_saves": "💡 Über {months} spart EOR ~{diff} – und keine Gesellschaft zu gründen, zu führen und zu schließen in {entities} Ländern.",
+        "team.eor_saves_one": "💡 Über {months} spart EOR ~{diff} – und keine Gesellschaft zu gründen, zu führen und zu schließen.",
         "team.entities_win": "💡 Über {months} wären eigene Gesellschaften ~{diff} günstiger – Deel Payroll kann ihre Abrechnung übernehmen.",
+        "team.entities_win_one": "💡 Über {months} wäre eine eigene Gesellschaft ~{diff} günstiger – Deel Payroll kann ihre Abrechnung übernehmen.",
         "team.mix": "💡 Günstigste Kombination: EOR in {eor}, eigene Gesellschaft mit Deel Payroll in {entity} – {total}.",
         "team.breakeven": "Eine eigene Gesellschaft rechnet sich ab: {list} Personen (über {months}).",
         "team.guides": "📝 Die Deel-Leitfäden für {flags} zeigen noch einige inzwischen geänderte Zahlen – Details unter /sources.",
         "chart.title": "Team in {countries} Ländern · {team} · {months}",
+        "chart.title_one": "{country} · {team} · {months}",
         "chart.subtitle": "EOR-Gebühren vs. Kosten eigener Gesellschaften im Zeitraum, EUR",
         "chart.eor": "EOR (Deel)",
         "chart.entity": "Eigene Ges.",
         "chart.cheaper": "günstiger",
         "chart.total": "Gesamt: EOR {eor} · {entities} eigene Gesellschaften {entity}",
+        "chart.total_one": "Gesamt: EOR {eor} · eigene Gesellschaft {entity}",
         "chart.eor_saves": "EOR spart ~{diff}",
+        "chart.even": "Beide etwa gleich teuer",
         "chart.entities_save": "Eigene Gesellschaften sparen ~{diff}",
-        "compare.header": "<b>{a} vs. {b}</b> · {salary} brutto im Jahr",
-        "compare.row": "{flag} <b>{country}</b>: {total} im Jahr · +{rate}",
-        "compare.row_local": "in {currency}: {total}",
-        "compare.row_eor": "EOR {fee} im Monat · Gesellschaft ab {team} (12 Mon.)",
-        "compare.row_never": "EOR {fee} im Monat · Gesellschaft rechnet sich nie",
-        "compare.cheaper": "💡 Günstiger: {country}, um ~{diff} im Jahr ({rate} weniger).",
-        "compare.fx": "<i>Umgerechnet zu EZB-Kursen vom {date}.</i>",
+        "chart.entities_save_one": "Eigene Gesellschaft spart ~{diff}",
         "sources.header": "{flag} <b>{country}: Quellen</b>",
         "sources.rates": "<b>Sätze {year}</b>, gültig seit {since} · geprüft am {checked}",
         "sources.entity": "<b>Eigene Gesellschaft</b> (Schätzungen, sofern nicht als amtlich markiert)",
@@ -354,15 +287,9 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "sources.fx": "Wechselkurse: EZB-Referenzkurse vom {date}.",
         "warn.year": "⚠️ Das sind Sätze für {year}; für {current} können die Zahlen abweichen.",
         "warn.unchecked": "⚠️ Amtliche Zahlen zuletzt geprüft am {date}.",
-        "warn.mismatch": '📝 Im Deel-Leitfaden steht noch {label} {deel}; amtlich seit {since}: {official} (<a href="{url}">Quelle</a>).',
         "warn.fx_old": "⚠️ Wechselkurse vom {date}.",
-        "btn.compare": "🔁 Mit anderem Land vergleichen",
-        "btn.plan": "👥 Für N Personen rechnen",
-        "btn.sources": "📚 Quellen",
         "btn.months": "{n} Mon.",
-        "pick.country": "{country} vergleichen mit:",
-        "pick.people": "Wie viele Personen?",
-        "err.empty": "Schick ein Land und ein Jahresgehalt, z. B. <code>Deutschland 80k</code>.",
+        "err.empty": "Schick Land, Personen und Jahresgehalt, z. B. <code>Deutschland 2 × 80k</code>.",
         "err.no_country": "Welches Land? {countries}",
         "err.no_salary": "Ich brauche auch ein Bruttojahresgehalt, z. B. <code>{example}</code>.",
         "err.unknown_word": "„{word}“ kenne ich nicht.",
@@ -372,21 +299,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.salary_too_high": "Das Gehalt liegt über {maximum} – wohl ein Tippfehler.",
         "err.people_range": "Die Teamgröße muss zwischen 1 und {maximum} liegen.",
         "err.months_range": "Der Zeitraum muss zwischen 1 und {maximum} Monaten liegen.",
-        "err.need_two_countries": "Nenne zwei Länder: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "Hier geht nur ein Land; zum Vergleichen gibt es /compare.",
-        "err.same_country": "Das ist zweimal dasselbe Land – wähle zwei verschiedene.",
+        "err.same_country": "Jedes Land bitte nur einmal – zähl die Personen zusammen.",
         "err.unexpected": "„{word}“ habe ich nicht verstanden.",
         "err.twice": "„{word}“ sagt etwas zum zweiten Mal – lass eins weg.",
         "err.team_salary": "Gib auch {country} ein Gehalt, z. B. <code>Germany 2 × 80k, Spain 1 × 50k</code>.",
-        "err.team_needs_two": "Ein Team umfasst mindestens zwei Länder: <code>/team Germany 2 × 80k, Spain 1 × 50k</code>.",
         "err.stale_button": "Diese Schaltfläche gehört zu einer alten Nachricht. Schick die Anfrage noch einmal.",
         "err.internal": "Bei mir ist etwas schiefgelaufen. Versuch es in einer Minute noch einmal.",
-        "usage.cost": "Beispiel: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Beispiel: <code>/plan Germany 80000 2 12</code> (Land, Gehalt, Personen, Monate)",
-        "usage.compare": "Beispiel: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Beispiel: <code>/sources Spain</code>",
         "usage.team": "Beispiel: <code>/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code> (Personen × Gehalt je Land, pro Zeile oder mit Komma)",
-        "usage.free": "Probier <code>Deutschland 80k</code> oder /help.",
         "stats": "<b>Seit dem Start</b> ({since})\n{lines}",
     },
     "es": {
@@ -394,84 +314,57 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "lang.set": "Idioma: español. Cámbialo cuando quieras con /lang.",
         "start": (
             "👋 <b>Hire-or-Entity Advisor</b> <i>(no oficial)</i>\n\n"
-            "Dime un país, un salario bruto anual y el tamaño del equipo: te muestro el coste total "
-            "para la empresa, EOR frente a sociedad propia y desde cuándo compensa la sociedad.\n\n"
-            "Prueba: <code>Alemania 80k 2 personas</code>\no un equipo: <code>Alemania 2 × 80k, España 1 × 50k</code>\n\n"
-            "{countries}\n/help — todos los comandos"
+            "Dime a quién quieres contratar —país, personas y salario bruto anual— y te muestro cuánto "
+            "cuesta el EOR frente a una sociedad propia en cada país y desde cuándo compensaría la "
+            "sociedad.\n\n"
+            "Prueba: <code>Alemania 2 × 80k</code>\no un equipo: <code>Alemania 2 × 80k, España 1 × 50k</code>\n\n"
+            "{countries}\n/help — cómo preguntar"
         ),
         "help": (
+            "<b>Cómo preguntar</b>\n"
+            "País, personas × salario bruto anual — uno o varios países:\n"
+            "<code>Alemania 2 × 80k</code>\n"
+            "<code>Alemania 2 × 80k, UK 1 × £60k, España 1 × 50k</code>\n"
+            "<code>Alemania 2, España 1 — 70k</code> (un salario para todos, en EUR)\n"
+            "El salario va en la moneda del país salvo que escribas otra; para uno mensual añade "
+            "<code>/mo</code>; el horizonte va al final: <code>… 24 meses</code>.\n\n"
             "<b>Comandos</b>\n"
-            "/cost <code>país salario [moneda]</code> — coste para la empresa, desglosado\n"
-            "/plan <code>país salario personas [meses]</code> — EOR o sociedad propia, punto de equilibrio\n"
-            "/compare <code>país1 país2 salario</code> — dos países lado a lado\n"
-            "/team <code>país personas × salario, …</code> — un equipo en varios países: EOR o una sociedad en cada uno\n"
+            "/team — lo mismo, como comando\n"
             "/sources <code>país</code> — de dónde sale cada cifra\n"
             "/lang — cambiar idioma\n\n"
-            "O escribe sin más: <code>Bulgaria 60000 EUR</code>, <code>UK £60k 2 personas 24 meses</code>, "
-            "<code>Alemania vs Polonia 70k</code>.\n"
-            "Los salarios son <b>brutos anuales</b>; para uno mensual añade <code>/mo</code>.\n\n"
             "{countries}\n\n"
             "<i>No oficial, solo estimaciones, no es asesoramiento legal ni fiscal.</i>"
         ),
         "countries": "Países: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} brutos al año",
-        "cost.monthly_input": "{monthly} al mes × 12",
-        "cost.converted": "≈ {amount} al tipo del BCE del {date}",
-        "cost.total": "Coste para la empresa: <b>{annual}</b> al año · {monthly} al mes",
-        "cost.burden": "Además del salario: +{amount} al año ({rate})",
-        "cost.capped": "con tope",
-        "cost.footer": (
-            "<i>Tipos de {year}, vigentes desde el {since}. Líneas de nómina redondeadas al céntimo, "
-            "mostradas en unidades enteras.</i>"
-        ),
-        "cost.estimate_note": "<i>~ tipo habitual, depende de la empresa.</i>",
-        "cost.cap_since": "<i>Base máxima desde el {date}, aplicada a todos los meses.</i>",
-        "cost.below_min_wage": "⚠️ Por debajo del salario mínimo de {year} ({minimum} al año).",
-        "cost.monthly_hint": "Espero un salario <b>anual</b>; para uno mensual escribe <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} al año · {months}",
-        "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "cuota de {fee} por persona al mes",
-        "plan.eor_fx": "(precio de lista {price}, tipo del BCE del {date})",
-        "plan.entity": "<b>Sociedad propia</b>: {total}",
-        "plan.entity_detail": "constitución {setup} + cierre {exit} · {fixed} al mes + {per_employee} por persona al mes",
-        "plan.entity_deel": "<b>Sociedad propia con Deel Payroll</b>: {total}",
-        "plan.entity_bridge": "{weeks} para constituirla, mientras tanto con EOR: {amount}",
-        "plan.switch": "💡 Es momento de tu propia sociedad: Deel Payroll puede gestionar sus nóminas por {fee} por persona al mes (incluido arriba).",
-        "plan.same": "Salario + cotizaciones, igual en ambos casos: {amount}",
-        "plan.eor_cheaper": "💡 Para {team} durante {months}, el EOR sale ~{diff} más barato.",
-        "plan.entity_cheaper": "💡 Para {team} durante {months}, la sociedad propia sale ~{diff} más barata.",
-        "plan.even": "💡 Para {team} durante {months}, ambas opciones cuestan más o menos lo mismo.",
-        "plan.pays_off_people": "Una sociedad compensa a partir de {team} (en {months}).",
-        "plan.pays_off_months": "Con {team}, se amortiza en {months}.",
-        "plan.never_months": "Con {team} no se amortiza nunca: los costes fijos se comen el ahorro.",
-        "plan.never_people": "A estos precios, una sociedad no compensa nunca.",
-        "plan.note": "<i>Cada línea tiene su fuente (/sources). Sin incluir, y todo a favor del EOR: el tiempo de tu equipo dedicado a la sociedad, los meses que dura una liquidación y el riesgo de falsos autónomos y de establecimiento permanente que el EOR asume por ti.</i>",
+        "team.below_min_wage": "⚠️ Por debajo del salario mínimo de {year} ({minimum} al año).",
+        "team.even": "💡 Para {team} durante {months}, ambas opciones cuestan más o menos lo mismo.",
         "team.header": "🌍 <b>Equipo en {countries} países</b> · {team} · {months}",
+        "team.header_one": "{flag} <b>{country}</b> · {team} · {months}",
         "team.country": "{flag} <b>{country}</b> · {team} × {salary}",
         "team.eor_line": "EOR (Deel): {amount}",
         "team.entity_line": "Sociedad propia: {amount}",
         "team.note": "<i>Cuotas EOR frente a costes de sociedades propias; salario + cotizaciones ({amount}) son iguales en ambos casos. Totales en EUR a tipos del BCE del {date}. Todas las cifras: /sources.</i>",
         "team.total": "<b>Total</b>: EOR (Deel) {eor} · {entities} sociedades propias {entity}",
+        "team.total_one": "<b>Total</b>: EOR (Deel) {eor} · sociedad propia {entity}",
         "team.eor_saves": "💡 En {months}, el EOR ahorra ~{diff}, sin ninguna sociedad que abrir, gestionar y cerrar en {entities} países.",
+        "team.eor_saves_one": "💡 En {months}, el EOR ahorra ~{diff}, sin ninguna sociedad que abrir, gestionar y cerrar.",
         "team.entities_win": "💡 En {months}, las sociedades propias saldrían ~{diff} más baratas; Deel Payroll puede gestionar sus nóminas.",
+        "team.entities_win_one": "💡 En {months}, una sociedad propia saldría ~{diff} más barata; Deel Payroll puede gestionar sus nóminas.",
         "team.mix": "💡 La combinación más barata: EOR en {eor}, sociedad propia con Deel Payroll en {entity}: {total}.",
         "team.breakeven": "Una sociedad propia compensa a partir de: {list} personas (en {months}).",
         "team.guides": "📝 Las guías de Deel de {flags} aún muestran algunas cifras que han cambiado; detalles en /sources.",
         "chart.title": "Equipo en {countries} países · {team} · {months}",
+        "chart.title_one": "{country} · {team} · {months}",
         "chart.subtitle": "Cuotas EOR frente a costes de sociedades propias en el periodo, EUR",
         "chart.eor": "EOR (Deel)",
         "chart.entity": "Sociedad propia",
         "chart.cheaper": "más barato",
         "chart.total": "Total: EOR {eor} · {entities} sociedades propias {entity}",
+        "chart.total_one": "Total: EOR {eor} · sociedad propia {entity}",
         "chart.eor_saves": "El EOR ahorra ~{diff}",
+        "chart.even": "Ambas opciones cuestan casi lo mismo",
         "chart.entities_save": "Las sociedades ahorran ~{diff}",
-        "compare.header": "<b>{a} vs. {b}</b> · {salary} brutos al año",
-        "compare.row": "{flag} <b>{country}</b>: {total} al año · +{rate}",
-        "compare.row_local": "en {currency}: {total}",
-        "compare.row_eor": "EOR {fee} al mes · sociedad desde {team} (12 meses)",
-        "compare.row_never": "EOR {fee} al mes · la sociedad no compensa nunca",
-        "compare.cheaper": "💡 Más barato: {country}, ~{diff} menos al año ({rate} menos).",
-        "compare.fx": "<i>Convertido a tipos del BCE del {date}.</i>",
+        "chart.entities_save_one": "La sociedad ahorra ~{diff}",
         "sources.header": "{flag} <b>{country}: fuentes</b>",
         "sources.rates": "<b>Tipos {year}</b>, vigentes desde el {since} · revisado el {checked}",
         "sources.entity": "<b>Sociedad propia</b> (estimaciones salvo las marcadas como oficiales)",
@@ -490,15 +383,9 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "sources.fx": "Divisas: tipos de referencia del BCE del {date}.",
         "warn.year": "⚠️ Son tipos de {year}; las cifras de {current} pueden ser distintas.",
         "warn.unchecked": "⚠️ Cifras oficiales revisadas por última vez el {date}.",
-        "warn.mismatch": '📝 La guía de Deel aún indica {label}: {deel}; la cifra oficial desde el {since} es {official} (<a href="{url}">fuente</a>).',
         "warn.fx_old": "⚠️ Los tipos de cambio son del {date}.",
-        "btn.compare": "🔁 Comparar con otro país",
-        "btn.plan": "👥 Calcular para N personas",
-        "btn.sources": "📚 Fuentes",
         "btn.months": "{n} meses",
-        "pick.country": "¿Con qué país comparar {country}?",
-        "pick.people": "¿Cuántas personas?",
-        "err.empty": "Envía un país y un salario anual, p. ej. <code>España 80k</code>.",
+        "err.empty": "Envía país, personas y salario anual, p. ej. <code>Alemania 2 × 80k</code>.",
         "err.no_country": "¿Qué país? {countries}",
         "err.no_salary": "También necesito un salario bruto anual, p. ej. <code>{example}</code>.",
         "err.unknown_word": "No conozco «{word}».",
@@ -508,21 +395,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.salary_too_high": "El salario supera {maximum}; seguramente es una errata.",
         "err.people_range": "El tamaño del equipo debe estar entre 1 y {maximum}.",
         "err.months_range": "El horizonte debe estar entre 1 y {maximum} meses.",
-        "err.need_two_countries": "Indica dos países: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "Aquí va un solo país; para comparar dos usa /compare.",
-        "err.same_country": "Es el mismo país dos veces; elige dos distintos.",
+        "err.same_country": "Cada país una sola vez, por favor: suma las personas.",
         "err.unexpected": "No he entendido «{word}».",
         "err.twice": "«{word}» repite algo que ya has dicho; deja solo uno.",
         "err.team_salary": "Indica también un salario para {country}, p. ej. <code>Germany 2 × 80k, Spain 1 × 50k</code>.",
-        "err.team_needs_two": "Un equipo abarca al menos dos países: <code>/team Germany 2 × 80k, Spain 1 × 50k</code>.",
         "err.stale_button": "Ese botón es de un mensaje antiguo. Vuelve a enviar la consulta.",
         "err.internal": "Algo ha fallado por mi parte. Inténtalo de nuevo en un minuto.",
-        "usage.cost": "Ejemplo: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Ejemplo: <code>/plan Germany 80000 2 12</code> (país, salario, personas, meses)",
-        "usage.compare": "Ejemplo: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Ejemplo: <code>/sources Spain</code>",
         "usage.team": "Ejemplo: <code>/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code> (personas × salario por país, en líneas o con comas)",
-        "usage.free": "Prueba <code>España 80k</code> o /help.",
         "stats": "<b>Desde el inicio</b> ({since})\n{lines}",
     },
     "pl": {
@@ -530,84 +410,57 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "lang.set": "Język: polski. Zmienisz go w każdej chwili przez /lang.",
         "start": (
             "👋 <b>Hire-or-Entity Advisor</b> <i>(nieoficjalny)</i>\n\n"
-            "Podaj kraj, roczne wynagrodzenie brutto i wielkość zespołu — pokażę pełny koszt "
-            "pracodawcy, EOR w porównaniu z własną spółką i od kiedy spółka zaczyna się opłacać.\n\n"
-            "Spróbuj: <code>Niemcy 80k 2 osoby</code>\nalbo zespół: <code>Niemcy 2 × 80k, Polska 1 × 200k</code>\n\n"
-            "{countries}\n/help — wszystkie polecenia"
+            "Napisz, kogo chcesz zatrudnić — kraj, liczbę osób i roczne wynagrodzenie brutto — a pokażę, "
+            "ile kosztuje EOR w porównaniu z własną spółką w każdym kraju i od kiedy spółka zaczęłaby "
+            "się opłacać.\n\n"
+            "Spróbuj: <code>Niemcy 2 × 80k</code>\nalbo zespół: <code>Niemcy 2 × 80k, Polska 1 × 200k</code>\n\n"
+            "{countries}\n/help — jak pytać"
         ),
         "help": (
+            "<b>Jak pytać</b>\n"
+            "Kraj, osoby × roczne wynagrodzenie brutto — jeden kraj lub kilka:\n"
+            "<code>Niemcy 2 × 80k</code>\n"
+            "<code>Niemcy 2 × 80k, UK 1 × £60k, Polska 1 × 200k</code>\n"
+            "<code>Niemcy 2, Hiszpania 1 — 70k</code> (jedna pensja dla wszystkich, w EUR)\n"
+            "Pensja jest w walucie kraju, chyba że podasz inną; dla miesięcznej dodaj <code>/mo</code>; "
+            "okres na końcu: <code>… 24 miesiące</code>.\n\n"
             "<b>Polecenia</b>\n"
-            "/cost <code>kraj pensja [waluta]</code> — koszt pracodawcy z rozbiciem\n"
-            "/plan <code>kraj pensja osoby [miesiące]</code> — EOR czy własna spółka, próg opłacalności\n"
-            "/compare <code>kraj1 kraj2 pensja</code> — dwa kraje obok siebie\n"
-            "/team <code>kraj osoby × pensja, …</code> — zespół w kilku krajach: EOR czy spółka w każdym\n"
+            "/team — to samo jako polecenie\n"
             "/sources <code>kraj</code> — skąd pochodzi każda liczba\n"
             "/lang — zmiana języka\n\n"
-            "Możesz też po prostu napisać: <code>Bułgaria 60000 EUR</code>, "
-            "<code>UK £60k 2 osoby 24 miesiące</code>, <code>Niemcy vs Polska 70k</code>.\n"
-            "Wynagrodzenie to <b>roczne brutto</b>; dla miesięcznego dodaj <code>/mo</code>.\n\n"
             "{countries}\n\n"
             "<i>Nieoficjalne, tylko szacunki, nie jest to porada prawna ani podatkowa.</i>"
         ),
         "countries": "Kraje: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} brutto rocznie",
-        "cost.monthly_input": "{monthly} miesięcznie × 12",
-        "cost.converted": "≈ {amount} po kursie EBC z {date}",
-        "cost.total": "Koszt pracodawcy: <b>{annual}</b> rocznie · {monthly} miesięcznie",
-        "cost.burden": "Ponad wynagrodzenie: +{amount} rocznie ({rate})",
-        "cost.capped": "limit",
-        "cost.footer": (
-            "<i>Stawki na {year}, obowiązują od {since}. Pozycje listy płac zaokrąglone do grosza, "
-            "pokazane w pełnych kwotach.</i>"
-        ),
-        "cost.estimate_note": "<i>~ typowa stawka, zależy od pracodawcy.</i>",
-        "cost.cap_since": "<i>Limit składek od {date}, zastosowany do każdego miesiąca.</i>",
-        "cost.below_min_wage": "⚠️ Poniżej płacy minimalnej na {year} ({minimum} rocznie).",
-        "cost.monthly_hint": "Oczekuję wynagrodzenia <b>rocznego</b>; dla miesięcznego napisz <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} rocznie · {months}",
-        "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "opłata {fee} za osobę miesięcznie",
-        "plan.eor_fx": "(cena katalogowa {price}, kurs EBC z {date})",
-        "plan.entity": "<b>Własna spółka</b>: {total}",
-        "plan.entity_detail": "założenie {setup} + likwidacja {exit} · {fixed} miesięcznie + {per_employee} za osobę miesięcznie",
-        "plan.entity_deel": "<b>Własna spółka z Deel Payroll</b>: {total}",
-        "plan.entity_bridge": "{weeks} na założenie, w tym czasie przez EOR: {amount}",
-        "plan.switch": "💡 Czas na własną spółkę: Deel Payroll może prowadzić jej płace za {fee} za osobę miesięcznie (wliczone wyżej).",
-        "plan.same": "Wynagrodzenie + składki, tak samo w obu wariantach: {amount}",
-        "plan.eor_cheaper": "💡 Dla {team} przez {months} EOR jest tańszy o ~{diff}.",
-        "plan.entity_cheaper": "💡 Dla {team} przez {months} własna spółka jest tańsza o ~{diff}.",
-        "plan.even": "💡 Dla {team} przez {months} oba warianty kosztują mniej więcej tyle samo.",
-        "plan.pays_off_people": "Spółka opłaca się od {team} (przez {months}).",
-        "plan.pays_off_months": "Dla {team} zwraca się po {months}.",
-        "plan.never_months": "Dla {team} nigdy się nie zwraca: koszty stałe zjadają oszczędność.",
-        "plan.never_people": "Przy tych cenach spółka nigdy się nie opłaca.",
-        "plan.note": "<i>Każda pozycja ma źródło (/sources). Nie wliczono, a wszystko to przemawia za EOR: czasu twojego zespołu poświęconego spółce, miesięcy trwania likwidacji oraz ryzyka błędnej kwalifikacji i zakładu podatkowego, które EOR bierze na siebie.</i>",
+        "team.below_min_wage": "⚠️ Poniżej płacy minimalnej na {year} ({minimum} rocznie).",
+        "team.even": "💡 Dla {team} przez {months} oba warianty kosztują mniej więcej tyle samo.",
         "team.header": "🌍 <b>Zespół w {countries} krajach</b> · {team} · {months}",
+        "team.header_one": "{flag} <b>{country}</b> · {team} · {months}",
         "team.country": "{flag} <b>{country}</b> · {team} × {salary}",
         "team.eor_line": "EOR (Deel): {amount}",
         "team.entity_line": "Własna spółka: {amount}",
         "team.note": "<i>Opłaty EOR wobec kosztów własnych spółek; wynagrodzenie + składki ({amount}) są takie same w obu wariantach. Sumy w EUR po kursach EBC z {date}. Wszystkie liczby: /sources.</i>",
         "team.total": "<b>Razem</b>: EOR (Deel) {eor} · własne spółki ({entities}) {entity}",
+        "team.total_one": "<b>Razem</b>: EOR (Deel) {eor} · własna spółka {entity}",
         "team.eor_saves": "💡 Przez {months} EOR oszczędza ~{diff} — i nie trzeba zakładać, prowadzić ani likwidować spółek w {entities} krajach.",
+        "team.eor_saves_one": "💡 Przez {months} EOR oszczędza ~{diff} — i nie trzeba zakładać, prowadzić ani likwidować spółki.",
         "team.entities_win": "💡 Przez {months} własne spółki byłyby tańsze o ~{diff} — Deel Payroll może prowadzić ich płace.",
+        "team.entities_win_one": "💡 Przez {months} własna spółka byłaby tańsza o ~{diff} — Deel Payroll może prowadzić jej płace.",
         "team.mix": "💡 Najtańsze połączenie: EOR w {eor}, własna spółka z Deel Payroll w {entity} — {total}.",
         "team.breakeven": "Własna spółka opłaca się od: {list} os. (przez {months}).",
         "team.guides": "📝 Przewodniki Deel dla {flags} nadal podają niektóre nieaktualne liczby — szczegóły w /sources.",
         "chart.title": "Zespół w {countries} krajach · {team} · {months}",
+        "chart.title_one": "{country} · {team} · {months}",
         "chart.subtitle": "Opłaty EOR wobec kosztów własnych spółek w okresie, EUR",
         "chart.eor": "EOR (Deel)",
         "chart.entity": "Własna spółka",
         "chart.cheaper": "taniej",
         "chart.total": "Razem: EOR {eor} · własne spółki ({entities}) {entity}",
+        "chart.total_one": "Razem: EOR {eor} · własna spółka {entity}",
         "chart.eor_saves": "EOR oszczędza ~{diff}",
+        "chart.even": "Oba warianty kosztują mniej więcej tyle samo",
         "chart.entities_save": "Własne spółki oszczędzają ~{diff}",
-        "compare.header": "<b>{a} vs {b}</b> · {salary} brutto rocznie",
-        "compare.row": "{flag} <b>{country}</b>: {total} rocznie · +{rate}",
-        "compare.row_local": "w {currency}: {total}",
-        "compare.row_eor": "EOR {fee} miesięcznie · spółka od {team} (12 mies.)",
-        "compare.row_never": "EOR {fee} miesięcznie · spółka nigdy się nie opłaca",
-        "compare.cheaper": "💡 Taniej: {country}, o ~{diff} rocznie ({rate} mniej).",
-        "compare.fx": "<i>Przeliczone po kursach EBC z {date}.</i>",
+        "chart.entities_save_one": "Własna spółka oszczędza ~{diff}",
         "sources.header": "{flag} <b>{country}: źródła</b>",
         "sources.rates": "<b>Stawki {year}</b>, obowiązują od {since} · sprawdzono {checked}",
         "sources.entity": "<b>Własna spółka</b> (szacunki, chyba że oznaczono jako oficjalne)",
@@ -626,15 +479,9 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "sources.fx": "Kursy: kursy referencyjne EBC z {date}.",
         "warn.year": "⚠️ To stawki na {year}; w {current} liczby mogą być inne.",
         "warn.unchecked": "⚠️ Oficjalne dane ostatnio sprawdzono {date}.",
-        "warn.mismatch": '📝 Przewodnik Deel nadal podaje {label}: {deel}; oficjalnie od {since}: {official} (<a href="{url}">źródło</a>).',
         "warn.fx_old": "⚠️ Kursy walut z {date}.",
-        "btn.compare": "🔁 Porównaj z innym krajem",
-        "btn.plan": "👥 Policz dla N osób",
-        "btn.sources": "📚 Źródła",
         "btn.months": "{n} mies.",
-        "pick.country": "{country} — porównaj z:",
-        "pick.people": "Ile osób?",
-        "err.empty": "Wyślij kraj i roczne wynagrodzenie, np. <code>Polska 80k</code>.",
+        "err.empty": "Wyślij kraj, liczbę osób i roczne wynagrodzenie, np. <code>Niemcy 2 × 80k</code>.",
         "err.no_country": "Który kraj? {countries}",
         "err.no_salary": "Potrzebuję też rocznego wynagrodzenia brutto, np. <code>{example}</code>.",
         "err.unknown_word": "Nie znam „{word}”.",
@@ -644,21 +491,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.salary_too_high": "Wynagrodzenie powyżej {maximum} — pewnie literówka.",
         "err.people_range": "Wielkość zespołu musi wynosić od 1 do {maximum}.",
         "err.months_range": "Okres musi wynosić od 1 do {maximum} miesięcy.",
-        "err.need_two_countries": "Podaj dwa kraje: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "Tu tylko jeden kraj; do porównania dwóch służy /compare.",
-        "err.same_country": "To ten sam kraj — wybierz dwa różne.",
+        "err.same_country": "Każdy kraj tylko raz — zsumuj liczbę osób.",
         "err.unexpected": "Nie rozumiem „{word}”.",
         "err.twice": "„{word}” powtarza coś, co już podano — zostaw jedno.",
         "err.team_salary": "Podaj też pensję dla {country}, np. <code>Germany 2 × 80k, Spain 1 × 50k</code>.",
-        "err.team_needs_two": "Zespół obejmuje co najmniej dwa kraje: <code>/team Germany 2 × 80k, Spain 1 × 50k</code>.",
         "err.stale_button": "Ten przycisk pochodzi ze starej wiadomości. Wyślij zapytanie jeszcze raz.",
         "err.internal": "Coś poszło nie tak po mojej stronie. Spróbuj ponownie za minutę.",
-        "usage.cost": "Przykład: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Przykład: <code>/plan Germany 80000 2 12</code> (kraj, pensja, osoby, miesiące)",
-        "usage.compare": "Przykład: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Przykład: <code>/sources Spain</code>",
         "usage.team": "Przykład: <code>/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code> (osoby × pensja dla kraju, w wierszach lub po przecinku)",
-        "usage.free": "Spróbuj <code>Polska 80k</code> lub /help.",
         "stats": "<b>Od startu</b> ({since})\n{lines}",
     },
     "bg": {
@@ -666,83 +506,57 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "lang.set": "Език: български. Можете да го смените по всяко време с /lang.",
         "start": (
             "👋 <b>Hire-or-Entity Advisor</b> <i>(неофициален)</i>\n\n"
-            "Напишете държава, годишна брутна заплата и размер на екипа — ще покажа пълния разход "
-            "на работодателя, EOR срещу собствено дружество и откога дружеството започва да се изплаща.\n\n"
-            "Опитайте: <code>Германия 80k 2 служители</code>\nили екип: <code>Германия 2 × 80k, България 1 × 30k</code>\n\n"
-            "{countries}\n/help — всички команди"
+            "Напишете кого искате да наемете — държава, брой хора и годишна брутна заплата — и ще покажа "
+            "колко струва EOR спрямо собствено дружество във всяка държава и откога дружеството би "
+            "започнало да се изплаща.\n\n"
+            "Опитайте: <code>Германия 2 × 80k</code>\nили екип: <code>Германия 2 × 80k, България 1 × 30k</code>\n\n"
+            "{countries}\n/help — как да питате"
         ),
         "help": (
+            "<b>Как да питате</b>\n"
+            "Държава, хора × годишна брутна заплата — една държава или няколко:\n"
+            "<code>Германия 2 × 80k</code>\n"
+            "<code>Германия 2 × 80k, UK 1 × £60k, Испания 1 × 50k</code>\n"
+            "<code>Германия 2, Испания 1 — 70k</code> (една заплата за всички, в EUR)\n"
+            "Заплатата е във валутата на държавата, освен ако не посочите друга; за месечна добавете "
+            "<code>/mo</code>; периодът е накрая: <code>… 24 месеца</code>.\n\n"
             "<b>Команди</b>\n"
-            "/cost <code>държава заплата [валута]</code> — разход на работодателя с разбивка\n"
-            "/plan <code>държава заплата хора [месеци]</code> — EOR или собствено дружество, точка на изплащане\n"
-            "/compare <code>държава1 държава2 заплата</code> — две държави една до друга\n"
-            "/team <code>държава хора × заплата, …</code> — екип в няколко държави: EOR или дружество във всяка\n"
+            "/team — същото, като команда\n"
             "/sources <code>държава</code> — откъде е всяка цифра\n"
             "/lang — смяна на езика\n\n"
-            "Или просто напишете: <code>България 60000 EUR</code>, <code>UK £60k 2 служители 24 месеца</code>, "
-            "<code>Германия срещу Полша 70k</code>.\n"
-            "Заплатите са <b>годишни брутни</b>; за месечна добавете <code>/mo</code>.\n\n"
             "{countries}\n\n"
-            "<i>Неофициално, само оценки, не е правен или данъчен съвет.</i>"
+            "<i>Неофициално, само приблизителни оценки, не е правен или данъчен съвет.</i>"
         ),
         "countries": "Държави: {list}",
-        "cost.header": "{flag} <b>{country}</b> · {salary} бруто годишно",
-        "cost.monthly_input": "{monthly} месечно × 12",
-        "cost.converted": "≈ {amount} по курса на ЕЦБ от {date}",
-        "cost.total": "Разход на работодателя: <b>{annual}</b> годишно · {monthly} месечно",
-        "cost.burden": "Над заплатата: +{amount} годишно ({rate})",
-        "cost.capped": "таван",
-        "cost.footer": (
-            "<i>Ставки за {year}, в сила от {since}. Редовете от фиша са закръглени до цент, показани в цели суми.</i>"
-        ),
-        "cost.estimate_note": "<i>~ типична ставка, зависи от работодателя.</i>",
-        "cost.cap_since": "<i>Максимален осигурителен доход от {date}, приложен към всеки месец.</i>",
-        "cost.below_min_wage": "⚠️ Под минималната заплата за {year} ({minimum} годишно).",
-        "cost.monthly_hint": "Очаквам <b>годишна</b> заплата; за месечна напишете <code>{example}</code>.",
-        "plan.header": "{flag} <b>{country}</b> · {team} × {salary} годишно · {months}",
-        "plan.eor": "<b>EOR ({provider})</b>: {total}",
-        "plan.eor_detail": "такса {fee} на служител месечно",
-        "plan.eor_fx": "(списъчна цена {price}, курс на ЕЦБ от {date})",
-        "plan.entity": "<b>Собствено дружество</b>: {total}",
-        "plan.entity_detail": "учредяване {setup} + закриване {exit} · {fixed} месечно + {per_employee} на служител месечно",
-        "plan.entity_deel": "<b>Собствено дружество с Deel Payroll</b>: {total}",
-        "plan.entity_bridge": "{weeks} за учредяване, междувременно чрез EOR: {amount}",
-        "plan.switch": "💡 Време е за собствено дружество: Deel Payroll може да поеме ведомостите му за {fee} на служител месечно (включено по-горе).",
-        "plan.same": "Заплата + осигуровки, еднакви и в двата варианта: {amount}",
-        "plan.eor_cheaper": "💡 За {team} за {months} EOR е по-евтино с ~{diff}.",
-        "plan.entity_cheaper": "💡 За {team} за {months} собственото дружество е по-евтино с ~{diff}.",
-        "plan.even": "💡 За {team} за {months} двата варианта струват почти еднакво.",
-        "plan.pays_off_people": "Дружеството се изплаща от {team} нагоре (за {months}).",
-        "plan.pays_off_months": "При {team} се изплаща след {months}.",
-        "plan.never_months": "При {team} никога не се изплаща: постоянните разходи изяждат спестеното.",
-        "plan.never_people": "При тези цени дружеството никога не се изплаща.",
-        "plan.note": "<i>Всеки ред има източник (/sources). Не са включени, и всичко е в полза на EOR: времето на екипа ви за дружеството, месеците, които отнема ликвидацията, и рискът от прекласифициране и място на стопанска дейност, който EOR поема вместо вас.</i>",
+        "team.below_min_wage": "⚠️ Под минималната заплата за {year} ({minimum} годишно).",
+        "team.even": "💡 За {team} за {months} двата варианта струват почти еднакво.",
         "team.header": "🌍 <b>Екип в {countries} държави</b> · {team} · {months}",
+        "team.header_one": "{flag} <b>{country}</b> · {team} · {months}",
         "team.country": "{flag} <b>{country}</b> · {team} × {salary}",
         "team.eor_line": "EOR (Deel): {amount}",
         "team.entity_line": "Собствено дружество: {amount}",
         "team.note": "<i>Такси EOR срещу разходи за собствени дружества; заплата + осигуровки ({amount}) са еднакви и в двата варианта. Суми в EUR по курсовете на ЕЦБ от {date}. Всички цифри: /sources.</i>",
         "team.total": "<b>Общо</b>: EOR (Deel) {eor} · собствени дружества ({entities}) {entity}",
+        "team.total_one": "<b>Общо</b>: EOR (Deel) {eor} · собствено дружество {entity}",
         "team.eor_saves": "💡 За {months} EOR спестява ~{diff} — и няма дружества за учредяване, поддръжка и закриване в {entities} държави.",
+        "team.eor_saves_one": "💡 За {months} EOR спестява ~{diff} — и няма дружество за учредяване, поддръжка и закриване.",
         "team.entities_win": "💡 За {months} собствените дружества биха били по-евтини с ~{diff} — Deel Payroll може да поеме ведомостите им.",
+        "team.entities_win_one": "💡 За {months} собствено дружество би било по-евтино с ~{diff} — Deel Payroll може да поеме ведомостите му.",
         "team.mix": "💡 Най-евтината комбинация: EOR в {eor}, собствено дружество с Deel Payroll в {entity} — {total}.",
         "team.breakeven": "Собствено дружество се изплаща от: {list} служители (за {months}).",
         "team.guides": "📝 Ръководствата на Deel за {flags} все още показват някои вече променени цифри — подробности в /sources.",
         "chart.title": "Екип в {countries} държави · {team} · {months}",
+        "chart.title_one": "{country} · {team} · {months}",
         "chart.subtitle": "Такси EOR срещу разходи за собствени дружества за периода, EUR",
         "chart.eor": "EOR (Deel)",
         "chart.entity": "Собств. дружество",
         "chart.cheaper": "по-евтино",
         "chart.total": "Общо: EOR {eor} · собствени дружества ({entities}) {entity}",
+        "chart.total_one": "Общо: EOR {eor} · собствено дружество {entity}",
         "chart.eor_saves": "EOR спестява ~{diff}",
+        "chart.even": "Двата варианта струват почти еднакво",
         "chart.entities_save": "Собствените дружества спестяват ~{diff}",
-        "compare.header": "<b>{a} vs {b}</b> · {salary} бруто годишно",
-        "compare.row": "{flag} <b>{country}</b>: {total} годишно · +{rate}",
-        "compare.row_local": "в {currency}: {total}",
-        "compare.row_eor": "EOR {fee} месечно · дружество от {team} (12 мес.)",
-        "compare.row_never": "EOR {fee} месечно · дружеството не се изплаща",
-        "compare.cheaper": "💡 По-евтино: {country}, с ~{diff} годишно ({rate} по-малко).",
-        "compare.fx": "<i>Превърнато по курсовете на ЕЦБ от {date}.</i>",
+        "chart.entities_save_one": "Собственото дружество спестява ~{diff}",
         "sources.header": "{flag} <b>{country}: източници</b>",
         "sources.rates": "<b>Ставки {year}</b>, в сила от {since} · проверено {checked}",
         "sources.entity": "<b>Собствено дружество</b> (оценки, освен отбелязаните като официални)",
@@ -761,15 +575,9 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "sources.fx": "Валутни курсове: референтни курсове на ЕЦБ от {date}.",
         "warn.year": "⚠️ Това са ставки за {year}; за {current} цифрите може да са други.",
         "warn.unchecked": "⚠️ Официалните цифри са проверени последно на {date}.",
-        "warn.mismatch": '📝 В ръководството на Deel все още е {label} {deel}; официално от {since}: {official} (<a href="{url}">източник</a>).',
         "warn.fx_old": "⚠️ Валутните курсове са от {date}.",
-        "btn.compare": "🔁 Сравни с друга държава",
-        "btn.plan": "👥 Изчисли за N служители",
-        "btn.sources": "📚 Източници",
         "btn.months": "{n} мес.",
-        "pick.country": "{country} — сравни с:",
-        "pick.people": "Колко служители?",
-        "err.empty": "Изпратете държава и годишна заплата, напр. <code>България 60k</code>.",
+        "err.empty": "Изпратете държава, брой хора и годишна заплата, напр. <code>Германия 2 × 80k</code>.",
         "err.no_country": "Коя държава? {countries}",
         "err.no_salary": "Нужна е и годишна брутна заплата, напр. <code>{example}</code>.",
         "err.unknown_word": "Не познавам „{word}“.",
@@ -779,21 +587,14 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
         "err.salary_too_high": "Заплатата е над {maximum} — вероятно грешка.",
         "err.people_range": "Размерът на екипа трябва да е между 1 и {maximum}.",
         "err.months_range": "Периодът трябва да е между 1 и {maximum} месеца.",
-        "err.need_two_countries": "Посочете две държави: <code>/compare Germany Poland 60000</code>.",
-        "err.too_many_countries": "Тук само една държава; за сравнение на две има /compare.",
-        "err.same_country": "Това е една и съща държава — изберете две различни.",
+        "err.same_country": "Всяка държава само веднъж — съберете броя на хората.",
         "err.unexpected": "Не разбрах „{word}“.",
         "err.twice": "„{word}“ повтаря вече казаното — оставете едно.",
         "err.team_salary": "Посочете заплата и за {country}, напр. <code>Germany 2 × 80k, Spain 1 × 50k</code>.",
-        "err.team_needs_two": "Екипът обхваща поне две държави: <code>/team Germany 2 × 80k, Spain 1 × 50k</code>.",
         "err.stale_button": "Този бутон е от старо съобщение. Изпратете заявката отново.",
         "err.internal": "Нещо се обърка при мен. Опитайте пак след минута.",
-        "usage.cost": "Пример: <code>/cost Bulgaria 60000 EUR</code>",
-        "usage.plan": "Пример: <code>/plan Germany 80000 2 12</code> (държава, заплата, хора, месеци)",
-        "usage.compare": "Пример: <code>/compare Germany Poland 60000</code>",
         "usage.sources": "Пример: <code>/sources Spain</code>",
         "usage.team": "Пример: <code>/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code> (хора × заплата за държава, на ред или със запетая)",
-        "usage.free": "Опитайте <code>България 60k</code> или /help.",
         "stats": "<b>От старта</b> ({since})\n{lines}",
     },
 }

@@ -21,16 +21,16 @@
     },
     {
       "in": {
-        "html": "👋 <b>Hire-or-Entity Advisor</b> <i>(unofficial)</i>\n\nTell me a country, an annual gross salary and a team size — I'll show the full employer cost, EOR versus your own entity, and when an entity starts to pay off.\n\nTry: <code>Germany 80k 2 people</code>\nor a team: <code>Germany 2 × 80k, Spain 1 × 50k</code>\n\nCountries: 🇧🇬 Bulgaria, 🇩🇪 Germany, 🇪🇸 Spain, 🇬🇧 United Kingdom, 🇵🇱 Poland\n/help — all commands",
+        "html": "👋 <b>Hire-or-Entity Advisor</b> <i>(unofficial)</i>\n\nTell me who you want to hire — country, people and annual gross salary — and I'll show what the EOR costs against your own company in each country, and when a company would start to pay off.\n\nTry: <code>Germany 2 × 80k</code>\nor a team: <code>Germany 2 × 80k, Spain 1 × 50k</code>\n\nCountries: 🇧🇬 Bulgaria, 🇩🇪 Germany, 🇪🇸 Spain, 🇬🇧 United Kingdom, 🇵🇱 Poland\n/help — how to ask",
         "keyboard": [
           [
             "🌍 🇩🇪 2 · 🇬🇧 1 · 🇪🇸 1 · 🇵🇱 1"
           ],
           [
-            "🇩🇪 Germany · €80k · 👥 2"
+            "🇩🇪 Germany · 2 × €80k"
           ],
           [
-            "🇬🇧 United Kingdom · £60k · 👥 1"
+            "🇬🇧 United Kingdom · 1 × £60k"
           ]
         ]
       }
@@ -45,96 +45,63 @@
         "html": "🌍 <b>Team in 4 countries</b> · 5 people · 12 months\n\n💡 Over 12 months EOR saves ~€23,785 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 3 · 🇬🇧 4 · 🇪🇸 3 · 🇵🇱 2 people (over 12 months).\n\n<i>EOR fees against own-entity costs; salary + contributions (€401,527) are the same either way. Totals in EUR at ECB rates of 28 Oct 2026. Every figure: /sources.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
         "keyboard": [
           [
+            "3 mo",
             "6 mo",
-            "• 12 mo",
-            "24 mo",
-            "36 mo"
+            "• 12 mo"
+          ],
+          [
+            "📚 🇩🇪",
+            "📚 🇬🇧",
+            "📚 🇪🇸",
+            "📚 🇵🇱"
           ]
         ],
         "photo": "team.png"
       }
     }
   ],
-  "team24": [
+  "team6": [
     {
       "out": "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
     },
     {
       "in": {
-        "html": "🌍 <b>Team in 4 countries</b> · 5 people · 24 months\n\n💡 Over 24 months EOR saves ~€25,277 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 3 · 🇬🇧 3 · 🇪🇸 2 · 🇵🇱 2 people (over 24 months).\n\n<i>EOR fees against own-entity costs; salary + contributions (€803,054) are the same either way. Totals in EUR at ECB rates of 28 Oct 2026. Every figure: /sources.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
+        "html": "🌍 <b>Team in 4 countries</b> · 5 people · 6 months\n\n💡 Over 6 months EOR saves ~€23,039 — and no company to open, run and close in 4 countries.\nAn own entity pays off from: 🇩🇪 6 · 🇬🇧 6 · 🇪🇸 7 · 🇵🇱 5 people (over 6 months).\n\n<i>EOR fees against own-entity costs; salary + contributions (€200,764) are the same either way. Totals in EUR at ECB rates of 28 Oct 2026. Every figure: /sources.</i>\n\n📝 Deel's guides for 🇩🇪 🇬🇧 🇪🇸 🇵🇱 still show some figures that have since changed — details in /sources.",
         "keyboard": [
           [
-            "6 mo",
-            "12 mo",
-            "• 24 mo",
-            "36 mo"
+            "3 mo",
+            "• 6 mo",
+            "12 mo"
+          ],
+          [
+            "📚 🇩🇪",
+            "📚 🇬🇧",
+            "📚 🇪🇸",
+            "📚 🇵🇱"
           ]
         ],
-        "photo": "team24.png"
+        "photo": "team6.png"
       }
     }
   ],
-  "plan": [
+  "one": [
     {
-      "out": "Germany 80k 2 people"
+      "out": "Germany 2 × 80k"
     },
     {
       "in": {
-        "html": "🇩🇪 <b>Germany</b> · 2 people × €80,000 a year · 12 months\n\n<b>EOR (Deel)</b>: €210,622\n   fee €538 per person a month ($599 list price, ECB rate of 28 Oct 2026)\n<b>Own entity on Deel Payroll</b>: €215,710\n   setup €2,475 + closing €4,250 · €717 a month + €26 per person a month\n   7 weeks to set up, on EOR meanwhile: €2,152\nSalary + contributions, identical either way: €197,709\n\n💡 For 2 people over 12 months EOR is cheaper by ~€5,087.\nAn entity pays off from 3 people (over 12 months).\nWith 2 people it pays off after 29 months.\n\n<i>Every line has a source (/sources). Not priced, and all in the EOR's favour: your team's own time on the entity, the months a liquidation takes, and the misclassification and permanent-establishment risk an EOR carries for you.</i>\n\n📝 Deel's guide still shows long-term care rate: 1.7%; the official figure since 1 Jan 2026 is 1.8% (<a href=\"https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung\">source</a>).\n📝 Deel's guide still shows insolvency levy: 0.06%; the official figure since 1 Jan 2026 is 0.15% (<a href=\"https://www.gesetze-im-internet.de/sgb_3/__360.html\">source</a>).",
+        "html": "🇩🇪 <b>Germany</b> · 2 people · 12 months\n\n💡 Over 12 months EOR saves ~€5,087 — and no company to open, run and close.\nAn own entity pays off from: 🇩🇪 3 people (over 12 months).\n\n<i>EOR fees against own-entity costs; salary + contributions (€197,709) are the same either way. Totals in EUR at ECB rates of 28 Oct 2026. Every figure: /sources.</i>\n\n📝 Deel's guides for 🇩🇪 still show some figures that have since changed — details in /sources.",
         "keyboard": [
           [
+            "3 mo",
             "6 mo",
-            "• 12 mo",
-            "24 mo",
-            "36 mo"
+            "• 12 mo"
           ],
           [
-            "👥 Plan for N people"
-          ],
-          [
-            "🔁 Compare with another country"
-          ],
-          [
-            "📚 Sources"
+            "📚 🇩🇪"
           ]
-        ]
-      }
-    }
-  ],
-  "cost": [
-    {
-      "out": "/cost Bulgaria 60000 EUR"
-    },
-    {
-      "in": {
-        "html": "🇧🇬 <b>Bulgaria</b> · €60,000 gross a year\n\nEmployer cost: <b>€65,222</b> a year · €5,435 a month\nOn top of salary: +€5,222 a year (8.7%)\n\n• State pension 8.22%, capped — €2,269\n• Universal pension fund 2.8%, capped — €773\n• Sickness and maternity 2.1%, capped — €580\n• Unemployment 0.6%, capped — €166\n• Health insurance 4.8%, capped — €1,325\n• Work accident (IT, office) ~0.4%, capped — €110\n\n<i>2026 rates, in force since 1 Jan 2026. Payslip lines rounded to the cent, shown in whole units.</i>\n<i>Contribution ceiling from 1 Aug 2026, applied to every month.</i>\n<i>~ typical rate, depends on the employer.</i>\n\n📝 Deel's guide still shows maximum insurable income: 3,750 BGN/mo; the official figure since 1 Aug 2026 is €2,300/mo (<a href=\"https://noi.bg/dohod01082026/\">source</a>).",
-        "keyboard": [
-          [
-            "🔁 Compare with another country"
-          ],
-          [
-            "👥 Plan for N people"
-          ],
-          [
-            "📚 Sources"
-          ]
-        ]
-      }
-    }
-  ],
-  "compare": [
-    {
-      "out": "UK vs Poland 50k GBP"
-    },
-    {
-      "in": {
-        "html": "<b>United Kingdom vs Poland</b> · £50,000 gross a year\n\n🇬🇧 <b>United Kingdom</b>: £58,063 a year · +16.1%\n   EOR £451 a month · entity from 4 people (12 mo)\n🇵🇱 <b>Poland</b>: £60,240 a year · +20.5%\n   in PLN: 316,676 zł\n   EOR £451 a month · entity from 2 people (12 mo)\n\n💡 Cheaper: United Kingdom, by ~£2,177 a year (3.6% less).\n<i>Converted at ECB rates of 28 Oct 2026.</i>\n\n📝 Deel's guide still shows minimum wage: £12.21/h; the official figure since 1 Apr 2026 is £12.71/h (<a href=\"https://www.gov.uk/government/news/national-living-wage-increases-to-1271-per-hour\">source</a>).\n📝 Deel's guide still shows pension contribution ceiling: 260,190 zł/yr; the official figure since 1 Jan 2026 is 282,600 zł/yr (<a href=\"https://www.zus.pl/en/-/nowe-wysoko%C5%9Bci-sk%C5%82adek-na-ubezpieczenia-spo%C5%82eczne-w-2026-r.\">source</a>).",
-        "keyboard": [
-          [
-            "📚 Sources 🇬🇧",
-            "📚 Sources 🇵🇱"
-          ]
-        ]
+        ],
+        "photo": "one.png"
       }
     }
   ],
@@ -151,7 +118,7 @@
   ],
   "errors": [
     {
-      "out": "Germny 80k"
+      "out": "Germny 2 × 80k"
     },
     {
       "in": {
@@ -160,20 +127,20 @@
       }
     },
     {
-      "out": "Germany"
+      "out": "Germany 2 × 80k, Spain 1"
     },
     {
       "in": {
-        "html": "I need an annual gross salary too, e.g. <code>Germany 80000</code>.",
+        "html": "Give Spain a salary too, e.g. <code>Germany 2 × 80k, Spain 1 × 50k</code>.",
         "keyboard": []
       }
     },
     {
-      "out": "Spain 50k 0 people"
+      "out": "Spain 0 × 50k"
     },
     {
       "in": {
-        "html": "Team size must be between 1 and 10000.\nTry <code>Germany 80k</code> or /help.",
+        "html": "Team size must be between 1 and 10000.\nUsage: <code>/team Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k</code> (people × salary per country, one per line or comma)",
         "keyboard": []
       }
     }

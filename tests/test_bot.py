@@ -53,7 +53,7 @@ class FakeSession(BaseSession):
         self.calls.append(method)
         if (error := self.fail_with.pop(type(method), None)) is not None:
             raise error
-        if isinstance(method, GetMe):  # "/cost@botname" makes aiogram check its own username
+        if isinstance(method, GetMe):  # "/team@botname" makes aiogram check its own username
             return User(id=42, is_bot=True, first_name="Advisor", username="deel_hea_unofficial_bot")
         if isinstance(method, SendMessage | EditMessageText):
             chat_id = method.chat_id if isinstance(method.chat_id, int) else USER_ID
@@ -158,90 +158,83 @@ async def test_start_asks_for_language_then_greets(dispatcher: Dispatcher, env: 
     bot, session, services = env
     await send(dispatcher, bot, _message("/start"))
     first = session.sent()[-1]
+    assert isinstance(first, SendMessage)
     assert "Choose your language" in first.text
+    assert isinstance(first.reply_markup, InlineKeyboardMarkup)
     buttons = [b.callback_data for row in first.reply_markup.inline_keyboard for b in row]
     assert buttons == ["lang:en", "lang:de", "lang:es", "lang:pl", "lang:bg"]
 
     await send(dispatcher, bot, _callback("lang:pl"))
     assert isinstance(session.sent()[-1], EditMessageText)
-    assert "Podaj kraj" in session.last_text()
+    assert "Napisz, kogo chcesz zatrudnić" in session.last_text()
     assert await services.prefs.get(USER_ID) == "pl"
     # And the next reply is in Polish although the Telegram client says English.
     await send(dispatcher, bot, _message("/help"))
-    assert "Polecenia" in session.last_text()
+    assert "Jak pytać" in session.last_text()
 
 
-async def test_free_text_plan(dispatcher: Dispatcher, env: Any) -> None:
+async def test_language_buttons_edge_cases(dispatcher: Dispatcher, env: Any) -> None:
+    from aiogram.exceptions import TelegramBadRequest
+
+    bot, session, services = env
+    await send(dispatcher, bot, _message("/lang"))
+    assert "Choose your language" in session.last_text()
+    await send(dispatcher, bot, _callback("lang:xx"))  # a language we do not have: nothing happens
+    assert isinstance(session.calls[-1], AnswerCallbackQuery)
+    assert await services.prefs.get(USER_ID) is None
+    session.fail_with[EditMessageText] = TelegramBadRequest(
+        method=EditMessageText(text="x"), message="Bad Request: message is not modified"
+    )
+    await send(dispatcher, bot, _callback("lang:de"))  # the same language again: swallowed
+    assert not any(isinstance(c, AnswerCallbackQuery) and c.show_alert for c in session.calls)
+    session.fail_with[EditMessageText] = TelegramBadRequest(
+        method=EditMessageText(text="x"), message="Bad Request: message to edit not found"
+    )
+    await send(dispatcher, bot, _callback("lang:de"))
+    assert any(isinstance(c, AnswerCallbackQuery) and c.show_alert for c in session.calls)
+    await send(dispatcher, bot, _callback("lang:bg", with_message=False))
+    assert await services.prefs.get(USER_ID) == "bg"  # remembered even with nothing to edit
+
+
+async def test_free_text_is_a_team(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _message("Germany 80k 5 people"))
-    text = session.last_text()
-    assert "Germany" in text
-    assert "EOR (Deel)" in text
-    assert "Own entity" in text
-    assert "💡" in text
+    assert isinstance(session.sent()[-1], SendPhoto)
+    assert session.last_text().startswith("🇩🇪 <b>Germany</b> · 5 people · 12 months")
 
 
-async def test_cost_command_has_breakdown_and_buttons(dispatcher: Dispatcher, env: Any) -> None:
+async def test_the_old_commands_are_gone(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
-    await send(dispatcher, bot, _message("/cost Bulgaria 60000 EUR"))
-    reply = session.sent()[-1]
-    assert "Employer cost" in reply.text
-    assert reply.text.count("• ") >= 5
-    data = [b.callback_data for row in reply.reply_markup.inline_keyboard for b in row]
-    assert data == ["pc:BG:EUR:6000000", "pp:BG:EUR:6000000:12", "src:BG"]
-
-
-async def test_compare_flow_through_buttons(dispatcher: Dispatcher, env: Any) -> None:
-    bot, session, _ = env
-    await send(dispatcher, bot, _callback("pc:BG:EUR:6000000"))
-    picker = session.sent()[-1]
-    assert "Compare Bulgaria with" in picker.text
-    options = [b.callback_data for row in picker.reply_markup.inline_keyboard for b in row]
-    assert "cmp:BG:DE:EUR:6000000" in options
-    assert not any(":BG:EUR" in o.split("cmp:BG")[-1] for o in options)  # not with itself
-
-    await send(dispatcher, bot, _callback("cmp:BG:DE:EUR:6000000"))
-    assert isinstance(session.sent()[-1], EditMessageText)
-    assert "Bulgaria vs Germany" in session.last_text()
-
-
-async def test_plan_flow_through_buttons(dispatcher: Dispatcher, env: Any) -> None:
-    bot, session, _ = env
-    await send(dispatcher, bot, _callback("pp:DE:EUR:8000000:24"))
-    assert "How many people" in session.last_text()
-    await send(
-        dispatcher, bot, _callback(kb.PlanCb(code="DE", cur="EUR", minor=8_000_000, people=10, months=24).pack())
-    )
-    text = session.last_text()
-    assert "10 people" in text
-    assert "24 months" in text
+    for text in ("/cost Germany 80000", "/plan Germany 80000 2 12", "/compare UK Poland 50000"):
+        await send(dispatcher, bot, _message(text))
+        assert session.last_text().startswith("Usage: <code>/team")
 
 
 async def test_sources(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _message("/sources Spain"))
-    text = "\n\n".join(m.text for m in session.sent())  # one message or several, joined back
+    text = "\n\n".join(m.text for m in session.sent() if isinstance(m, SendMessage))
     assert "boe.es" in text
     assert "deel.com" in text
     assert "Deel Payroll" in text
     assert "Setup until the first payroll: 16 weeks" in text
     before = len(session.sent())
     await send(dispatcher, bot, _callback("src:PL"))
-    assert "zus.pl" in "\n".join(m.text for m in session.sent()[before:])
+    assert "zus.pl" in "\n".join(m.text for m in session.sent()[before:] if isinstance(m, SendMessage))
 
 
 @pytest.mark.parametrize(
     ("text", "needle"),
     [
-        ("/cost", "Usage"),
-        ("/cost Narnia 50000", "I don't know “narnia”"),
-        ("/cost Germny 50000", "Did you mean <b>Germany</b>"),
-        ("/compare Germany 50000", "Name two countries"),
-        ("/plan Germany 80000 0", "between 1 and"),
+        ("/team", "Usage"),
+        ("/team Narnia 50000", "I don't know “narnia”"),
+        ("/team Germny 2 × 80k", "Did you mean <b>Germany</b>"),
+        ("Germany 0 × 80k", "between 1 and"),
+        ("Germany 2 × 80k, Spain 1", "Give Spain a salary too"),
         ("/sources", "Usage"),
         ("/sources Atlantis", "I don't know"),
         ("Germany", "annual gross salary"),
-        ("/frobnicate", "Try"),
+        ("/frobnicate", "Usage"),
         ("<b>Germany</b> 80k", "I don't know “&lt;b&gt;germany&lt;/b&gt;”"),
     ],
 )
@@ -251,13 +244,19 @@ async def test_errors_are_explained(dispatcher: Dispatcher, env: Any, text: str,
     assert needle in session.last_text()
 
 
+async def test_team_salary_error_names_the_country_in_the_readers_language(dispatcher: Dispatcher, env: Any) -> None:
+    bot, session, _ = env
+    german = User(id=997, is_bot=False, first_name="G", language_code="de")
+    await send(dispatcher, bot, _message("Deutschland 2 × 80k, Spanien 1", german))
+    assert "Gib auch Spanien ein Gehalt" in session.last_text()
+
+
 @pytest.mark.parametrize(
     "data",
-    ["cost:XX:EUR:6000000", "cost:DE:XYZ:6000000", "cost:DE:EUR:1", "pln:DE:EUR:8000000:0:12",
-     "cmp:DE:DE:EUR:8000000", "src:ZZ", "pc:ZZ:EUR:1", "pp:ZZ:EUR:1:12", "pp:DE:EUR:8000000:999",
-     "cost:PL:PLN:300000", "totally-unknown"],
-)  # fmt: skip
+    ["src:ZZ", "cost:DE:EUR:6000000", "pln:DE:EUR:8000000:2:12", "cmp:DE:PL:EUR:8000000", "totally-unknown"],
+)
 async def test_forged_or_stale_buttons_are_refused(dispatcher: Dispatcher, env: Any, data: str) -> None:
+    # Buttons of commands the bot no longer has get the same polite alert as forged ones.
     bot, session, _ = env
     await send(dispatcher, bot, _callback(data))
     answer = session.calls[-1]
@@ -280,17 +279,18 @@ async def test_language_from_telegram_client(dispatcher: Dispatcher, env: Any) -
     bot, session, _ = env
     german = User(id=999, is_bot=False, first_name="G", language_code="de-AT")
     await send(dispatcher, bot, _message("Deutschland 80k", german))
-    assert "Arbeitgeberkosten" in session.last_text()
+    assert "spart EOR" in session.last_text()
     french = User(id=998, is_bot=False, first_name="F", language_code="fr")
     await send(dispatcher, bot, _message("Germany 80k", french))
-    assert "Employer cost" in session.last_text()  # a language we do not speak falls back to English
+    assert "EOR saves" in session.last_text()  # a language we do not speak falls back to English
 
 
 async def test_start_examples_work(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
     for row in kb.start_examples("en").inline_keyboard:
         await send(dispatcher, bot, _callback(row[0].callback_data or ""))
-        assert "Employer cost" in session.last_text() or "EOR" in session.last_text()
+        assert isinstance(session.sent()[-1], SendPhoto)
+        assert "EOR saves" in session.last_text()  # each one a case the EOR is made for
 
 
 async def test_crash_is_reported_to_the_user(dispatcher: Dispatcher, env: Any, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -299,10 +299,10 @@ async def test_crash_is_reported_to_the_user(dispatcher: Dispatcher, env: Any, m
     def boom(*_: Any) -> Any:
         raise RuntimeError("bug")
 
-    monkeypatch.setattr("deel_advisor.bot.handlers.render", boom)
+    monkeypatch.setattr("deel_advisor.bot.handlers.render_team", boom)
     await send(dispatcher, bot, _message("Germany 80k"))
     assert "Something went wrong" in session.last_text()
-    await send(dispatcher, bot, _callback("cost:DE:EUR:8000000"))
+    await send(dispatcher, bot, _callback(kb.TeamCb(key="ex-de", months=6).pack()))
     answer = session.calls[-1]
     assert isinstance(answer, AnswerCallbackQuery)
     assert answer.text
@@ -317,7 +317,7 @@ async def test_crash_message_is_in_the_users_language(
     def boom(*_: Any) -> Any:
         raise RuntimeError("bug")
 
-    monkeypatch.setattr("deel_advisor.bot.handlers.render", boom)
+    monkeypatch.setattr("deel_advisor.bot.handlers.render_team", boom)
     bulgarian = User(id=4242, is_bot=False, first_name="B", language_code="bg")
     await send(dispatcher, bot, _message("Германия 80k", bulgarian))
     assert "Нещо се обърка" in session.last_text()
@@ -334,40 +334,14 @@ async def test_sticker_or_photo_gets_a_hint_not_silence(dispatcher: Dispatcher, 
                         from_user=USER, caption="Germany 80k"),
     )  # fmt: skip
     await send(dispatcher, bot, sticker)
-    assert "Try <code>Germany 80k</code>" in session.last_text()
+    assert "Usage: <code>/team Germany 2 × 80k" in session.last_text()
 
 
 async def test_button_on_a_message_telegram_no_longer_shows(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
-    await send(dispatcher, bot, _callback("cost:DE:EUR:8000000", with_message=False))
-    assert isinstance(session.calls[-1], AnswerCallbackQuery)  # acknowledged, nothing to edit
+    await send(dispatcher, bot, _callback("src:DE", with_message=False))
+    assert isinstance(session.calls[-1], AnswerCallbackQuery)  # acknowledged, nothing to answer under
     assert not session.sent()
-
-
-async def test_tapping_the_selected_horizon_again(dispatcher: Dispatcher, env: Any) -> None:
-    from aiogram.exceptions import TelegramBadRequest
-
-    bot, session, _ = env
-    session.fail_with[EditMessageText] = TelegramBadRequest(
-        method=EditMessageText(text="x"), message="Bad Request: message is not modified"
-    )
-    await send(dispatcher, bot, _callback(kb.PlanCb(code="DE", cur="EUR", minor=8_000_000, people=5, months=12).pack()))
-    # The no-op edit is swallowed: no error alert, no extra message.
-    assert not any(isinstance(c, AnswerCallbackQuery) and c.show_alert for c in session.calls)
-
-
-async def test_other_edit_failures_reach_the_error_handler(dispatcher: Dispatcher, env: Any) -> None:
-    from aiogram.exceptions import TelegramBadRequest
-
-    bot, session, _ = env
-    session.fail_with[EditMessageText] = TelegramBadRequest(
-        method=EditMessageText(text="x"), message="Bad Request: message to edit not found"
-    )
-    await send(dispatcher, bot, _callback(kb.PlanCb(code="DE", cur="EUR", minor=8_000_000, people=5, months=12).pack()))
-    alerts = [c for c in session.calls if isinstance(c, AnswerCallbackQuery) and c.show_alert]
-    assert alerts
-    assert alerts[-1].text is not None
-    assert "Something went wrong" in alerts[-1].text
 
 
 async def test_telegram_down_while_answering_is_contained(dispatcher: Dispatcher, env: Any) -> None:
@@ -375,18 +349,17 @@ async def test_telegram_down_while_answering_is_contained(dispatcher: Dispatcher
 
     bot, session, _ = env
     session.fail_with[SendMessage] = TelegramNetworkError(method=SendMessage(chat_id=1, text="x"), message="down")
-    await send(dispatcher, bot, _message("Germany 80k"))  # must not raise out of the dispatcher
+    await send(dispatcher, bot, _message("Germany"))  # must not raise out of the dispatcher
     assert isinstance(session.calls[-1], SendMessage)  # the apology was attempted after the failure
 
 
 @pytest.mark.parametrize(
-    "text",
-    ["/cost@deel_hea_unofficial_bot Germany 80000", "/COST Germany 80000", "/cost   Germany    80000  "],
+    "text", ["/team@deel_hea_unofficial_bot Germany 80000", "/TEAM Germany 80000", "/team   Germany    80000  "]
 )
 async def test_command_variants(dispatcher: Dispatcher, env: Any, text: str) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _message(text))
-    assert "Employer cost" in session.last_text() or "Try" in session.last_text()
+    assert "EOR saves" in session.last_text() or "Usage" in session.last_text()
 
 
 async def test_html_in_user_input_never_reaches_telegram_unescaped(dispatcher: Dispatcher, env: Any) -> None:
@@ -402,10 +375,12 @@ async def test_every_language_answers_every_flow(dispatcher: Dispatcher, env: An
     bot, session, _ = env
     for lang in ("en", "de", "es", "pl", "bg"):
         await send(dispatcher, bot, _callback(f"lang:{lang}"))
-        for data in ("cost:DE:EUR:8000000", "cmp:GB:PL:GBP:5000000", "src:BG",
-                     kb.PlanCb(code="ES", cur="EUR", minor=5_000_000, people=3, months=24).pack()):  # fmt: skip
+        assert "{" not in session.last_text(), lang
+        for data in ("src:BG", *(kb.TeamCb(key=e.key, months=3).pack() for e in kb.EXAMPLES)):
             await send(dispatcher, bot, _callback(data))
             assert "{" not in session.last_text(), (lang, data)  # no unfilled placeholder
+        await send(dispatcher, bot, _message("/help"))
+        assert "{" not in session.last_text(), lang
 
 
 TEAM = "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
@@ -429,16 +404,20 @@ async def test_team_flow(dispatcher: Dispatcher, env: Any) -> None:
     assert "Own entity:" not in reply.caption
     data = _team_buttons(reply)
     key = data[0].split(":")[1]
-    assert data == [f"tm:{key}:{n}" for n in (6, 12, 24, 36)]
+    # Three horizons, then a sources button per country.
+    assert data == [*(f"tm:{key}:{n}" for n in (3, 6, 12)), "src:DE", "src:GB", "src:ES", "src:PL"]
     assert all(len(d.encode()) <= 64 for d in data)  # Telegram's limit on callback data
     assert services.teams.get(key) is not None
 
-    await send(dispatcher, bot, _callback(f"tm:{key}:24", on_photo=True))
+    await send(dispatcher, bot, _callback(f"tm:{key}:6", on_photo=True))
     edit = session.sent()[-1]
     assert isinstance(edit, EditMessageMedia)  # the chart is redrawn in place
     assert _photo_bytes(edit).startswith(PNG)
+    assert "6 months" in session.last_text()
+    assert _team_buttons(edit)[1] == f"tm:{key}:6"
+    # A horizon typed by hand still works; it just has no button of its own.
+    await send(dispatcher, bot, _message(f"{TEAM} 24 months"))
     assert "24 months" in session.last_text()
-    assert _team_buttons(edit)[2] == f"tm:{key}:24"
 
 
 async def test_free_text_team_is_a_team(dispatcher: Dispatcher, env: Any) -> None:
@@ -451,7 +430,7 @@ async def test_free_text_team_is_a_team(dispatcher: Dispatcher, env: Any) -> Non
 async def test_same_team_gets_the_same_key(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
     await send(dispatcher, bot, _message(TEAM))
-    await send(dispatcher, bot, _message(f"{TEAM} 36 months"))
+    await send(dispatcher, bot, _message(f"{TEAM} 3 months"))
     first, second = (_team_buttons(call)[0].split(":")[1] for call in session.sent()[-2:])
     assert first == second  # the horizon is in the button, not in the key
 
@@ -471,7 +450,7 @@ async def test_team_chart_failure_falls_back_to_the_full_text(
     assert isinstance(reply, SendMessage)
     assert "Own entity:" in reply.text  # the breakdown the chart would have shown
     key = _team_buttons(reply)[0].split(":")[1]
-    await send(dispatcher, bot, _callback(f"tm:{key}:24"))
+    await send(dispatcher, bot, _callback(f"tm:{key}:3"))
     assert isinstance(session.sent()[-1], EditMessageText)
     # Under a chart, the long text cannot become a caption: it comes as a new message instead.
     await send(dispatcher, bot, _callback(f"tm:{key}:6", on_photo=True))
@@ -496,7 +475,7 @@ async def test_team_button_edge_cases(dispatcher: Dispatcher, env: Any) -> None:
     from aiogram.exceptions import TelegramBadRequest
 
     bot, session, _ = env
-    data = kb.EXAMPLE_TEAM_CB.pack()
+    data = kb.TeamCb(key="ex-team", months=12).pack()
     await send(dispatcher, bot, _callback(data, with_message=False))  # too old for Telegram to show
     assert isinstance(session.calls[-1], AnswerCallbackQuery)
     assert not session.sent()
@@ -522,17 +501,17 @@ def test_caption_limit_counts_what_telegram_counts() -> None:
 
 async def test_example_team_button_answers_with_a_chart(dispatcher: Dispatcher, env: Any) -> None:
     bot, session, _ = env
-    await send(dispatcher, bot, _callback(kb.EXAMPLE_TEAM_CB.pack()))  # sits under the /start text
+    await send(dispatcher, bot, _callback(kb.TeamCb(key="ex-team", months=12).pack()))  # under the /start text
     assert isinstance(session.sent()[-1], SendPhoto)
     assert "Team in 4 countries" in session.last_text()
 
 
 def test_team_store_forgets_the_oldest(real_catalog: Catalog) -> None:
     from deel_advisor.bot.handlers import TeamStore
-    from deel_advisor.parser import parse_team
+    from deel_advisor.parser import parse
 
     store = TeamStore(limit=2)
-    teams = [parse_team(f"Germany {n} × 80k, Spain 1 × 50k", real_catalog.index, {"EUR"}) for n in (1, 2, 3)]
+    teams = [parse(f"Germany {n} × 80k, Spain 1 × 50k", real_catalog.index, {"EUR"}) for n in (1, 2, 3)]
     keys = [store.put(team) for team in teams]
     assert len(set(keys)) == 3
     assert store.get(keys[0]) is None
@@ -542,13 +521,13 @@ def test_team_store_forgets_the_oldest(real_catalog: Catalog) -> None:
     assert (store.get(keys[1]), store.get(keys[2])) == (teams[1], None)
     store.fix("example", teams[2])
     for n in range(5):
-        store.put(parse_team(f"Germany {n + 10} × 80k, Spain 1 × 50k", real_catalog.index, {"EUR"}))
+        store.put(parse(f"Germany {n + 10} × 80k, Spain 1 × 50k", real_catalog.index, {"EUR"}))
     assert store.get("example") == teams[2]  # the /start button's team is never evicted
 
 
 @pytest.mark.parametrize(
     "data",
-    ["tm:000000000000:12", "tm:example:999", "tm:example:0", "tm:example:x", "tm::12", "tm:example"],
+    ["tm:000000000000:12", "tm:ex-team:999", "tm:ex-team:0", "tm:ex-team:x", "tm::12", "tm:ex-team"],
 )
 async def test_forged_or_stale_team_buttons_are_refused(dispatcher: Dispatcher, env: Any, data: str) -> None:
     bot, session, _ = env

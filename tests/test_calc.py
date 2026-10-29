@@ -18,21 +18,15 @@ def test_below_every_cap(testland: Country) -> None:
     by_id = {line.contribution.id: line for line in cost.lines}
     assert by_id["pension"].monthly == D(400)  # 10% of 4000, under the 5000/mo cap
     assert by_id["health"].monthly == D(150)  # 5% of the 3000 cap, not of 4000
-    assert by_id["health"].capped
-    assert not by_id["pension"].capped
     assert by_id["accident"].monthly == D(40)
     assert cost.contributions_monthly == D(590)
-    assert cost.contributions_annual == D(7080)
     assert cost.total_annual == D(55_080)
-    assert cost.burden == D("0.1475")
 
 
 def test_annual_cap_is_applied_per_month(testland: Country) -> None:
     cost = calc.employer_cost(testland, D(90_000))
     pension = next(line for line in cost.lines if line.contribution.id == "pension")
     assert pension.monthly == D(500)  # 60000 a year = 5000 a month, 10%
-    assert pension.annual == D(6000)
-    assert pension.capped
 
 
 def test_every_payslip_line_is_rounded_to_the_cent(testland: Country) -> None:
@@ -81,29 +75,32 @@ def test_plan_totals(testland: Country) -> None:
     assert plan.employment == D(4590) * 3 * 12
     assert plan.eor_fees == D(550 * 3 * 12)
     assert plan.entity_overhead == D(2400 + 450 * 12)
-    assert plan.eor_total - plan.entity_total == plan.entity_saving == D(19_800 - 7_800)
+    assert plan.entity_saving == D(19_800 - 7_800)
 
 
 def test_breakeven_is_strict(testland: Country) -> None:
     entity = calc.entity_cost(testland)
     # One person for 12 months costs exactly the same both ways (6600), so it takes two.
     assert calc.breakeven_people(entity, D(550), months=12) == 2
-    # One person saves 500 - 300 = 200 a month: 2400 of setup is even at month 12, ahead at 13.
-    assert calc.breakeven_months(entity, D(550), people=1) == 13
 
 
 def test_breakeven_never(testland: Country) -> None:
     entity = calc.entity_cost(testland)
     assert calc.breakeven_people(entity, D(50), months=12) is None  # fee no higher than payroll
-    assert calc.breakeven_months(entity, D(340), people=1) is None  # saving 290 < fixed 300
     assert calc.breakeven_people(entity, D(550), months=0) is None
 
 
 def test_plan_breakeven_properties(testland: Country) -> None:
     plan = calc.plan(testland, D(48_000), eor_fee=D(550), people=1, months=12)
     assert plan.breakeven_people == 2
-    assert plan.breakeven_months == 13
     assert plan.entity_saving == 0
+
+
+def test_salary_must_be_positive(testland: Country) -> None:
+    assert calc.employer_cost(testland, D("0.12")).monthly_salary == D("0.01")
+    for salary in (D(0), D(-1)):
+        with pytest.raises(ValueError, match=r"^salary must be positive$"):
+            calc.employer_cost(testland, salary)
 
 
 def test_plan_rejects_empty_team(testland: Country) -> None:
@@ -112,39 +109,6 @@ def test_plan_rejects_empty_team(testland: Country) -> None:
 
 
 # --- boundaries the first version of these tests let through (found by mutation testing) ------
-
-
-def test_salary_exactly_at_the_cap_is_not_capped(testland: Country) -> None:
-    cost = calc.employer_cost(testland, D(60_000))  # 5,000 a month = the pension cap
-    pension = next(line for line in cost.lines if line.contribution.id == "pension")
-    assert pension.monthly == D(500)
-    assert not pension.capped
-
-
-def test_monthly_cap_is_not_divided_by_twelve(testland: Country) -> None:
-    # Health is capped at 3,000 *a month*: a 2,000 salary is under it and must not be flagged.
-    cost = calc.employer_cost(testland, D(24_000))
-    health = next(line for line in cost.lines if line.contribution.id == "health")
-    assert (health.monthly, health.capped) == (D(100), False)
-
-
-def test_result_keeps_its_country(testland: Country) -> None:
-    assert calc.employer_cost(testland, D(48_000)).country is testland
-
-
-def test_tiny_salaries_still_compute(testland: Country) -> None:
-    # The parser refuses them; the calculation itself has no business doing so.
-    assert calc.employer_cost(testland, D("0.5")).monthly_salary == D("0.04")
-    with pytest.raises(ValueError, match=r"^salary must be positive$"):
-        calc.employer_cost(testland, D("-1"))
-
-
-def test_entity_sums_stay_decimal_when_a_side_is_empty() -> None:
-    data = country_data()
-    data["entity"]["monthlyFixed"] = [data["entity"]["monthlyFixed"][0]]  # no per-employee line
-    entity = calc.entity_cost(Country.model_validate(data))
-    assert entity.per_employee_monthly == 0
-    assert isinstance(entity.per_employee_monthly, Decimal)
 
 
 def test_one_month_horizon(testland: Country) -> None:
@@ -157,10 +121,8 @@ def test_one_month_horizon(testland: Country) -> None:
         calc.plan(testland, D(48_000), D(550), people=1, months=0)
 
 
-def test_breakeven_with_a_saving_of_exactly_zero_and_just_above(testland: Country) -> None:
+def test_breakeven_with_a_margin_just_above_zero(testland: Country) -> None:
     entity = calc.entity_cost(testland)
-    assert calc.breakeven_months(entity, D(350), people=1) is None  # 350 − 50 − 300 = 0 a month
-    assert calc.breakeven_months(entity, D("350.50"), people=1) == 4801  # 2,400 // 0.50 + 1
     assert calc.breakeven_people(entity, D("50.50"), months=12) == 1001  # 6,000 // (0.50 × 12) + 1
 
 
@@ -210,7 +172,7 @@ def test_horizon_shorter_than_setup(hidden: Country) -> None:
 
 
 def test_breakeven_with_hidden_costs_matches_brute_force(hidden: Country) -> None:
-    """The closed forms must agree with simply trying every team size and horizon."""
+    """The closed form must agree with simply trying every team size."""
     entity = calc.entity_cost(hidden)
     for fee in (D(400), D(550), D(900)):
         for months in (1, 2, 3, 6, 12, 24, 60):
@@ -218,11 +180,6 @@ def test_breakeven_with_hidden_costs_matches_brute_force(hidden: Country) -> Non
                 (n for n in range(1, 500) if calc.plan(hidden, D(48_000), fee, n, months).entity_saving > 0), None
             )
             assert calc.breakeven_people(entity, fee, months) == brute, (fee, months)
-        for people in (1, 2, 3, 5, 10, 40):
-            brute = next(
-                (m for m in range(1, 2000) if calc.plan(hidden, D(48_000), fee, people, m).entity_saving > 0), None
-            )
-            assert calc.breakeven_months(entity, fee, people) == brute, (fee, people)
 
 
 def test_plan_passes_the_payroll_price_on(testland: Country) -> None:

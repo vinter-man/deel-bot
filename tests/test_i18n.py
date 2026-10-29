@@ -40,12 +40,12 @@ def test_translations_are_not_english_copies(lang: str) -> None:
     # happen to be spelled the same in German ("in EUR: …").
     allowed = {
         "lang.prompt",
-        "plan.eor",
         "sources.guide_ok",
-        "compare.row_local",
         "chart.eor",
         "team.country",
         "team.eor_line",
+        "team.header_one",
+        "chart.title_one",
     }
     assert same <= allowed, same - allowed
 
@@ -127,10 +127,12 @@ def test_month_forms(lang: str, n: int, duration: str, after: str) -> None:
 
 
 def test_t_formats_and_falls_back() -> None:
-    assert t("de", "pick.country", country="Polen") == "Polen vergleichen mit:"
-    assert t("en", "btn.sources") == "📚 Sources"
+    assert t("de", "team.even", team="3 Personen", months="12 Monate") == (
+        "💡 Für 3 Personen über 12 Monate kosten beide etwa gleich viel."
+    )
+    assert t("en", "btn.months", n=6) == "6 mo"
 
 
 def test_t_missing_parameter_is_a_bug_not_a_silent_blank() -> None:
     with pytest.raises(KeyError):
-        t("en", "pick.country", wrong="x")
+        t("en", "team.even", wrong="x")

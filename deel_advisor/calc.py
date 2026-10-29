@@ -36,17 +36,10 @@ def contribution_base(contribution: Contribution, monthly_salary: Decimal) -> De
 class Line:
     contribution: Contribution
     monthly: Decimal
-    # The salary is above the ceiling, so this line no longer grows with it.
-    capped: bool
-
-    @property
-    def annual(self) -> Decimal:
-        return self.monthly * MONTHS_PER_YEAR
 
 
 @dataclass(frozen=True, slots=True)
 class EmployerCost:
-    country: Country
     monthly_salary: Decimal
     lines: tuple[Line, ...]
 
@@ -59,23 +52,12 @@ class EmployerCost:
         return sum((line.monthly for line in self.lines), ZERO)
 
     @property
-    def contributions_annual(self) -> Decimal:
-        return self.contributions_monthly * MONTHS_PER_YEAR
-
-    @property
     def total_monthly(self) -> Decimal:
         return self.monthly_salary + self.contributions_monthly
 
     @property
     def total_annual(self) -> Decimal:
         return self.total_monthly * MONTHS_PER_YEAR
-
-    @property
-    def burden(self) -> Decimal:
-        """Employer contributions as a share of gross salary."""
-        if self.monthly_salary == 0:
-            return ZERO
-        return self.contributions_monthly / self.monthly_salary
 
 
 def employer_cost(country: Country, annual_salary: Decimal) -> EmployerCost:
@@ -85,10 +67,8 @@ def employer_cost(country: Country, annual_salary: Decimal) -> EmployerCost:
     lines = []
     for contribution in country.contributions:
         base = contribution_base(contribution, monthly)
-        cap = contribution.monthly_cap
-        capped = cap is not None and monthly > cap
-        lines.append(Line(contribution, cents(base * contribution.rate), capped))
-    return EmployerCost(country, monthly, tuple(lines))
+        lines.append(Line(contribution, cents(base * contribution.rate)))
+    return EmployerCost(monthly, tuple(lines))
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,21 +126,6 @@ def breakeven_people(entity: EntityCost, eor_fee: Decimal, months: int) -> int |
     return int(overhead // margin) + 1
 
 
-def breakeven_months(entity: EntityCost, eor_fee: Decimal, people: int) -> int | None:
-    """Shortest horizon over which the entity is strictly cheaper; None if it never is.
-
-    For a horizon M past the setup months the entity's advantage is
-    `M × slope − (setup + exit + bridge months × people × margin)`, where the slope is what the
-    team saves a month minus the monthly overhead.
-    """
-    per_person = eor_fee - entity.per_employee_monthly
-    slope = per_person * people - entity.monthly_fixed
-    if slope <= 0:
-        return None
-    sunk = entity.setup + entity.exit + per_person * people * entity.bridge_months
-    return int(sunk // slope) + 1
-
-
 @dataclass(frozen=True, slots=True)
 class Plan:
     cost: EmployerCost
@@ -202,25 +167,14 @@ class Plan:
         )
 
     @property
-    def eor_total(self) -> Decimal:
-        return self.employment + self.eor_fees
-
-    @property
-    def entity_total(self) -> Decimal:
-        return self.employment + self.entity_overhead
-
-    @property
     def entity_saving(self) -> Decimal:
-        """Positive when the entity is cheaper over the horizon, negative when EOR is."""
-        return self.eor_total - self.entity_total
+        """Positive when the entity is cheaper over the horizon, negative when EOR is. The
+        employment itself is the same either way and cancels out."""
+        return self.eor_fees - self.entity_overhead
 
     @property
     def breakeven_people(self) -> int | None:
         return breakeven_people(self.entity, self.eor_fee, self.months)
-
-    @property
-    def breakeven_months(self) -> int | None:
-        return breakeven_months(self.entity, self.eor_fee, self.people)
 
 
 def plan(

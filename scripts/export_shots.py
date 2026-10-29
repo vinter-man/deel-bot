@@ -19,18 +19,20 @@ from aiogram.types import InlineKeyboardMarkup
 
 from deel_advisor import catalog, charts, replies
 from deel_advisor.bot import keyboards as kb
-from deel_advisor.bot.handlers import error_text, render
+from deel_advisor.bot.handlers import error_text
 from deel_advisor.fx import bundled_rates
 from deel_advisor.i18n import Lang, t
-from deel_advisor.parser import ParseError, Team, find_country, parse
+from deel_advisor.parser import ParseError, find_country, parse
 
 REMOTION = Path(__file__).resolve().parent.parent / "docs" / "remotion"
 OUT = REMOTION / "src" / "shots.json"
 # Team charts go where Remotion serves static files from (staticFile in shots.tsx).
 PUBLIC = REMOTION / "public"
 # The README's lead case: a small team spread over four countries, a salary for each.
-TEAM = kb.EXAMPLE_TEAM_TEXT
-TEAM_MONTHS = 24
+TEAM = kb.EXAMPLES[0].text
+ONE = kb.EXAMPLES[1].text
+# The horizon the demo GIF taps.
+TEAM_MONTHS = 6
 TODAY = date(2026, 10, 29)
 
 
@@ -39,21 +41,17 @@ def _keys(markup: InlineKeyboardMarkup | None) -> list[list[str]]:
 
 
 def _reply(ctx: replies.Context, lang: Lang, text: str, photo: str | None = None) -> dict[str, Any]:
-    """The bot's answer to `text`; a team answer's chart is written to public/`photo`."""
-    currencies = {"EUR", *ctx.rates.per_eur}
+    """The bot's answer to `text`: its chart is written to public/`photo`, as the bot sends it."""
     try:
-        query = parse(text, ctx.catalog.index, currencies)
+        team = parse(text, ctx.catalog.index, {"EUR", *ctx.rates.per_eur})
     except ParseError as error:
-        return {"html": error_text(lang, error, ctx.catalog, "usage.free"), "keyboard": []}
-    if isinstance(query, Team):
-        if photo is None:
-            raise ValueError(f"{text!r} is a team: give its chart a file name")
-        PUBLIC.mkdir(exist_ok=True)
-        (PUBLIC / photo).write_bytes(charts.team_chart(lang, replies.team_rows(query, ctx), query.months))
-        markup = kb.after_team(lang, kb.TeamCb(key="readme", months=query.months))
-        return {"html": replies.team(lang, query, ctx, breakdown=False), "keyboard": _keys(markup), "photo": photo}
-    body, markup = render(query, lang, ctx)
-    return {"html": body, "keyboard": _keys(markup)}
+        return {"html": error_text(lang, error, ctx.catalog, "usage.team"), "keyboard": []}
+    if photo is None:
+        raise ValueError(f"{text!r} is answered with a chart: give it a file name")
+    PUBLIC.mkdir(exist_ok=True)
+    (PUBLIC / photo).write_bytes(charts.team_chart(lang, replies.team_rows(team, ctx), team.months))
+    markup = kb.after_team(lang, kb.TeamCb(key="readme", months=team.months), [m.country for m in team.members])
+    return {"html": replies.team(lang, team, ctx, breakdown=False), "keyboard": _keys(markup), "photo": photo}
 
 
 def build() -> dict[str, Any]:
@@ -68,22 +66,20 @@ def build() -> dict[str, Any]:
             {"in": {"html": t(lang, "start", countries=countries), "keyboard": _keys(kb.start_examples(lang))}},
         ],
         "team": [{"out": TEAM}, {"in": _reply(ctx, lang, TEAM, "team.png")}],
-        # The demo GIF taps "24 mo" on the reply above; this is what the bot edits it into.
-        "team24": [{"out": TEAM}, {"in": _reply(ctx, lang, f"{TEAM} {TEAM_MONTHS} months", "team24.png")}],
-        "plan": [{"out": "Germany 80k 2 people"}, {"in": _reply(ctx, lang, "Germany 80k 2 people")}],
-        "cost": [{"out": "/cost Bulgaria 60000 EUR"}, {"in": _reply(ctx, lang, "Bulgaria 60000 EUR")}],
-        "compare": [{"out": "UK vs Poland 50k GBP"}, {"in": _reply(ctx, lang, "UK vs Poland 50k GBP")}],
+        # The demo GIF taps "6 mo" on the reply above; this is what the bot edits it into.
+        "team6": [{"out": TEAM}, {"in": _reply(ctx, lang, f"{TEAM} {TEAM_MONTHS} months", "team6.png")}],
+        "one": [{"out": ONE}, {"in": _reply(ctx, lang, ONE, "one.png")}],
         "sources": [
             {"out": "/sources Poland"},
             {"in": {"html": replies.sources(lang, poland, ctx), "keyboard": []}},
         ],
         "errors": [
-            {"out": "Germny 80k"},
-            {"in": _reply(ctx, lang, "Germny 80k")},
-            {"out": "Germany"},
-            {"in": _reply(ctx, lang, "Germany")},
-            {"out": "Spain 50k 0 people"},
-            {"in": _reply(ctx, lang, "Spain 50k 0 people")},
+            {"out": "Germny 2 × 80k"},
+            {"in": _reply(ctx, lang, "Germny 2 × 80k")},
+            {"out": "Germany 2 × 80k, Spain 1"},
+            {"in": _reply(ctx, lang, "Germany 2 × 80k, Spain 1")},
+            {"out": "Spain 0 × 50k"},
+            {"in": _reply(ctx, lang, "Spain 0 × 50k")},
         ],
     }
 

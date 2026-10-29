@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 
 from deel_advisor import i18n
 from deel_advisor.i18n import Lang, t
-from deel_advisor.money import format_money
+from deel_advisor.money import format_money, whole
 from deel_advisor.replies import TEAM_CURRENCY, TeamRow, country_name
 
 PAPER = "#F7F6F2"
@@ -70,7 +70,7 @@ def team_chart(lang: Lang, rows: list[TeamRow], months: int) -> bytes:
     }
     with _LOCK, mpl.rc_context(style):  # type: ignore[arg-type]  # keys checked against a Literal list
         step = 1.35  # a country label, two bars and some air
-        height = 2.3 + 1.2 * len(rows)
+        height = 2.7 + 1.2 * len(rows)
         # A bare Figure renders through Agg and never touches pyplot's global figure registry.
         fig = Figure(figsize=(10, height), dpi=160)
         ax = fig.subplots()
@@ -106,20 +106,30 @@ def team_chart(lang: Lang, rows: list[TeamRow], months: int) -> bytes:
         (rule,) = ax.plot([0, top * 1.75], [-0.66, -0.66], color=INK, linewidth=1.4)  # under the rows
         rule.set_sketch_params(*SKETCH)
 
-        title = _plain(t(lang, "chart.title", countries=len(rows), team=i18n.people(lang, people),
-                         months=i18n.months(lang, months)))  # fmt: skip
+        one = "_one" if len(rows) == 1 else ""  # one country: "an own entity", not "1 own entities"
+        name = country_name(lang, rows[0].member.country)
+        title = _plain(t(lang, f"chart.title{one}", countries=len(rows), country=name,
+                         team=i18n.people(lang, people), months=i18n.months(lang, months)))  # fmt: skip
         fig.text(0.04, 1 - 0.42 / height, title, fontsize=17, fontweight="semibold")
         fig.text(0.04, 1 - 0.78 / height, _plain(t(lang, "chart.subtitle")), fontsize=12, color=GREY)
 
         diff = abs(total_entity - total_eor)
-        verdict = "chart.eor_saves" if total_eor <= total_entity else "chart.entities_save"
-        fig.text(0.04, 0.42 / height,
-                 _plain(t(lang, "chart.total", eor=money(total_eor), entities=len(rows), entity=money(total_entity))),
-                 fontsize=13)  # fmt: skip
-        fig.text(0.96, 0.42 / height, _plain(t(lang, verdict, diff=money(diff))), fontsize=15,
-                 fontweight="semibold", ha="right")  # fmt: skip
+        if whole(diff) == 0:
+            verdict = "chart.even"  # as the caption says: no "EOR saves ~€0"
+        elif total_eor < total_entity:
+            verdict = "chart.eor_saves"
+        else:
+            verdict = f"chart.entities_save{one}"
+        # The verdict, then the totals under it: each on a line of its own, so that no language's
+        # wording can run one into the other.
+        fig.text(0.04, 0.82 / height, _plain(t(lang, verdict, diff=money(diff))), fontsize=15,
+                 fontweight="semibold")  # fmt: skip
+        fig.text(0.04, 0.38 / height,
+                 _plain(t(lang, f"chart.total{one}", eor=money(total_eor), entities=len(rows),
+                          entity=money(total_entity))),
+                 fontsize=13, color=GREY)  # fmt: skip
 
-        fig.subplots_adjust(left=0.04, right=0.96, top=1 - 1.15 / height, bottom=0.85 / height)
+        fig.subplots_adjust(left=0.04, right=0.96, top=1 - 1.15 / height, bottom=1.25 / height)
         buffer = io.BytesIO()
         fig.savefig(buffer, format="png", facecolor=PAPER)
     return buffer.getvalue()

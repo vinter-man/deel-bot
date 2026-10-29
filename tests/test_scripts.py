@@ -120,21 +120,24 @@ async def test_main_strict_exit_code(capsys: pytest.CaptureFixture[str]) -> None
 def test_export_shots_uses_real_replies(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(export_shots, "PUBLIC", tmp_path)  # the charts, not into the repo
     shots = export_shots.build()
-    assert set(shots) == {"start", "team", "team24", "plan", "cost", "compare", "sources", "errors"}
-    # Team answers are a chart and its caption, as the bot sends them.
+    assert set(shots) == {"start", "team", "team6", "one", "sources", "errors"}
+    # Answers are a chart and its caption, as the bot sends them.
     team = shots["team"][1]["in"]
     assert team["photo"] == "team.png"
     assert (tmp_path / "team.png").read_bytes().startswith(b"\x89PNG")
-    assert (tmp_path / "team24.png").read_bytes() != (tmp_path / "team.png").read_bytes()
+    assert (tmp_path / "team6.png").read_bytes() != (tmp_path / "team.png").read_bytes()
     assert shots["team"][0]["out"] == "Germany 2 × 80k, UK 1 × £60k, Spain 1 × 50k, Poland 1 × 200k zł"
-    plan_reply = shots["plan"][1]["in"]
-    assert "EOR (Deel)" in plan_reply["html"]
-    assert plan_reply["keyboard"][0][1] == "• 12 mo"
-    assert "Team in 4 countries" in shots["team"][1]["in"]["html"]
-    assert shots["team24"][1]["in"]["keyboard"][0][2] == "• 24 mo"
+    assert "Team in 4 countries" in team["html"]
+    assert team["keyboard"][0] == ["3 mo", "6 mo", "• 12 mo"]
+    assert shots["team6"][1]["in"]["keyboard"][0][1] == "• 6 mo"
+    assert shots["one"][1]["in"]["html"].startswith("🇩🇪 <b>Germany</b> · 2 people")
     assert "Did you mean <b>Germany</b>" in shots["errors"][1]["in"]["html"]
-    assert "annual gross salary" in shots["errors"][3]["in"]["html"]
+    assert "Give Spain a salary too" in shots["errors"][3]["in"]["html"]
     assert "between 1 and" in shots["errors"][5]["in"]["html"]
+    with pytest.raises(ValueError, match="chart"):
+        export_shots._reply(export_shots.replies.Context(export_shots.catalog.load(),
+                                                         export_shots.bundled_rates(), export_shots.TODAY),
+                            "en", "Germany 80k")  # fmt: skip
 
 
 async def test_robots_network_error_means_no_fetching() -> None:

@@ -5,13 +5,15 @@ from __future__ import annotations
 
 import asyncio
 import struct
+from decimal import Decimal
 
 import pytest
 
 from deel_advisor import charts, replies
 from deel_advisor.catalog import Catalog
 from deel_advisor.fx import Rates
-from deel_advisor.parser import Team, parse
+from deel_advisor.models import Country, EorPricing
+from deel_advisor.parser import Member, Team, parse
 from tests.conftest import TODAY
 
 PNG = b"\x89PNG\r\n\x1a\n"
@@ -33,7 +35,7 @@ def test_chart_is_a_png_in_every_language(real_catalog: Catalog, fixed_rates: Ra
     rows, months = _rows("Germany 2 × 80k, UK 1 × £60k, Bulgaria 1 × 30k", real_catalog, fixed_rates)
     png = charts.team_chart(lang, rows, months)  # type: ignore[arg-type]
     assert png.startswith(PNG)
-    assert _size(png) == (1600, 944)  # 10 × (2.3 + 1.2 per country) inches at 160 dpi
+    assert _size(png) == (1600, 1008)  # 10 in wide, 2.7 + 1.2 per country tall, at 160 dpi
 
 
 def test_chart_grows_with_the_team_and_is_reproducible(real_catalog: Catalog, fixed_rates: Rates) -> None:
@@ -57,3 +59,25 @@ async def test_charts_drawn_at_once_do_not_mix(real_catalog: Catalog, fixed_rate
 
 def test_html_never_reaches_the_picture() -> None:
     assert charts._plain("💡 <b>EOR</b> saves <i>~€1</i>") == "💡 EOR saves ~€1"
+
+
+def test_chart_verdicts(testland: Country, fixed_rates: Rates, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The verdict line agrees with the caption: a tie is a tie, a win names the winner.
+    said: list[str] = []
+    real_t = charts.t
+    monkeypatch.setattr(charts, "t", lambda lang, key, **kw: said.append(key) or real_t(lang, key, **kw))
+    ctx = replies.Context(Catalog([testland], _eor()), fixed_rates, TODAY)
+    for count, months, verdict in [
+        (1, 12, "chart.even"),
+        (1, 6, "chart.eor_saves"),
+        (50, 36, "chart.entities_save_one"),
+    ]:
+        said.clear()
+        team = Team((Member(testland, count, Decimal(48_000), "EUR"),), months)
+        charts.team_chart("en", replies.team_rows(team, ctx), months)
+        assert verdict in said, (count, months)
+
+
+def _eor() -> EorPricing:
+    return EorPricing(provider="Deel", monthly_fee=Decimal(550), currency="EUR", source="https://www.deel.com/pricing/",
+                      checked_at=TODAY, note="list price")  # type: ignore[arg-type]  # fmt: skip

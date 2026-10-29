@@ -122,7 +122,7 @@ def test_one_hire_is_cheaper_on_eor_for_the_first_year_everywhere(real_catalog: 
         assert calc.plan(country, D(60_000), fee, 1, months, payroll).entity_saving < 0, months
 
 
-def test_germany_breaks_even_from_five_people_over_a_year(real_catalog: Catalog) -> None:
+def test_germany_breaks_even_from_three_people_over_a_year(real_catalog: Catalog) -> None:
     from deel_advisor.fx import bundled_rates
 
     germany = _country(real_catalog, "DE")
@@ -130,4 +130,5 @@ def test_germany_breaks_even_from_five_people_over_a_year(real_catalog: Catalog)
     fee = rates.convert(D(599), "USD", "EUR")
     entity = calc.entity_cost(germany, rates.convert(D(29), "USD", "EUR"))
     assert calc.breakeven_people(entity, fee, 12) == 3
-    assert calc.breakeven_months(entity, fee, 1) is None  # one person never pays for a GmbH
+    # One person never pays for a GmbH, however long you wait.
+    assert all(calc.plan(germany, D(80_000), fee, 1, months).entity_saving < 0 for months in (12, 60, 120))
