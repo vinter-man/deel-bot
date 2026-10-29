@@ -220,9 +220,9 @@ def test_uk_rates_hold_until_april(real_catalog: Catalog, fixed_rates: Rates) ->
 def test_mid_year_ceiling_is_announced(real_catalog: Catalog, fixed_rates: Rates) -> None:
     ctx = replies.Context(real_catalog, fixed_rates, TODAY)
     bulgaria = parse("Bulgaria 60k", real_catalog.index, {"EUR"})
-    assert "ceiling as in force since 01.08.2026, applied to every month" in replies.cost("en", bulgaria, ctx)
+    assert "ceiling from 01.08.2026, applied to every month" in replies.cost("en", bulgaria, ctx)
     germany = parse("Germany 60k", real_catalog.index, {"EUR"})
-    assert "ceiling as in force since" not in replies.cost("en", germany, ctx)
+    assert "ceiling from" not in replies.cost("en", germany, ctx)
 
 
 def test_share_capital_has_a_source(real_catalog: Catalog, fixed_rates: Rates) -> None:
@@ -232,9 +232,8 @@ def test_share_capital_has_a_source(real_catalog: Catalog, fixed_rates: Rates) -
     assert "Share capital €25,000: stays the company's, not a cost — <a href=" in text
 
 
-def test_ceiling_note_waits_for_its_date(real_catalog: Catalog, fixed_rates: Rates) -> None:
+def test_ceiling_note_is_in_plan_replies_too(real_catalog: Catalog, fixed_rates: Rates) -> None:
     bulgaria = parse("Bulgaria 60k 3 people", real_catalog.index, {"EUR"})
+    # Even before the date the calculation uses the newer ceiling, so the note is always there.
     july = replies.Context(real_catalog, fixed_rates, date(2026, 7, 15))
-    assert "ceiling as in force since" not in replies.plan("en", bulgaria, july)
-    autumn = replies.Context(real_catalog, fixed_rates, TODAY)
-    assert "ceiling as in force since 01.08.2026" in replies.plan("en", bulgaria, autumn)
+    assert "ceiling from 01.08.2026, applied to every month" in replies.plan("en", bulgaria, july)

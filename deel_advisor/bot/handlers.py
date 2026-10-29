@@ -390,7 +390,10 @@ async def on_error(event: ErrorEvent, **data: Any) -> bool:
     services: Services | None = data.get("services")
     lang: Lang = "en"
     if user is not None:
-        stored = await services.prefs.get(user.id) if services is not None else None
+        stored = None
+        if services is not None:
+            with contextlib.suppress(Exception):  # the store may be what broke
+                stored = await services.prefs.get(user.id)
         lang = stored or pick_lang(user.language_code)
     with contextlib.suppress(TelegramAPIError):
         if event.update.callback_query is not None:

@@ -8,7 +8,7 @@ import {Shot, type ShotName} from './shots';
 export const SHOTS: Partial<Record<ShotName, number>> = {
   start: 760,
   plan: 820,
-  cost: 800,
+  cost: 830,
   compare: 640,
   sources: 1060,
   errors: 600,

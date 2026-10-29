@@ -101,7 +101,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "<i>{year} rates, in force since {since}. Payslip lines rounded to the cent, shown in whole units.</i>"
         ),
         "cost.estimate_note": "<i>~ typical rate, depends on the employer.</i>",
-        "cost.cap_since": "<i>Contribution ceiling as in force since {date}, applied to every month.</i>",
+        "cost.cap_since": "<i>Contribution ceiling from {date}, applied to every month.</i>",
         "cost.below_min_wage": "⚠️ Below the {year} minimum wage ({minimum} a year).",
         "cost.monthly_hint": "I expect an <b>annual</b> salary; for a monthly one write <code>{example}</code>.",
         "plan.header": "{flag} <b>{country}</b> · {team} × {salary} a year · {months}",
@@ -212,7 +212,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "цента, показано в цілих одиницях.</i>"
         ),
         "cost.estimate_note": "<i>~ типова ставка, залежить від роботодавця.</i>",
-        "cost.cap_since": "<i>Стеля внесків — чинна з {date}, застосована до кожного місяця.</i>",
+        "cost.cap_since": "<i>Стеля внесків — з {date}, застосована до кожного місяця.</i>",
         "cost.below_min_wage": "⚠️ Це нижче мінімальної зарплати {year} року ({minimum} на рік).",
         "cost.monthly_hint": "Я чекаю <b>річну</b> зарплату; для місячної напишіть <code>{example}</code>.",
         "plan.header": "{flag} <b>{country}</b> · {team} × {salary} на рік · {months}",
@@ -323,7 +323,7 @@ MESSAGES: Final[dict[Lang, dict[str, str]]] = {
             "цента, показано в целых единицах.</i>"
         ),
         "cost.estimate_note": "<i>~ типичная ставка, зависит от работодателя.</i>",
-        "cost.cap_since": "<i>Потолок взносов — действующий с {date}, применён к каждому месяцу.</i>",
+        "cost.cap_since": "<i>Потолок взносов — с {date}, применён к каждому месяцу.</i>",
         "cost.below_min_wage": "⚠️ Это ниже минимальной зарплаты {year} года ({minimum} в год).",
         "cost.monthly_hint": "Я жду <b>годовую</b> зарплату; для месячной напишите <code>{example}</code>.",
         "plan.header": "{flag} <b>{country}</b> · {team} × {salary} в год · {months}",

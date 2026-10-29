@@ -122,16 +122,16 @@ def _input_lines(lang: Lang, query: Query, country: Country, ctx: Context) -> li
 CEILING_FIGURES = ("pension_cap", "health_cap", "max_insurable_income")
 
 
-def _ceiling_changed(country: Country, today: date) -> date | None:
-    """When a ceiling moved during the year (Bulgaria, 1 August), the date of the current one.
+def _ceiling_changed(country: Country) -> date | None:
+    """When a ceiling moved during the year (Bulgaria, 1 August), the date of the newer one.
 
-    The calculation is for a hire made now, so every month uses the ceiling in force today
-    rather than averaging in months already behind us; the reply says that out loud.
+    The calculation prices a hire made from now on, so every month uses the newest ceiling
+    rather than averaging in months that are already behind us; the reply says so.
     """
     dates = [
         figure.effective_from
         for key, figure in country.official.figures.items()
-        if key in CEILING_FIGURES and figure.effective_from and country.effective_from < figure.effective_from <= today
+        if key in CEILING_FIGURES and figure.effective_from and figure.effective_from > country.effective_from
     ]
     return max(dates, default=None)
 
@@ -162,7 +162,7 @@ def cost(lang: Lang, query: Query, ctx: Context) -> str:
         capped = f", {t(lang, 'cost.capped')}" if line.capped and c.floor is None else ""
         out.append(f"• {contribution_name(lang, c)} {rate}{capped} — {_money(lang, line.annual, cur)}")
     out += ["", t(lang, "cost.footer", year=country.year, since=_date(country.effective_from))]
-    if (cap_since := _ceiling_changed(country, ctx.today)) is not None:
+    if (cap_since := _ceiling_changed(country)) is not None:
         out.append(t(lang, "cost.cap_since", date=_date(cap_since)))
     if any(c.estimate for c in country.contributions):
         out.append(t(lang, "cost.estimate_note"))
@@ -239,7 +239,7 @@ def plan(lang: Lang, query: Query, ctx: Context) -> str:
         out.append(t(lang, key, team=team, months=horizon, diff=_money(lang, diff, cur)))
     out += _pays_off(lang, result)
     out += ["", t(lang, "plan.note")]
-    if (cap_since := _ceiling_changed(country, ctx.today)) is not None:
+    if (cap_since := _ceiling_changed(country)) is not None:
         out.append(t(lang, "cost.cap_since", date=_date(cap_since)))
     extra = warnings(lang, country, ctx) + _fx_warning(lang, ctx)
     if extra:
