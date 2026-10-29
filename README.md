@@ -374,7 +374,7 @@ modified" on a repeated tap, a button whose message is gone, a sticker instead o
 > each run against the suite. The first run caught **84%**. The survivors were real holes — a
 > salary exactly on a ceiling, a one-month horizon, a saving of exactly zero, the error naming the
 > wrong word, no timeout on the ECB request — plus three pieces of dead code; all fixed. Now
-> **96.8%** are caught, and the 40 left alive are equivalent mutants (`//` vs `/` on positive
+> **96.9%** are caught, and the 39 left alive are equivalent mutants (`//` vs `/` on positive
 > numbers, a temp file's name, the wording of a log line).
 >
 > ```bash

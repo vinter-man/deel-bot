@@ -354,6 +354,8 @@ def team(lang: Lang, query: Query, ctx: Context) -> str:
             outdated_guides.append(country.flag)
         if state.outdated_year:
             notes.append(f"{country.flag} " + t(lang, "warn.year", year=country.year, current=ctx.today.year))
+        if state.unchecked_days:
+            notes.append(f"{country.flag} " + t(lang, "warn.unchecked", date=_date(country.official.checked_at, lang)))
         eor = ctx.rates.convert(result.eor_fees, country.currency, common)
         entity = ctx.rates.convert(result.entity_overhead, country.currency, common)
         total_eor += eor

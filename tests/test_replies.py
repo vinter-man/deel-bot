@@ -294,3 +294,10 @@ def test_team_tie_is_called_a_tie(testland: Country, fixed_rates: Rates) -> None
     )
     assert "both cost about the same" in text
     assert "~€0" not in text
+
+
+def test_team_reply_says_when_figures_are_stale(real_catalog: Catalog, fixed_rates: Rates) -> None:
+    ctx = replies.Context(real_catalog, fixed_rates, date(2027, 6, 1))
+    query = parse("Germany 2 UK 1 70k", real_catalog.index, {"EUR", *fixed_rates.per_eur})
+    text = replies.team("en", query, ctx)
+    assert "🇩🇪 ⚠️ Official figures last checked 29 Oct 2026." in text
